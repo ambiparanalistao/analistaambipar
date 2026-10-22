@@ -4,6 +4,7 @@ import {
   Truck, 
   FileText, 
   Calculator, 
+  ShieldAlert, 
   AlertTriangle, 
   BarChart3, 
   Settings, 
@@ -48,12 +49,17 @@ export default function Sidebar({
       ]
     },
     {
-      title: 'Inteligência & Fórmulas',
+      title: 'Engenharia de Frete & Inteligência',
       items: [
         {
-          id: 'calculadoras',
-          label: 'Calculadoras & Métricas',
+          id: 'calculadora_frete',
+          label: 'Calculadora de Frete & Carbono',
           icon: Calculator
+        },
+        {
+          id: 'antt_formulas',
+          label: 'Compatibilidade ANTT & Fórmulas',
+          icon: ShieldAlert
         },
         {
           id: 'ocorrencias',

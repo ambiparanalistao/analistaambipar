@@ -4,10 +4,6 @@ import {
   Settings, 
   Database, 
   Leaf, 
-  Radio, 
-  Bell, 
-  Search,
-  Sparkles,
   ChevronRight,
   LogOut
 } from 'lucide-react';
@@ -16,7 +12,8 @@ import Sidebar from './components/Sidebar';
 import LogisticsDashboard from './components/LogisticsDashboard';
 import TripsModule from './components/TripsModule';
 import MtrModule from './components/MtrModule';
-import CalculatorModule from './components/CalculatorModule';
+import FreightCarbonCalculator from './components/FreightCarbonCalculator';
+import AnttFormulasModule from './components/AnttFormulasModule';
 import OcorrenciasModule from './components/OcorrenciasModule';
 import EsgModule from './components/EsgModule';
 import AuthCard from './components/AuthCard';
@@ -68,9 +65,9 @@ export default function App() {
     setSession({
       user: {
         id: 'demo-analista-ambipar',
-        email: 'analista.logistica@ambipar.com',
+        email: 'carlos.eduardo@ambipar.com',
         user_metadata: {
-          full_name: 'Carlos Oliveira (CCO Ambipar)'
+          full_name: 'Carlos Eduardo Dos Santos'
         }
       }
     });
@@ -78,12 +75,34 @@ export default function App() {
 
   // Nomes e descrições dos módulos para o cabeçalho superior
   const moduleInfo = {
-    dashboard: { title: 'Torre de Controle Operacional', subtitle: 'Painel Central, KPIs, Fórmulas e Monitoramento em Tempo Real' },
-    viagens: { title: 'Monitoramento de Frotas & Viagens', subtitle: 'Rastreamento de veículos, tempos de carga/descarga e gestão de rotas' },
-    mtr: { title: 'Manifestos de Transporte de Resíduos (MTR)', subtitle: 'Controle de resíduos industriais perigosos (Classe I/II) e conformidade SINIR' },
-    calculadoras: { title: 'Engenharia de Frete & Fórmulas', subtitle: 'Simulador de custos por quilômetro (CPK) e compatibilidade química ANTT' },
-    ocorrencias: { title: 'Central de Ocorrências & Emergências', subtitle: 'Ambipar Response, atendimento 24h e paradas preventivas' },
-    esg: { title: 'Descarbonização & Indicadores ESG', subtitle: 'Métricas de redução de pegada de carbono e créditos de reciclagem' }
+    dashboard: { 
+      title: 'Torre de Controle Operacional', 
+      subtitle: 'Painel Geral de Operações, KPIs Consolidados e Monitoramento do Banco de Dados' 
+    },
+    viagens: { 
+      title: 'Monitoramento de Frotas & Viagens', 
+      subtitle: 'Rastreamento operacional de veículos, carga/descarga e gestão de motoristas' 
+    },
+    mtr: { 
+      title: 'Manifestos de Transporte de Resíduos (MTR)', 
+      subtitle: 'Controle de resíduos industriais perigosos (Classe I/II) e conformidade com o SINIR' 
+    },
+    calculadora_frete: { 
+      title: 'Calculadora Avançada de Frete & Carbono', 
+      subtitle: 'Simulação analítica de rotas, formação de preço, DRE de custos (CPK) e balanço GEE' 
+    },
+    antt_formulas: { 
+      title: 'Compatibilidade ANTT & Fórmulas Operacionais', 
+      subtitle: 'Segregação química de produtos perigosos (Resolução ANTT 5998) e metodologias técnicas' 
+    },
+    ocorrencias: { 
+      title: 'Central de Ocorrências & Emergências', 
+      subtitle: 'Plano de Atendimento a Emergências (PAE) e suporte 24h Ambipar Response' 
+    },
+    esg: { 
+      title: 'Descarbonização & Indicadores ESG', 
+      subtitle: 'Metas corporativas de sustentabilidade, créditos verdes e descarte sustentável' 
+    }
   };
 
   return (
@@ -184,10 +203,16 @@ export default function App() {
 
             {/* Módulo Ativo Selecionado */}
             <main className="stage-content-body" id="stage-content-body">
-              {currentModule === 'dashboard' && <LogisticsDashboard user={session.user} />}
+              {currentModule === 'dashboard' && (
+                <LogisticsDashboard 
+                  user={session.user} 
+                  onNavigateModule={setCurrentModule} 
+                />
+              )}
               {currentModule === 'viagens' && <TripsModule user={session.user} />}
               {currentModule === 'mtr' && <MtrModule user={session.user} />}
-              {currentModule === 'calculadoras' && <CalculatorModule />}
+              {currentModule === 'calculadora_frete' && <FreightCarbonCalculator onNavigateMtr={() => setCurrentModule('mtr')} />}
+              {currentModule === 'antt_formulas' && <AnttFormulasModule />}
               {currentModule === 'ocorrencias' && <OcorrenciasModule />}
               {currentModule === 'esg' && <EsgModule />}
             </main>

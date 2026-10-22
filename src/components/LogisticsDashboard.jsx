@@ -1,32 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  DollarSign, 
-  Fuel, 
-  Leaf, 
-  Clock, 
-  FileCheck2, 
-  Calculator, 
-  Sparkles, 
   Layers, 
-  CheckCircle2, 
+  FileCheck2, 
+  Flame, 
+  Leaf, 
+  RefreshCw, 
   Search, 
-  ArrowRight, 
-  Flame,
-  RefreshCw,
-  PlusCircle
+  Calculator, 
+  PlusCircle, 
+  ArrowRight,
+  TrendingUp,
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
-export default function LogisticsDashboard({ user }) {
-  const [activeFormulaTab, setActiveFormulaTab] = useState('cpk');
+export default function LogisticsDashboard({ user, onNavigateModule }) {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Estado da Calculadora Operacional do Analista (Ferramenta de cálculo de rota)
-  const [calcDistance, setCalcDistance] = useState(450);
-  const [calcWeight, setCalcWeight] = useState(25.0);
-  const [calcVehicleType, setCalcVehicleType] = useState('carreta_tanque');
-  const [calcDieselPrice, setCalcDieselPrice] = useState(6.19);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Busca dados reais gravados no Supabase
@@ -58,26 +49,6 @@ export default function LogisticsDashboard({ user }) {
     loadRealData();
   }, []);
 
-  // Coeficientes dos veículos para cálculos operacionais
-  const vehicleSpecs = {
-    carreta_tanque: { label: 'Carreta Tanque Químico (Resíduos Perigosos)', avgKmL: 2.3, costMultiplier: 1.35 },
-    bitrem: { label: 'Bitrem Articulado 9 Eixos', avgKmL: 2.1, costMultiplier: 1.45 },
-    truck_pesado: { label: 'Truck Pesado 6x2 (Baú / Sider)', avgKmL: 3.1, costMultiplier: 1.15 },
-    vuc: { label: 'VUC Urbano (Coleta Fracionada)', avgKmL: 5.5, costMultiplier: 0.85 }
-  };
-
-  // Cálculos dinâmicos da calculadora
-  const selectedVehicle = vehicleSpecs[calcVehicleType];
-  const estimatedLiters = calcDistance > 0 && selectedVehicle.avgKmL > 0 
-    ? (calcDistance / selectedVehicle.avgKmL).toFixed(1) 
-    : 0;
-  const estimatedFuelCost = (estimatedLiters * calcDieselPrice).toFixed(2);
-  const estimatedFreightCost = (calcDistance * (calcDieselPrice / selectedVehicle.avgKmL) * selectedVehicle.costMultiplier).toFixed(2);
-  const costPerKm = calcDistance > 0 ? (estimatedFreightCost / calcDistance).toFixed(2) : 0;
-  const carbonEmissionsKg = (estimatedLiters * 2.671).toFixed(1);
-  const carbonTons = (carbonEmissionsKg / 1000).toFixed(3);
-  const treesNeeded = Math.ceil(carbonTons * 7);
-
   // Métricas apuradas a partir dos dados reais do banco
   const totalKgReal = records.reduce((acc, curr) => acc + (Number(curr.quantidade_kg) || 0), 0);
   const totalTonReal = (totalKgReal / 1000).toFixed(2);
@@ -107,7 +78,7 @@ export default function LogisticsDashboard({ user }) {
           </div>
           <h2>Painel Geral de Operações Ambipar</h2>
           <p>
-            Métricas reais apuradas a partir do banco de dados PostgreSQL do Supabase e simuladores de rotas e custos.
+            Métricas reais consolidadas a partir do banco de dados PostgreSQL do Supabase (resíduos, destinações e MTRs).
           </p>
         </div>
 
@@ -138,10 +109,10 @@ export default function LogisticsDashboard({ user }) {
             <span className="unit-suffix">toneladas</span>
           </div>
           <div className="kpi-formula-tag">
-            <code>Fonte: Soma real da tabela registros_residuos</code>
+            <code>Fonte: Tabela registros_residuos (Supabase)</code>
           </div>
           <div className="kpi-footer-status positive">
-            <span>{totalKgReal.toLocaleString('pt-BR')} kg apurados no Supabase</span>
+            <span>{totalKgReal.toLocaleString('pt-BR')} kg cadastrados no banco</span>
           </div>
         </div>
 
@@ -158,7 +129,7 @@ export default function LogisticsDashboard({ user }) {
             <span className="unit-suffix">MTRs</span>
           </div>
           <div className="kpi-formula-tag">
-            <code>Fonte: Total de registros_residuos cadastrados</code>
+            <code>Fonte: Total de registros de destinação</code>
           </div>
           <div className="kpi-footer-status neutral">
             <span>{totalMtrsReal > 0 ? 'Conformidade ativa com SINIR' : 'Aguardando cadastro no banco'}</span>
@@ -206,207 +177,53 @@ export default function LogisticsDashboard({ user }) {
         </div>
       </div>
 
-      {/* Seção Dupla: Calculadora Operacional & Fórmulas Explicadas */}
-      <div className="analytics-dual-section">
-        {/* Calculadora Operacional */}
-        <div className="card-panel quick-calculator-panel">
-          <div className="panel-header">
-            <div className="header-icon-label">
-              <Calculator size={20} className="icon-emerald" />
-              <div>
-                <h3>Calculadora Operacional de Frete & Carbono</h3>
-                <p>Simulação técnica por rota: calcule consumo de diesel, custo sugerido e emissões de CO₂</p>
-              </div>
-            </div>
+      {/* Banner de Acesso Rápido aos Módulos Operacionais Especializados */}
+      <div className="dashboard-quick-modules-row">
+        <div className="quick-access-banner-card highlight">
+          <div className="banner-icon-circle emerald">
+            <Calculator size={26} />
           </div>
-
-          <div className="calculator-inputs-grid">
-            <div className="input-group-custom">
-              <label htmlFor="calc-distance">Distância da Rota (KM Ida/Volta)</label>
-              <div className="input-with-unit">
-                <input
-                  type="number"
-                  id="calc-distance"
-                  value={calcDistance}
-                  onChange={(e) => setCalcDistance(Number(e.target.value))}
-                  min="1"
-                />
-                <span className="unit-tag">km</span>
-              </div>
-            </div>
-
-            <div className="input-group-custom">
-              <label htmlFor="calc-weight">Carga a Transportar (Toneladas)</label>
-              <div className="input-with-unit">
-                <input
-                  type="number"
-                  id="calc-weight"
-                  value={calcWeight}
-                  onChange={(e) => setCalcWeight(Number(e.target.value))}
-                  step="0.5"
-                  min="0.5"
-                />
-                <span className="unit-tag">ton</span>
-              </div>
-            </div>
-
-            <div className="input-group-custom">
-              <label htmlFor="calc-vehicle">Tipo de Equipamento / Veículo</label>
-              <select
-                id="calc-vehicle"
-                value={calcVehicleType}
-                onChange={(e) => setCalcVehicleType(e.target.value)}
-                className="select-custom"
-              >
-                {Object.entries(vehicleSpecs).map(([key, item]) => (
-                  <option key={key} value={key}>
-                    {item.label} (~{item.avgKmL} km/l)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="input-group-custom">
-              <label htmlFor="calc-diesel">Preço Diesel S10 (R$/L)</label>
-              <div className="input-with-unit">
-                <input
-                  type="number"
-                  id="calc-diesel"
-                  value={calcDieselPrice}
-                  onChange={(e) => setCalcDieselPrice(Number(e.target.value))}
-                  step="0.05"
-                  min="1"
-                />
-                <span className="unit-tag">R$/L</span>
-              </div>
-            </div>
+          <div className="banner-text-content">
+            <h4>Módulo Avançado: Calculadora de Frete & Carbono</h4>
+            <p>
+              Faça a simulação analítica completa de rotas, DRE de custos (diesel, Arla 32, pedágios, manutenção, margem) e balanço de emissões GEE (GHG Protocol).
+            </p>
           </div>
-
-          {/* Resultados Calculados */}
-          <div className="calculator-results-box">
-            <div className="result-stat-item">
-              <span className="stat-label">Diesel Estimado:</span>
-              <span className="stat-val highlight">{estimatedLiters} L</span>
-              <small className="stat-sub">R$ {estimatedFuelCost}</small>
-            </div>
-
-            <div className="result-stat-item">
-              <span className="stat-label">Custo Base Sugerido:</span>
-              <span className="stat-val emerald">R$ {estimatedFreightCost}</span>
-              <small className="stat-sub">R$ {costPerKm}/km</small>
-            </div>
-
-            <div className="result-stat-item">
-              <span className="stat-label">Emissão CO₂:</span>
-              <span className="stat-val cyan">{carbonTons} tCO₂e</span>
-              <small className="stat-sub">{carbonEmissionsKg} kg CO₂</small>
-            </div>
-
-            <div className="result-stat-item">
-              <span className="stat-label">Compensação:</span>
-              <span className="stat-val forest">{treesNeeded} mudas</span>
-              <small className="stat-sub">para neutralizar</small>
-            </div>
-          </div>
+          <button
+            type="button"
+            className="btn-primary btn-icon-text"
+            onClick={() => onNavigateModule && onNavigateModule('calculadora_frete')}
+            id="go-to-freight-calculator-btn"
+          >
+            <span>Abrir Calculadora Completa</span>
+            <ArrowRight size={16} />
+          </button>
         </div>
 
-        {/* Fórmulas Explicadas */}
-        <div className="card-panel formulas-guide-panel">
-          <div className="panel-header">
-            <div className="header-icon-label">
-              <Layers size={20} className="icon-cyan" />
-              <div>
-                <h3>Fórmulas do Analista de Logística</h3>
-                <p>Metodologias aplicadas na gestão de transporte e resíduos perigosos</p>
-              </div>
-            </div>
+        <div className="quick-access-banner-card">
+          <div className="banner-icon-circle cyan">
+            <FileCheck2 size={26} />
           </div>
-
-          <div className="formula-tabs-nav">
-            <button
-              type="button"
-              className={`formula-tab-btn ${activeFormulaTab === 'cpk' ? 'active' : ''}`}
-              onClick={() => setActiveFormulaTab('cpk')}
-            >
-              CPK (Custo/km)
-            </button>
-            <button
-              type="button"
-              className={`formula-tab-btn ${activeFormulaTab === 'co2' ? 'active' : ''}`}
-              onClick={() => setActiveFormulaTab('co2')}
-            >
-              Emissão GEE (CO₂)
-            </button>
-            <button
-              type="button"
-              className={`formula-tab-btn ${activeFormulaTab === 'tku' ? 'active' : ''}`}
-              onClick={() => setActiveFormulaTab('tku')}
-            >
-              TKU (Ton × Km)
-            </button>
-            <button
-              type="button"
-              className={`formula-tab-btn ${activeFormulaTab === 'otif' ? 'active' : ''}`}
-              onClick={() => setActiveFormulaTab('otif')}
-            >
-              OTIF (SLA)
-            </button>
+          <div className="banner-text-content">
+            <h4>Gestão de MTRs & Destinação</h4>
+            <p>
+              Emita novos manifestos de resíduos, controle o certificado de destinação final (CDF) e mantenha a conformidade com o SINIR.
+            </p>
           </div>
-
-          <div className="formula-content-display">
-            {activeFormulaTab === 'cpk' && (
-              <div className="formula-detail-card animate-fade-in">
-                <h4>Custo por Quilômetro Rodado (CPK)</h4>
-                <div className="math-formula-box">
-                  <code>CPK = (Custos Fixos + Custos Variáveis) / KM Total Rodado</code>
-                </div>
-                <p className="formula-explanation">
-                  O CPK avalia o impacto real da rota considerando combustível, pedágio, pneus, manutenção, seguro de carga perigosa e remuneração do motorista.
-                </p>
-              </div>
-            )}
-
-            {activeFormulaTab === 'co2' && (
-              <div className="formula-detail-card animate-fade-in">
-                <h4>Emissões de Gases de Efeito Estufa (Escopo 1 - GHG Protocol)</h4>
-                <div className="math-formula-box">
-                  <code>tCO₂e = (Litros Diesel × 2,671 kg CO₂/L) ÷ 1.000</code>
-                </div>
-                <p className="formula-explanation">
-                  Fator oficial do Programa Brasileiro GHG Protocol para óleo diesel comercial com adição obrigatória de biodiesel.
-                </p>
-              </div>
-            )}
-
-            {activeFormulaTab === 'tku' && (
-              <div className="formula-detail-card animate-fade-in">
-                <h4>Tonelada-Quilômetro Útil (TKU)</h4>
-                <div className="math-formula-box">
-                  <code>TKU = Peso da Carga Líquida (t) × Distância Percorrida (km)</code>
-                </div>
-                <p className="formula-explanation">
-                  Mede a produtividade real do transporte de resíduos industriais. Evita caminhões rodando com peso ocioso ou voltando vazios.
-                </p>
-              </div>
-            )}
-
-            {activeFormulaTab === 'otif' && (
-              <div className="formula-detail-card animate-fade-in">
-                <h4>On-Time In-Full (OTIF)</h4>
-                <div className="math-formula-box">
-                  <code>OTIF (%) = (Viagens 100% no Prazo e Sem Avarias / Total) × 100</code>
-                </div>
-                <p className="formula-explanation">
-                  Garante a conformidade de coleta para que os clientes industriais não acumulem resíduos além da capacidade permitida em suas licenças ambientais.
-                </p>
-              </div>
-            )}
-          </div>
+          <button
+            type="button"
+            className="btn-secondary btn-icon-text"
+            onClick={() => onNavigateModule && onNavigateModule('mtr')}
+            id="go-to-mtr-module-btn"
+          >
+            <span>Gerenciar MTRs</span>
+            <ArrowRight size={16} />
+          </button>
         </div>
       </div>
 
       {/* Tabela de Dados Reais do Banco de Dados */}
-      <div className="card-panel live-board-panel">
+      <div className="card-panel live-board-panel" style={{ marginTop: '1.75rem' }}>
         <div className="live-board-header">
           <div>
             <h3>Registros Reais de Resíduos e Transportes</h3>
@@ -442,7 +259,7 @@ export default function LogisticsDashboard({ user }) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem' }}>
                     <span className="spinner"></span>
                     <p style={{ marginTop: '0.5rem', color: 'var(--text-muted)' }}>Consultando banco PostgreSQL...</p>
                   </td>
@@ -454,7 +271,7 @@ export default function LogisticsDashboard({ user }) {
                       Nenhum registro de resíduo cadastrado no banco de dados.
                     </p>
                     <span style={{ fontSize: '0.85rem' }}>
-                      Acesse a aba <strong>"MTR & Destinação Resíduos"</strong> no menu lateral para registrar os primeiros dados reais da sua operação.
+                      Acesse o módulo <strong>"MTR & Destinação Resíduos"</strong> para cadastrar os dados reais da sua operação.
                     </span>
                   </td>
                 </tr>
