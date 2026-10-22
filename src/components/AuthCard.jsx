@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
-export default function AuthCard({ onOpenConfig }) {
+export default function AuthCard({ onOpenConfig, onDemoAccess }) {
   const [mode, setMode] = useState('login'); // 'login' | 'signup' | 'forgot'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -289,9 +289,23 @@ export default function AuthCard({ onOpenConfig }) {
               ← Voltar para o Login
             </button>
           ) : (
-            <p className="footer-note">
-              Autenticação protegida por criptografia de ponta a ponta via Supabase Auth & JWT.
-            </p>
+            <div className="demo-access-container">
+              {onDemoAccess && (
+                <button
+                  type="button"
+                  className="btn-secondary btn-block demo-btn"
+                  onClick={onDemoAccess}
+                  id="quick-demo-access-btn"
+                  style={{ marginBottom: '1rem', borderStyle: 'dashed' }}
+                >
+                  <Sparkles size={16} className="text-emerald" />
+                  <span>Entrar Direto como Analista (Modo CCO)</span>
+                </button>
+              )}
+              <p className="footer-note">
+                Autenticação protegida por criptografia de ponta a ponta via Supabase Auth & JWT.
+              </p>
+            </div>
           )}
         </div>
       </div>
