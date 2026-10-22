@@ -73,9 +73,11 @@ button {
   outline: none;
 }
 
-input {
+input, select, textarea {
   font-family: var(--font-body);
   outline: none;
+  box-sizing: border-box;
+  color-scheme: dark;
 }
 
 /* Utilitários e Animações */

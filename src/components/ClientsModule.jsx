@@ -224,7 +224,6 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
 
   // Formulário de Cadastro / Edição
   const [editingId, setEditingId] = useState(null);
-  const [formStep, setFormStep] = useState(1); // 1: Cadastral, 2: Endereço, 3: Rota, 4: Ambiental, 5: Contatos
   const [formData, setFormData] = useState({
     razao_social: '',
     nome_fantasia: '',
@@ -333,7 +332,6 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   // Abrir Form para Criar
   const handleOpenCreateForm = () => {
     setEditingId(null);
-    setFormStep(1);
     setFormData({
       razao_social: '',
       nome_fantasia: '',
@@ -380,7 +378,6 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   // Abrir Form para Editar
   const handleOpenEditForm = (client) => {
     setEditingId(client.id);
-    setFormStep(1);
     setFormData({ ...client });
     setViewMode('form');
   };
@@ -624,85 +621,55 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 <Sparkles size={14} />
                 <span>{editingId ? 'ATUALIZAÇÃO DE CONTRATO & ROTA' : 'NOVA HOMOLOGAÇÃO DE CLIENTE INDUSTRIAL'}</span>
               </span>
-              <h3>{editingId ? `Editando: ${formData.nome_fantasia || formData.razao_social}` : 'Cadastrar Novo Cliente & Atribuir Rota'}</h3>
-              <p>Preencha os dados cadastrais, endereço industrial, parâmetros de coleta e selecione a rota de atendimento do cliente.</p>
+              <h3>{editingId ? `Editar Cliente: ${formData.nome_fantasia || formData.razao_social}` : 'Cadastrar Novo Cliente & Atribuir Rota'}</h3>
+              <p>Preencha os dados cadastrais, endereço industrial, parâmetros de coleta e selecione o corredor logístico</p>
             </div>
 
-            <button
-              type="submit"
-              className="btn-primary btn-icon-text"
-              id="btn-salvar-cliente-submit"
-            >
-              <Save size={16} />
-              <span>{editingId ? 'Salvar Alterações' : 'Concluir Cadastro & Direcionar'}</span>
-            </button>
+            <div className="form-header-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setViewMode('cards')}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn-primary btn-icon-text"
+                id="btn-salvar-cliente-banner"
+              >
+                <Save size={16} />
+                <span>{editingId ? 'Salvar Alterações' : 'Concluir Cadastro & Direcionar'}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Stepper de Abas do Formulário */}
-          <div className="client-form-stepper">
-            <button
-              type="button"
-              className={`stepper-btn ${formStep === 1 ? 'active' : ''}`}
-              onClick={() => setFormStep(1)}
-            >
-              <span className="step-num">1</span>
-              <span>Dados Cadastrais</span>
-            </button>
-            <button
-              type="button"
-              className={`stepper-btn ${formStep === 2 ? 'active' : ''}`}
-              onClick={() => setFormStep(2)}
-            >
-              <span className="step-num">2</span>
-              <span>Endereço & Polo</span>
-            </button>
-            <button
-              type="button"
-              className={`stepper-btn ${formStep === 3 ? 'active' : ''}`}
-              onClick={() => setFormStep(3)}
-            >
-              <span className="step-num">3</span>
-              <span>Roteirização & Frota</span>
-            </button>
-            <button
-              type="button"
-              className={`stepper-btn ${formStep === 4 ? 'active' : ''}`}
-              onClick={() => setFormStep(4)}
-            >
-              <span className="step-num">4</span>
-              <span>Resíduos & Licenças</span>
-            </button>
-            <button
-              type="button"
-              className={`stepper-btn ${formStep === 5 ? 'active' : ''}`}
-              onClick={() => setFormStep(5)}
-            >
-              <span className="step-num">5</span>
-              <span>Contatos & SLA</span>
-            </button>
-          </div>
-
-          {/* PASSO 1: DADOS CADASTRAIS & JURÍDICOS */}
-          {formStep === 1 && (
-            <div className="form-section-card animate-fade-in">
-              <div className="section-card-title">
-                <Building size={18} color="#10b981" />
-                <span>Identificação Jurídica & Segmento Industrial</span>
+          <div className="driver-form-sections-grid">
+            {/* PAINEL 1: Identificação Jurídica & Razão Social */}
+            <div className="card-panel card-z-top" style={{ position: 'relative', zIndex: 40 }}>
+              <div className="panel-header">
+                <div className="header-icon-label">
+                  <Building size={20} className="icon-emerald" />
+                  <div>
+                    <h4>1. Identificação Jurídica & Segmento</h4>
+                    <p>Registro empresarial, dados fiscais e enquadramento CCO</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="form-grid-3">
-                <div className="form-field full-row">
-                  <label>Razão Social Completa *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nome empresarial oficial do cliente"
-                    value={formData.razao_social}
-                    onChange={e => setFormData({ ...formData, razao_social: e.target.value })}
-                  />
-                </div>
+              <div className="input-group-custom" style={{ marginBottom: '1.1rem' }}>
+                <label>Razão Social Completa *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nome empresarial oficial do cliente"
+                  value={formData.razao_social}
+                  onChange={e => setFormData({ ...formData, razao_social: e.target.value })}
+                />
+              </div>
 
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label>Nome Fantasia / Unidade *</label>
                   <input
                     type="text"
@@ -713,7 +680,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
+                <div className="input-group-custom">
                   <label>CNPJ *</label>
                   <input
                     type="text"
@@ -723,8 +690,10 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     onChange={e => setFormData({ ...formData, cnpj: formatCNPJ(e.target.value) })}
                   />
                 </div>
+              </div>
 
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label>Inscrição Estadual (IE)</label>
                   <input
                     type="text"
@@ -734,16 +703,18 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
-                  <label>Segmento / Setor</label>
+                <div className="input-group-custom">
+                  <label>Segmento / Setor Industrial</label>
                   <PremiumSelect
                     value={formData.segmento}
                     onChange={val => setFormData({ ...formData, segmento: val })}
                     options={INDUSTRY_SEGMENTS}
                   />
                 </div>
+              </div>
 
-                <div className="form-field">
+              <div className="grid-2-cols">
+                <div className="input-group-custom">
                   <label>Status Operacional</label>
                   <PremiumSelect
                     value={formData.status}
@@ -752,7 +723,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
+                <div className="input-group-custom">
                   <label>Nível SLA / Parceria</label>
                   <PremiumSelect
                     value={formData.tier_sla}
@@ -761,31 +732,22 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
               </div>
-
-              <div className="step-actions">
-                <div></div>
-                <button
-                  type="button"
-                  className="btn-primary btn-icon-text"
-                  onClick={() => setFormStep(2)}
-                >
-                  <span>Avançar para Endereço</span>
-                  <ChevronRight size={16} />
-                </button>
-              </div>
             </div>
-          )}
 
-          {/* PASSO 2: ENDEREÇO & POLO INDUSTRIAL */}
-          {formStep === 2 && (
-            <div className="form-section-card animate-fade-in">
-              <div className="section-card-title">
-                <MapPin size={18} color="#10b981" />
-                <span>Localização da Planta & Polo Logístico</span>
+            {/* PAINEL 2: Localização da Planta & Polo Industrial */}
+            <div className="card-panel card-z-mid-high" style={{ position: 'relative', zIndex: 35 }}>
+              <div className="panel-header">
+                <div className="header-icon-label">
+                  <MapPin size={20} className="icon-emerald" />
+                  <div>
+                    <h4>2. Planta Industrial & Localização</h4>
+                    <p>Endereço de expedição/recebimento e polo regional</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="form-grid-3">
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>CEP</span>
                     {searchingCep && <span style={{ fontSize: '0.7rem', color: '#10b981' }}>Buscando...</span>}
@@ -802,7 +764,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field" style={{ gridColumn: 'span 2' }}>
+                <div className="input-group-custom">
                   <label>Logradouro / Rodovia</label>
                   <input
                     type="text"
@@ -811,8 +773,10 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     onChange={e => setFormData({ ...formData, logradouro: e.target.value })}
                   />
                 </div>
+              </div>
 
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label>Número / Km</label>
                   <input
                     type="text"
@@ -822,7 +786,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
+                <div className="input-group-custom">
                   <label>Bairro / Distrito</label>
                   <input
                     type="text"
@@ -831,8 +795,10 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     onChange={e => setFormData({ ...formData, bairro: e.target.value })}
                   />
                 </div>
+              </div>
 
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label>Cidade *</label>
                   <input
                     type="text"
@@ -843,7 +809,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
+                <div className="input-group-custom">
                   <label>Estado (UF) *</label>
                   <select
                     className="styled-native-select"
@@ -855,50 +821,34 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     ))}
                   </select>
                 </div>
+              </div>
 
-                <div className="form-field" style={{ gridColumn: 'span 2' }}>
-                  <label>Polo Logístico Regional (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Polo Industrial de Paulínia, Polo de Camaçari, etc."
-                    value={formData.polo_logistico}
-                    onChange={e => setFormData({ ...formData, polo_logistico: e.target.value })}
-                  />
+              <div className="input-group-custom">
+                <label>Polo Logístico Regional (Opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Polo Industrial de Paulínia, Polo de Camaçari, etc."
+                  value={formData.polo_logistico}
+                  onChange={e => setFormData({ ...formData, polo_logistico: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* PAINEL 3: Roteirização Dedicada & Logística CCO (FULL ROW) */}
+            <div className="card-panel card-z-mid" style={{ gridColumn: '1 / -1', position: 'relative', zIndex: 30 }}>
+              <div className="panel-header">
+                <div className="header-icon-label">
+                  <Route size={20} className="icon-emerald" />
+                  <div>
+                    <h4>3. Roteirização Dedicada, Parâmetros Operacionais & Frota</h4>
+                    <p>Selecione o corredor rodoviário homologado e defina os parâmetros de coleta</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="step-actions">
-                <button
-                  type="button"
-                  className="btn-secondary btn-icon-text"
-                  onClick={() => setFormStep(1)}
-                >
-                  <ArrowLeft size={16} />
-                  <span>Voltar</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary btn-icon-text"
-                  onClick={() => setFormStep(3)}
-                >
-                  <span>Avançar para Roteirização</span>
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* PASSO 3: ROTEIRIZAÇÃO LOGÍSTICA & DIRECIONAMENTO */}
-          {formStep === 3 && (
-            <div className="form-section-card animate-fade-in">
-              <div className="section-card-title">
-                <Route size={18} color="#10b981" />
-                <span>Direcionamento de Rota, Frota Dedicada & Janela de Carga</span>
-              </div>
-
-              <div className="highlight-route-selection-box">
-                <label style={{ display: 'block', marginBottom: '0.65rem', fontWeight: 700, color: '#ffffff' }}>
-                  Selecione o Corredor Rodoviário para Atendimento do Cliente *
+              <div className="highlight-route-selection-box" style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.65rem', fontWeight: 700, color: '#ffffff', fontSize: '0.85rem' }}>
+                  Selecione o Corredor Rodoviário Homologado para Atendimento *
                 </label>
                 <div className="route-cards-picker">
                   {routesList.map(route => {
@@ -946,8 +896,8 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 </div>
               </div>
 
-              <div className="form-grid-3" style={{ marginTop: '1.5rem' }}>
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label>Tipo de Operação</label>
                   <select
                     className="styled-native-select"
@@ -963,7 +913,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   </select>
                 </div>
 
-                <div className="form-field">
+                <div className="input-group-custom">
                   <label>Frequência de Atendimento</label>
                   <PremiumSelect
                     value={formData.frequencia}
@@ -971,8 +921,10 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     options={FREQUENCY_OPTIONS}
                   />
                 </div>
+              </div>
 
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label>Janela de Atendimento / Horário</label>
                   <input
                     type="text"
@@ -982,7 +934,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
+                <div className="input-group-custom">
                   <label>Veículo Preferencial / Homologado</label>
                   <input
                     type="text"
@@ -991,8 +943,10 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     onChange={e => setFormData({ ...formData, veiculo_preferencial: e.target.value })}
                   />
                 </div>
+              </div>
 
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label>Placa do Veículo Alocado (Opcional)</label>
                   <input
                     type="text"
@@ -1002,7 +956,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
+                <div className="input-group-custom">
                   <label>Motorista Homologado CCO (Opcional)</label>
                   <input
                     type="text"
@@ -1011,8 +965,10 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     onChange={e => setFormData({ ...formData, motorista_preferencial: e.target.value })}
                   />
                 </div>
+              </div>
 
-                <div className="form-field">
+              <div className="grid-3-cols-responsive">
+                <div className="input-group-custom">
                   <label>Distância da Rota (km)</label>
                   <input
                     type="number"
@@ -1021,7 +977,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
+                <div className="input-group-custom">
                   <label>Tempo Estimado de Ciclo (horas)</label>
                   <input
                     type="number"
@@ -1030,7 +986,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
+                <div className="input-group-custom">
                   <label>Volume Mensal Estimado (Toneladas)</label>
                   <input
                     type="number"
@@ -1040,48 +996,32 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
               </div>
-
-              <div className="step-actions">
-                <button
-                  type="button"
-                  className="btn-secondary btn-icon-text"
-                  onClick={() => setFormStep(2)}
-                >
-                  <ArrowLeft size={16} />
-                  <span>Voltar</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary btn-icon-text"
-                  onClick={() => setFormStep(4)}
-                >
-                  <span>Avançar para Conformidade</span>
-                  <ChevronRight size={16} />
-                </button>
-              </div>
             </div>
-          )}
 
-          {/* PASSO 4: RESÍDUOS & LICENÇAS AMBIENTAIS */}
-          {formStep === 4 && (
-            <div className="form-section-card animate-fade-in">
-              <div className="section-card-title">
-                <ShieldCheck size={18} color="#10b981" />
-                <span>Resíduos, Licenciamento Ambiental & MTR</span>
+            {/* PAINEL 4: Conformidade Ambiental & Resíduos */}
+            <div className="card-panel card-z-low" style={{ position: 'relative', zIndex: 20 }}>
+              <div className="panel-header">
+                <div className="header-icon-label">
+                  <ShieldCheck size={20} className="icon-emerald" />
+                  <div>
+                    <h4>4. Conformidade Ambiental & Resíduos</h4>
+                    <p>Enquadramento SINIR, licença LO e manifesto MTR</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="form-grid-3">
-                <div className="form-field full-row">
-                  <label>Classes de Carga / Resíduos Homologados</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Classe I (Perigosos) / Classe IIA (Não Inertes)"
-                    value={formData.classes_residuos}
-                    onChange={e => setFormData({ ...formData, classes_residuos: e.target.value })}
-                  />
-                </div>
+              <div className="input-group-custom" style={{ marginBottom: '1.1rem' }}>
+                <label>Classes de Carga / Resíduos Homologados</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Classe I (Perigosos) / Classe IIA (Não Inertes)"
+                  value={formData.classes_residuos}
+                  onChange={e => setFormData({ ...formData, classes_residuos: e.target.value })}
+                />
+              </div>
 
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label>Código de Atividade IBAMA</label>
                   <input
                     type="text"
@@ -1091,70 +1031,56 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
-                  <label>Nº da Licença de Operação (LO)</label>
+                <div className="input-group-custom">
+                  <label>Nº Licença de Operação (LO)</label>
                   <input
                     type="text"
-                    placeholder="Ex: LO Órgão Ambiental nº 12345/2026"
+                    placeholder="Ex: LO CETESB nº 12345/2026"
                     value={formData.licenca_ambiental_num}
                     onChange={e => setFormData({ ...formData, licenca_ambiental_num: e.target.value })}
                   />
                 </div>
+              </div>
 
-                <div className="form-field">
-                  <label>Validade da Licença Ambiental</label>
-                  <input
-                    type="date"
-                    value={formData.validade_licenca}
-                    onChange={e => setFormData({ ...formData, validade_licenca: e.target.value })}
-                  />
-                </div>
+              <div className="input-group-custom" style={{ marginBottom: '1.1rem' }}>
+                <label>Validade da Licença Ambiental</label>
+                <input
+                  type="date"
+                  value={formData.validade_licenca}
+                  onChange={e => setFormData({ ...formData, validade_licenca: e.target.value })}
+                />
+              </div>
 
-                <div className="form-field checkbox-field" style={{ gridColumn: 'span 3', display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <div className="mtr-toggle-card">
+                <label className="checkbox-custom-container">
                   <input
                     type="checkbox"
                     id="chk-mtr-obrigatorio"
-                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#10b981' }}
                     checked={formData.mtr_obrigatorio}
                     onChange={e => setFormData({ ...formData, mtr_obrigatorio: e.target.checked })}
                   />
-                  <label htmlFor="chk-mtr-obrigatorio" style={{ cursor: 'pointer', color: '#ffffff', fontWeight: 600 }}>
-                    Exigência de Emissão de Manifesto de Transporte de Resíduos (MTR / SINIR) em toda expedição
-                  </label>
+                  <div className="checkbox-content">
+                    <strong>Exigência de Manifesto de Resíduos (MTR / SINIR)</strong>
+                    <span>Obrigatório anexar MTR eletrônico oficial em todas as viagens e coletas desta planta.</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* PAINEL 5: Interlocutor da Planta & Governança CCO */}
+            <div className="card-panel card-z-low" style={{ position: 'relative', zIndex: 10 }}>
+              <div className="panel-header">
+                <div className="header-icon-label">
+                  <UserCheck size={20} className="icon-emerald" />
+                  <div>
+                    <h4>5. Interlocutor da Planta & Governança</h4>
+                    <p>Contatos operacionais e requisitos de portaria</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="step-actions">
-                <button
-                  type="button"
-                  className="btn-secondary btn-icon-text"
-                  onClick={() => setFormStep(3)}
-                >
-                  <ArrowLeft size={16} />
-                  <span>Voltar</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary btn-icon-text"
-                  onClick={() => setFormStep(5)}
-                >
-                  <span>Avançar para Contatos & Finalização</span>
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* PASSO 5: CONTATOS & FINALIZAÇÃO */}
-          {formStep === 5 && (
-            <div className="form-section-card animate-fade-in">
-              <div className="section-card-title">
-                <UserCheck size={18} color="#10b981" />
-                <span>Interlocutor da Planta & Governança Operacional</span>
-              </div>
-
-              <div className="form-grid-3">
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label>Nome do Responsável / Gestor</label>
                   <input
                     type="text"
@@ -1164,7 +1090,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field">
+                <div className="input-group-custom">
                   <label>Cargo / Departamento</label>
                   <input
                     type="text"
@@ -1173,8 +1099,10 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     onChange={e => setFormData({ ...formData, responsavel_cargo: e.target.value })}
                   />
                 </div>
+              </div>
 
-                <div className="form-field">
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
                   <label>Telefone / WhatsApp</label>
                   <input
                     type="text"
@@ -1184,7 +1112,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   />
                 </div>
 
-                <div className="form-field" style={{ gridColumn: 'span 2' }}>
+                <div className="input-group-custom">
                   <label>E-mail Corporativo</label>
                   <input
                     type="email"
@@ -1193,39 +1121,39 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     onChange={e => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
-
-                <div className="form-field full-row">
-                  <label>Observações & Requisitos Especiais de Carga/Descarga</label>
-                  <textarea
-                    rows={3}
-                    placeholder="Instruções de segurança, EPIs obrigatórios na portaria, kit de contenção, procedimentos de pesagem e horários de pico."
-                    value={formData.observacoes}
-                    onChange={e => setFormData({ ...formData, observacoes: e.target.value })}
-                    className="styled-native-textarea"
-                  />
-                </div>
               </div>
 
-              <div className="step-actions">
-                <button
-                  type="button"
-                  className="btn-secondary btn-icon-text"
-                  onClick={() => setFormStep(4)}
-                >
-                  <ArrowLeft size={16} />
-                  <span>Voltar</span>
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary btn-icon-text"
-                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)', padding: '0.75rem 1.75rem' }}
-                >
-                  <Check size={18} />
-                  <span>{editingId ? 'Salvar Alterações do Cliente' : 'Homologar Cliente & Ativar Rota'}</span>
-                </button>
+              <div className="input-group-custom">
+                <label>Observações & Requisitos Especiais de Carga/Descarga</label>
+                <textarea
+                  rows={3}
+                  placeholder="Instruções de segurança, EPIs obrigatórios na portaria, kit de contenção, procedimentos de pesagem e horários de pico."
+                  value={formData.observacoes}
+                  onChange={e => setFormData({ ...formData, observacoes: e.target.value })}
+                  className="styled-native-textarea"
+                />
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Rodapé de Ações de Submissão */}
+          <div className="form-submit-footer-card">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setViewMode('cards')}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="btn-primary btn-icon-text"
+              id="btn-salvar-cliente-submit-bottom"
+            >
+              <Check size={18} />
+              <span>{editingId ? 'Salvar Alterações do Cliente' : 'Concluir Cadastro & Direcionar'}</span>
+            </button>
+          </div>
         </form>
       ) : (
         /* ============================================================== */
