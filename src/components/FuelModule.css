@@ -1762,3 +1762,27 @@
 
 
 
+
+/* ========================================================================== */
+/* 14. CENTRAL DE PLANILHAS & SINCRONIZAÇÃO AUTOMÁTICA                         */
+/* ========================================================================== */
+
+.fuel-modal-dialog.fuel-modal-wide {
+  max-width: 980px;
+}
+
+.fuel-dropzone-box:hover {
+  border-color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.05) !important;
+}
+
+.spreadsheet-live-grid tbody tr:hover {
+  background: rgba(16, 185, 129, 0.06) !important;
+}
+
+.spreadsheet-live-grid input:focus,
+.spreadsheet-live-grid select:focus {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25) !important;
+}

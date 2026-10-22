@@ -44,9 +44,15 @@ import {
   UserX,
   PieChart,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  FileSpreadsheet,
+  UploadCloud,
+  FileDown
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import FuelExcelImportModal from './FuelExcelImportModal';
+import FuelSpreadsheetWorkspace from './FuelSpreadsheetWorkspace';
+import { exportFuelRecordsToExcel, generateBlankTemplateExcel } from '../utils/excelFuelIntegration';
 import './FuelModule.css';
 
 // Tipos de Combustíveis Homologados
@@ -232,6 +238,25 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
   // Modais
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showDispatchOrderModal, setShowDispatchOrderModal] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // Disparo em tempo real para Google Sheets / Excel 365
+  const triggerGoogleSheetWebhook = (action, rec) => {
+    try {
+      const webhookUrl = localStorage.getItem('ambipar_sheet_webhook_url');
+      const autoSync = localStorage.getItem('ambipar_sheet_auto_sync') === 'true';
+      if (webhookUrl && autoSync && webhookUrl.startsWith('http')) {
+        fetch(webhookUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, record: rec })
+        }).catch(err => console.warn('Webhook auto-sync:', err));
+      }
+    } catch (e) {
+      console.warn('Erro no webhook:', e);
+    }
+  };
 
   // Formulário de Cadastro / Edição
   const [editingId, setEditingId] = useState(null);
@@ -467,6 +492,7 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
       const updated = records.map(r => r.id === editingId ? { ...payload, id: editingId } : r);
       setRecords(updated);
       setFeedback({ type: 'success', text: `Abastecimento da placa ${payload.placa} atualizado!` });
+      triggerGoogleSheetWebhook('UPSERT', { ...payload, id: editingId });
     } else {
       const newRec = {
         ...payload,
@@ -475,6 +501,7 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
       };
       setRecords([newRec, ...records]);
       setFeedback({ type: 'success', text: `Abastecimento da placa ${payload.placa} lançado no CCO!` });
+      triggerGoogleSheetWebhook('UPSERT', newRec);
     }
 
     setViewMode('dashboard');
@@ -484,6 +511,7 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
   const handleDeleteRecord = (id, placa) => {
     if (window.confirm(`Confirma a exclusão do registro de abastecimento da placa "${placa}"?`)) {
       setRecords(records.filter(r => r.id !== id));
+      triggerGoogleSheetWebhook('DELETE', { id });
       setFeedback({ type: 'info', text: `Registro de abastecimento removido.` });
       setTimeout(() => setFeedback(null), 3000);
     }
@@ -940,15 +968,28 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
 
         <div className="fuel-header-actions">
           {viewMode !== 'form' && (
-            <button
-              type="button"
-              className="fuel-btn fuel-btn-primary"
-              onClick={handleOpenCreateForm}
-              id="btn-lancar-abastecimento"
-            >
-              <Plus size={16} />
-              <span>+ Lançar Abastecimento</span>
-            </button>
+            <>
+              <button
+                type="button"
+                className="fuel-btn fuel-btn-primary"
+                onClick={handleOpenCreateForm}
+                id="btn-lancar-abastecimento"
+              >
+                <Plus size={16} />
+                <span>+ Lançar Abastecimento</span>
+              </button>
+
+              <button
+                type="button"
+                className="fuel-btn fuel-btn-secondary"
+                onClick={() => setIsImportModalOpen(true)}
+                id="btn-header-anexar-planilha-xls"
+                title="Anexar e importar planilha gigantesca XLS/XLSX/CSV"
+              >
+                <FileSpreadsheet size={16} />
+                <span>+ Anexar Planilha XLS</span>
+              </button>
+            </>
           )}
 
           <button
@@ -983,6 +1024,16 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
         >
           <Fuel size={17} />
           <span>Extrato de Lançamentos ({records.length})</span>
+        </button>
+
+        <button
+          type="button"
+          className={`fuel-mode-tab-btn ${viewMode === 'spreadsheet' ? 'active' : ''}`}
+          onClick={() => setViewMode('spreadsheet')}
+          id="btn-tab-central-planilhas"
+        >
+          <FileSpreadsheet size={17} />
+          <span>Central de Planilhas & Sincronização</span>
         </button>
 
         <button
@@ -1350,6 +1401,18 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
             </div>
           </div>
         </div>
+      ) : viewMode === 'spreadsheet' ? (
+        <FuelSpreadsheetWorkspace
+          records={records}
+          onUpdateRecords={(updated) => {
+            setRecords(updated);
+            setFeedback({ type: 'success', text: `Base atualizada a partir da planilha! (${updated.length} abastecimentos)` });
+            setTimeout(() => setFeedback(null), 3500);
+          }}
+          onOpenImportModal={() => setIsImportModalOpen(true)}
+          availablePlates={availablePlates}
+          availableDrivers={availableDrivers}
+        />
       ) : viewMode === 'simulator' ? (
         /* VIEW 2: SIMULADOR DE AUTONOMIA & CONSUMO DE ROTA CCO */
         <div className="fuel-simulator-full-area animate-fade-in" id="fuel-simulator-full-workspace">
@@ -2265,6 +2328,28 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
               <button
                 type="button"
                 className="fuel-btn fuel-btn-secondary"
+                onClick={() => setIsImportModalOpen(true)}
+                title="Anexar e importar planilha XLS/XLSX/CSV"
+                style={{ padding: '0.55rem 0.85rem', fontSize: '0.82rem' }}
+              >
+                <UploadCloud size={14} />
+                <span>Importar Planilha</span>
+              </button>
+
+              <button
+                type="button"
+                className="fuel-btn fuel-btn-secondary"
+                onClick={() => exportFuelRecordsToExcel(filteredRecords)}
+                title="Exportar dados filtrados para planilha Excel formatada (.xlsx)"
+                style={{ padding: '0.55rem 0.85rem', fontSize: '0.82rem' }}
+              >
+                <FileDown size={14} />
+                <span>Exportar Excel (.xlsx)</span>
+              </button>
+
+              <button
+                type="button"
+                className="fuel-btn fuel-btn-secondary"
                 onClick={handleExportCSV}
                 title="Exportar dados filtrados para Excel / CSV"
                 style={{ padding: '0.55rem 0.85rem', fontSize: '0.82rem' }}
@@ -2708,6 +2793,28 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
           </div>
         </div>
       )}
+
+      {/* MODAL INTELIGENTE DE IMPORTAÇÃO DE PLANILHAS GIGANTESCAS */}
+      <FuelExcelImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        existingRecords={records}
+        onImportComplete={({ records: newRecords, mode, stats }) => {
+          let consolidated = [];
+          if (mode === 'replace') {
+            consolidated = newRecords;
+          } else {
+            consolidated = [...newRecords, ...records];
+          }
+          setRecords(consolidated);
+          setFeedback({
+            type: 'success',
+            text: `Importação concluída! ${stats.totalImported.toLocaleString('pt-BR')} abastecimentos adicionados da planilha (${stats.skippedDuplicates} duplicatas evitadas).`
+          });
+          setTimeout(() => setFeedback(null), 5000);
+          newRecords.slice(0, 10).forEach(r => triggerGoogleSheetWebhook('UPSERT', r));
+        }}
+      />
 
       {/* MODAL 2: ORDEM DE ABASTECIMENTO PARA O MOTORISTA */}
       {showDispatchOrderModal && (
