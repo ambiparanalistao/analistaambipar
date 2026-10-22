@@ -205,10 +205,11 @@ export default function DriversModule({ user }) {
     if (!file) return;
 
     // Reseta o input para permitir selecionar o mesmo arquivo novamente se desejar
-    e.target.value = '';
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isImage = file.type && file.type.startsWith('image/');
 
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      alert('Por favor, selecione um arquivo em formato PDF da CNH.');
+    if (!isPdf && !isImage) {
+      alert('Por favor, selecione um arquivo em formato PDF ou Imagem (PNG/JPG) da CNH.');
       return;
     }
 
@@ -577,10 +578,10 @@ export default function DriversModule({ user }) {
 
             <label className={`cnh-upload-btn ${pdfExtracting ? 'loading' : ''}`}>
               <Upload size={17} />
-              <span>{pdfExtracting ? pdfProgressText : 'Importar CNH (PDF)'}</span>
+              <span>{pdfExtracting ? pdfProgressText : 'Importar CNH (PDF ou Imagem)'}</span>
               <input
                 type="file"
-                accept="application/pdf,.pdf"
+                accept="application/pdf,.pdf,image/png,image/jpeg,image/webp,image/*"
                 onChange={handlePdfUpload}
                 disabled={pdfExtracting}
                 style={{ display: 'none' }}
