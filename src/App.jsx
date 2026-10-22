@@ -31,6 +31,7 @@ export const MODULE_ROUTES = {
   motoristas: '/motoristas',
   viagens: '/viagens',
   combustivel: '/combustivel',
+  simulador_autonomia: '/simulador-autonomia',
   clientes: '/clientes',
   mtr: '/mtr',
   calculadora_frete: '/calculadora-frete',
@@ -56,6 +57,9 @@ export const PATH_TO_MODULE = {
   '/abastecimentos': 'combustivel',
   '/diesel': 'combustivel',
   '/arla': 'combustivel',
+  '/simulador-autonomia': 'simulador_autonomia',
+  '/simulador': 'simulador_autonomia',
+  '/autonomia': 'simulador_autonomia',
   '/clientes': 'clientes',
   '/cliente': 'clientes',
   '/rotas-clientes': 'clientes',
@@ -156,6 +160,10 @@ export default function App() {
     combustivel: { 
       title: 'Controle de Combustível, ARLA 32 & Eficiência Energética', 
       subtitle: 'Auditoria de abastecimentos, rendimento médio (km/l), custo por quilômetro (CPK) e conformidade fiscal' 
+    },
+    simulador_autonomia: { 
+      title: 'Simulador Analítico de Autonomia & Consumo de Rota CCO', 
+      subtitle: 'Planejamento preditivo de abastecimento para despacho, cálculo de ARLA 32, paradas na rodovia e CPK' 
     },
     clientes: { 
       title: 'Gestão de Clientes & Roteirização Dedicada', 
@@ -353,7 +361,8 @@ export default function App() {
                 />
               )}
               {currentModule === 'viagens' && <TripsModule user={session.user} />}
-              {currentModule === 'combustivel' && <FuelModule user={session.user} />}
+              {currentModule === 'combustivel' && <FuelModule user={session.user} initialView="table" onNavigateModule={handleSelectModule} />}
+              {currentModule === 'simulador_autonomia' && <FuelModule user={session.user} initialView="simulator" onNavigateModule={handleSelectModule} />}
               {currentModule === 'clientes' && (
                 <ClientsModule 
                   user={session.user} 

@@ -15,7 +15,8 @@ import {
   Leaf,
   Route,
   Building2,
-  Fuel
+  Fuel,
+  Compass
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -79,6 +80,11 @@ export default function Sidebar({
           id: 'calculadora_frete',
           label: 'Calculadora de Frete & Carbono',
           icon: Calculator
+        },
+        {
+          id: 'simulador_autonomia',
+          label: 'Simulador de Autonomia CCO',
+          icon: Compass
         },
         {
           id: 'antt_formulas',
