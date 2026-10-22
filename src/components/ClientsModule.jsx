@@ -5,7 +5,6 @@ import {
   MapPin, 
   Truck, 
   UserCheck, 
-  FileText, 
   CheckCircle2, 
   AlertTriangle, 
   Search, 
@@ -14,38 +13,28 @@ import {
   Trash2, 
   RefreshCw, 
   Phone, 
-  Mail, 
-  ExternalLink, 
-  Calendar, 
   ShieldCheck, 
   Layers, 
   ArrowRight, 
-  Navigation, 
   Clock, 
   Sparkles, 
-  Filter, 
   ArrowLeft, 
   Save, 
   Check, 
-  Flame, 
-  Activity, 
   Eye, 
   Printer, 
   Building, 
   Compass, 
-  Tag,
-  LayoutGrid,
-  List,
-  ChevronRight,
-  Shield,
-  Zap,
-  Leaf
+  Tag, 
+  LayoutGrid, 
+  List, 
+  ChevronRight 
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
 import './ClientsModule.css';
 
-// Catálogo de Rotas Logísticas Homologadas da Ambipar
+// Catálogo de Corredores Rodoviários Homologados da Ambipar
 export const PRESET_ROUTES = [
   {
     id: 'ROTA-BA-SP-01',
@@ -161,330 +150,65 @@ export const FREQUENCY_OPTIONS = [
   { value: 'Sob Demanda / Spot', label: 'Sob Demanda (Chamado CCO)', sublabel: 'Despacho acionado conforme enchimento' }
 ];
 
-// Dados Iniciais Flagship Reais da Ambipar
-export const DEFAULT_CLIENTS = [
-  {
-    id: 'CLI-AMB001',
-    razao_social: 'Braskem S/A - Polo Petroquímico de Camaçari',
-    nome_fantasia: 'Braskem Camaçari Q1',
-    cnpj: '42.150.391/0001-90',
-    inscricao_estadual: '012.345.678-BA',
-    segmento: 'Química & Petroquímica',
-    status: 'Em Operação',
-    tier_sla: 'Platinum 24/7',
-    
-    // Endereço
-    cep: '42810-000',
-    logradouro: 'Rua Eteno, 1561 - Complexo Básico',
-    numero: '1561',
-    bairro: 'Polo Petroquímico',
-    cidade: 'Camaçari',
-    uf: 'BA',
-    polo_logistico: 'Polo Petroquímico de Camaçari - BA',
-    
-    // Roteirização
-    rota_id: 'ROTA-BA-SP-01',
-    rota_nome: 'Corredor Camaçari (BA) ⇄ Paulínia (SP)',
-    tipo_operacao: 'Coleta na Origem & Transbordo Químico',
-    frequencia: 'Diária (Seg a Sáb)',
-    janela_atendimento: '24h Contínuo (Planta Ininterrupta)',
-    veiculo_preferencial: 'Carreta Tanque Inox Químico (316L)',
-    veiculo_alocado_placa: 'AMB-4K89',
-    motorista_preferencial: 'Carlos Eduardo Santos',
-    distancia_km: 1940,
-    tempo_ciclo_horas: 34,
-    volume_mensal_ton: 850,
-    
-    // Ambiental & Licenças
-    classes_residuos: 'Classe I (Perigosos - Corrosivos e Inflamáveis)',
-    codigo_ibama: '07.01 - Indústria Química Orgânica',
-    mtr_obrigatorio: true,
-    licenca_ambiental_num: 'LO INEMA nº 2024/09812-BA',
-    validade_licenca: '2027-11-30',
-    
-    // Contato
-    responsavel_nome: 'Engª Marcela Albuquerque',
-    responsavel_cargo: 'Gerente de Logística e Meio Ambiente',
-    telefone: '(71) 98845-1200',
-    email: 'marcela.albuquerque@braskem.com',
-    observacoes: 'Exigência obrigatória de kit Hazmat nível A, CIPP/CIV atualizados e condutor com certificação MOPP e NR-20.'
-  },
-  {
-    id: 'CLI-AMB002',
-    razao_social: 'BASF S/A - Complexo Químico & Tintas Suvinil',
-    nome_fantasia: 'BASF Paulínia / Demarchi',
-    cnpj: '48.539.407/0001-18',
-    inscricao_estadual: '524.891.023.114',
-    segmento: 'Química & Petroquímica',
-    status: 'Ativo',
-    tier_sla: 'Gold Prioritário',
-    
-    // Endereço
-    cep: '13140-000',
-    logradouro: 'Avenida Brasil, 2500 - Distrito Industrial',
-    numero: '2500',
-    bairro: 'Cascata',
-    cidade: 'Paulínia',
-    uf: 'SP',
-    polo_logistico: 'Polo Químico de Paulínia - SP',
-    
-    // Roteirização
-    rota_id: 'ROTA-SP-INT-05',
-    rota_nome: 'Anel Paulínia ⇄ Campinas ⇄ Sorocaba (SP)',
-    tipo_operacao: 'Circuito Fechado Dedicado & Coleta de Borras',
-    frequencia: '3x por Semana',
-    janela_atendimento: '07:00 às 18:00 (Seg a Sex)',
-    veiculo_preferencial: 'Carreta Sider (Carga Geral / Tambores)',
-    veiculo_alocado_placa: 'AMB-9T21',
-    motorista_preferencial: 'Roberto Mendes Faria',
-    distancia_km: 180,
-    tempo_ciclo_horas: 4,
-    volume_mensal_ton: 320,
-    
-    // Ambiental & Licenças
-    classes_residuos: 'Classe I (Solventes Residuais, Borras de Tinta)',
-    codigo_ibama: '13.02 - Fabricação de Tintas e Esmaltes',
-    mtr_obrigatorio: true,
-    licenca_ambiental_num: 'LO CETESB nº 34002981-SP',
-    validade_licenca: '2028-02-15',
-    
-    // Contato
-    responsavel_nome: 'Rodrigo Fontes Toledo',
-    responsavel_cargo: 'Coordenador de EHS & Operações',
-    telefone: '(19) 99762-3344',
-    email: 'rodrigo.toledo@basf.com',
-    observacoes: 'Coleta semanal de IBCs 1000L com solvente para coprocessamento e reciclagem de embalagens.'
-  },
-  {
-    id: 'CLI-AMB003',
-    razao_social: 'Petróleo Brasileiro S/A - Refinaria de Paulínia (REPLAN)',
-    nome_fantasia: 'Petrobras REPLAN',
-    cnpj: '33.000.167/0001-01',
-    inscricao_estadual: '524.001.222.000',
-    segmento: 'Óleo & Gás (Refinarias)',
-    status: 'Em Operação',
-    tier_sla: 'Platinum 24/7',
-    
-    // Endereço
-    cep: '13140-900',
-    logradouro: 'Rodovia SP-332, km 130',
-    numero: 'S/N',
-    bairro: 'Zona Rural',
-    cidade: 'Paulínia',
-    uf: 'SP',
-    polo_logistico: 'Polo Químico de Paulínia - SP',
-    
-    // Roteirização
-    rota_id: 'ROTA-SP-RJ-02',
-    rota_nome: 'Eixo Cubatão (SP) ⇄ Duque de Caxias (RJ)',
-    tipo_operacao: 'Sucção de Água Oleosa & Borras de Tanque',
-    frequencia: 'Diária (Seg a Sáb)',
-    janela_atendimento: '24h Contínuo (Planta Ininterrupta)',
-    veiculo_preferencial: 'Auto-Vácuo Sucção Líquidos (Actros)',
-    veiculo_alocado_placa: 'AMB-2M33',
-    motorista_preferencial: 'Anderson Silva Costa',
-    distancia_km: 460,
-    tempo_ciclo_horas: 8,
-    volume_mensal_ton: 1200,
-    
-    // Ambiental & Licenças
-    classes_residuos: 'Classe I (Borras de Fundo de Tanque & Água Oleosa)',
-    codigo_ibama: '05.01 - Refino de Petróleo',
-    mtr_obrigatorio: true,
-    licenca_ambiental_num: 'LO IBAMA nº 1489/2023',
-    validade_licenca: '2027-08-10',
-    
-    // Contato
-    responsavel_nome: 'Eng. Fernando Diniz Prado',
-    responsavel_cargo: 'Supervisor Geral de Descarte & PAE',
-    telefone: '(19) 98112-9988',
-    email: 'fernando.prado@petrobras.com.br',
-    observacoes: 'Contrato com cláusula de prontidão emergencial 24h Ambipar Response com caminhão vácuo e barreiras fluviais.'
-  },
-  {
-    id: 'CLI-AMB004',
-    razao_social: 'Klabin S/A - Unidade Puma Ortigueira',
-    nome_fantasia: 'Klabin Puma',
-    cnpj: '89.637.490/0001-45',
-    inscricao_estadual: '901.884.210.009',
-    segmento: 'Papel & Celulose',
-    status: 'Ativo',
-    tier_sla: 'Gold Prioritário',
-    
-    // Endereço
-    cep: '84350-000',
-    logradouro: 'Fazenda Campina dos Pupos - Estrada Klabin',
-    numero: 'Km 12',
-    bairro: 'Zona Industrial',
-    cidade: 'Ortigueira',
-    uf: 'PR',
-    polo_logistico: 'Polo Moveleiro & Celulose - PR',
-    
-    // Roteirização
-    rota_id: 'ROTA-PR-RS-03',
-    rota_nome: 'Corredor Araucária (PR) ⇄ Canoas (RS)',
-    tipo_operacao: 'Escoamento de Cinzas & Lodo de ETE',
-    frequencia: '3x por Semana',
-    janela_atendimento: '06:00 às 22:00 (Seg a Sáb)',
-    veiculo_preferencial: 'Roll-on / Caçamba Estanque',
-    veiculo_alocado_placa: 'AMB-7X10',
-    motorista_preferencial: 'Marcos Vinicius Lima',
-    distancia_km: 720,
-    tempo_ciclo_horas: 13,
-    volume_mensal_ton: 680,
-    
-    // Ambiental & Licenças
-    classes_residuos: 'Classe IIA (Cinzas de Caldeira de Biomassa & Dregs)',
-    codigo_ibama: '15.01 - Fabricação de Celulose e Papel',
-    mtr_obrigatorio: true,
-    licenca_ambiental_num: 'LO IAT-PR nº 8901/2024',
-    validade_licenca: '2028-06-30',
-    
-    // Contato
-    responsavel_nome: 'Camila Guimarães Rocha',
-    responsavel_cargo: 'Especialista em Economia Circular',
-    telefone: '(42) 99120-7755',
-    email: 'camila.rocha@klabin.com.br',
-    observacoes: 'Aplicação direta em compostagem e agricultura regenerativa, auditoria ESG trimestral.'
-  },
-  {
-    id: 'CLI-AMB005',
-    razao_social: 'Vale S/A - Complexo Minerário de Tubarão',
-    nome_fantasia: 'Vale Tubarão',
-    cnpj: '33.592.510/0001-54',
-    inscricao_estadual: '081.234.567.890',
-    segmento: 'Mineração & Siderurgia',
-    status: 'Ativo',
-    tier_sla: 'Gold Prioritário',
-    
-    // Endereço
-    cep: '29090-900',
-    logradouro: 'Avenida Dante Michelini, 5500 - Ponta de Tubarão',
-    numero: '5500',
-    bairro: 'Jardim Camburi',
-    cidade: 'Vitória',
-    uf: 'ES',
-    polo_logistico: 'Complexo Portuário de Tubarão - ES',
-    
-    // Roteirização
-    rota_id: 'ROTA-MG-ES-04',
-    rota_nome: 'Corredor Betim (MG) ⇄ Tubarão (ES)',
-    tipo_operacao: 'Transporte de Resíduos Minerais & Escórias',
-    frequencia: 'Semanal (1x)',
-    janela_atendimento: '08:00 às 17:00 (Seg a Sex)',
-    veiculo_preferencial: 'Bitrem Tanque Químico',
-    veiculo_alocado_placa: 'AMB-5P44',
-    motorista_preferencial: 'Luciano Antunes Moreira',
-    distancia_km: 530,
-    tempo_ciclo_horas: 10,
-    volume_mensal_ton: 450,
-    
-    // Ambiental & Licenças
-    classes_residuos: 'Classe IIA e IIB (Rejeitos Minerais Estabilizados)',
-    codigo_ibama: '01.02 - Extração de Minério de Ferro',
-    mtr_obrigatorio: true,
-    licenca_ambiental_num: 'LO IEMA-ES nº 4501/2023',
-    validade_licenca: '2027-09-18',
-    
-    // Contato
-    responsavel_nome: 'Eng. Thiago Vasconcelos',
-    responsavel_cargo: 'Gerente Operacional de Descarte',
-    telefone: '(27) 99881-4411',
-    email: 'thiago.vasconcelos@vale.com',
-    observacoes: 'Controle rigoroso de pesagem em balança rodoviária aferida pelo INMETRO na portaria 4.'
-  },
-  {
-    id: 'CLI-AMB006',
-    razao_social: 'Rhodia Brasil Ltda - Grupo Solvay',
-    nome_fantasia: 'Rhodia Paulínia Solvay',
-    cnpj: '61.096.005/0001-83',
-    inscricao_estadual: '524.300.111.456',
-    segmento: 'Química & Petroquímica',
-    status: 'Em Negociação',
-    tier_sla: 'Silver Padrão',
-    
-    // Endereço
-    cep: '13140-000',
-    logradouro: 'Estrada da Rhodia, km 8',
-    numero: 'S/N',
-    bairro: 'Betel',
-    cidade: 'Paulínia',
-    uf: 'SP',
-    polo_logistico: 'Polo Químico de Paulínia - SP',
-    
-    // Roteirização
-    rota_id: 'ROTA-SP-INT-05',
-    rota_nome: 'Anel Paulínia ⇄ Campinas ⇄ Sorocaba (SP)',
-    tipo_operacao: 'Coleta de Efluentes Químicos com Fenol',
-    frequencia: 'Quinzenal',
-    janela_atendimento: '08:00 às 16:00 (Seg a Sex)',
-    veiculo_preferencial: 'Carreta Tanque Inox Químico (316L)',
-    veiculo_alocado_placa: 'AMB-8L19',
-    motorista_preferencial: 'Carlos Eduardo Santos',
-    distancia_km: 180,
-    tempo_ciclo_horas: 4,
-    volume_mensal_ton: 190,
-    
-    // Ambiental & Licenças
-    classes_residuos: 'Classe I (Efluentes Fenólicos & Poliamidas)',
-    codigo_ibama: '07.03 - Síntese de Fibras Sintéticas',
-    mtr_obrigatorio: true,
-    licenca_ambiental_num: 'LO CETESB nº 1908234-SP',
-    validade_licenca: '2026-12-15',
-    
-    // Contato
-    responsavel_nome: 'Juliana Pires Martins',
-    responsavel_cargo: 'Supervisora de Sustentabilidade',
-    telefone: '(19) 99611-8899',
-    email: 'juliana.martins@solvay.com',
-    observacoes: 'Contrato em fase final de homologação técnica. Emissão de DRE de frete sob análise no CCO.'
-  }
-];
-
-// Formatadores
+// Formatadores seguros
 export const formatCNPJ = (val) => {
-  if (!val) return '—';
-  const clean = String(val).replace(/\D/g, '');
-  if (clean.length === 14) {
-    return clean.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  if (!val) return '';
+  const clean = String(val).replace(/\D/g, '').slice(0, 14);
+  if (clean.length > 12) {
+    return clean.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, '$1.$2.$3/$4-$5');
   }
-  return val;
+  if (clean.length > 8) {
+    return clean.replace(/(\d{2})(\d{3})(\d{3})(\d{0,4})/, '$1.$2.$3/$4');
+  }
+  if (clean.length > 5) {
+    return clean.replace(/(\d{2})(\d{3})(\d{0,3})/, '$1.$2.$3');
+  }
+  if (clean.length > 2) {
+    return clean.replace(/(\d{2})(\d{0,3})/, '$1.$2');
+  }
+  return clean;
 };
 
 export const formatPhone = (val) => {
-  if (!val) return '—';
-  const clean = String(val).replace(/\D/g, '');
-  if (clean.length === 11) {
+  if (!val) return '';
+  const clean = String(val).replace(/\D/g, '').slice(0, 11);
+  if (clean.length > 10) {
     return clean.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
   }
-  if (clean.length === 10) {
-    return clean.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  if (clean.length > 6) {
+    return clean.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
   }
-  return val;
+  if (clean.length > 2) {
+    return clean.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+  }
+  return clean;
 };
 
 export const formatCEP = (val) => {
-  if (!val) return '—';
-  const clean = String(val).replace(/\D/g, '');
-  if (clean.length === 8) {
-    return clean.replace(/(\d{5})(\d{3})/, '$1-$2');
+  if (!val) return '';
+  const clean = String(val).replace(/\D/g, '').slice(0, 8);
+  if (clean.length > 5) {
+    return clean.replace(/(\d{5})(\d{0,3})/, '$1-$2');
   }
-  return val;
+  return clean;
 };
 
 export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }) {
-  // Estado principal de clientes (inicia com salvos ou dados oficiais de demonstração)
+  // Estado de Clientes Inicial: 100% LIMPO (sem nenhum dado fictício)
   const [clients, setClients] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_real_clients');
-      return saved ? JSON.parse(saved) : DEFAULT_CLIENTS;
+      // Limpa dados legados fictícios se existirem
+      localStorage.removeItem('ambipar_real_clients');
+      const saved = localStorage.getItem('ambipar_real_clients_v2');
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return DEFAULT_CLIENTS;
+      return [];
     }
   });
 
   const [routesList, setRoutesList] = useState(PRESET_ROUTES);
   const [loading, setLoading] = useState(false);
+  const [searchingCep, setSearchingCep] = useState(false);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table' | 'form'
   const [activeTab, setActiveTab] = useState('todos'); // 'todos' | 'em_operacao' | 'ativos' | 'platinum' | 'bloqueados'
   const [searchTerm, setSearchTerm] = useState('');
@@ -523,14 +247,14 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
     frequencia: '3x por Semana',
     janela_atendimento: '07:00 às 18:00 (Seg a Sex)',
     veiculo_preferencial: 'Carreta Tanque Inox Químico (316L)',
-    veiculo_alocado_placa: 'AMB-4K89',
-    motorista_preferencial: 'Carlos Eduardo Santos',
+    veiculo_alocado_placa: '',
+    motorista_preferencial: '',
     distancia_km: 1940,
     tempo_ciclo_horas: 34,
-    volume_mensal_ton: 250,
+    volume_mensal_ton: 0,
     
-    classes_residuos: 'Classe I (Perigosos - Corrosivos e Inflamáveis)',
-    codigo_ibama: '07.01 - Indústria Química Orgânica',
+    classes_residuos: '',
+    codigo_ibama: '',
     mtr_obrigatorio: true,
     licenca_ambiental_num: '',
     validade_licenca: '',
@@ -545,7 +269,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   // Salva no localStorage a cada atualização
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_real_clients', JSON.stringify(clients));
+      localStorage.setItem('ambipar_real_clients_v2', JSON.stringify(clients));
     } catch (err) {
       console.warn('Erro ao salvar clientes localmente:', err);
     }
@@ -553,7 +277,11 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
 
   // Carrega do Supabase se configurado
   const fetchSupabaseClients = async () => {
-    if (!isSupabaseConfigured || !supabase) return;
+    if (!isSupabaseConfigured || !supabase) {
+      setFeedback({ type: 'info', text: 'Operando em modo local CCO. Banco de dados sincronizado localmente.' });
+      setTimeout(() => setFeedback(null), 3000);
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -561,15 +289,44 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         setClients(data);
         setFeedback({ type: 'success', text: `${data.length} clientes carregados do Supabase PostgreSQL.` });
+      } else {
+        setFeedback({ type: 'info', text: 'Nenhum cliente remoto encontrado. Pronto para novos cadastros.' });
       }
     } catch {
-      // Falha silenciosa usando fallback local
+      setFeedback({ type: 'info', text: 'Sincronização local pronta para novos cadastros.' });
     } finally {
       setLoading(false);
-      setTimeout(() => setFeedback(null), 3000);
+      setTimeout(() => setFeedback(null), 3500);
+    }
+  };
+
+  // Busca automática de endereço por CEP (ViaCEP)
+  const handleCepLookup = async (cepInput) => {
+    const cleanCep = cepInput.replace(/\D/g, '');
+    if (cleanCep.length === 8) {
+      setSearchingCep(true);
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const data = await response.json();
+        if (!data.erro) {
+          setFormData(prev => ({
+            ...prev,
+            logradouro: data.logradouro || prev.logradouro,
+            bairro: data.bairro || prev.bairro,
+            cidade: data.localidade || prev.cidade,
+            uf: data.uf || prev.uf
+          }));
+          setFeedback({ type: 'success', text: `Endereço localizado: ${data.localidade}/${data.uf}` });
+          setTimeout(() => setFeedback(null), 2500);
+        }
+      } catch (err) {
+        console.warn('Falha na consulta do CEP:', err);
+      } finally {
+        setSearchingCep(false);
+      }
     }
   };
 
@@ -592,27 +349,27 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
       bairro: '',
       cidade: '',
       uf: 'SP',
-      polo_logistico: 'Polo Químico de Paulínia - SP',
+      polo_logistico: '',
       
       rota_id: 'ROTA-BA-SP-01',
       tipo_operacao: 'Coleta na Origem & Transbordo Químico',
       frequencia: '3x por Semana',
       janela_atendimento: '07:00 às 18:00 (Seg a Sex)',
       veiculo_preferencial: 'Carreta Tanque Inox Químico (316L)',
-      veiculo_alocado_placa: 'AMB-4K89',
-      motorista_preferencial: 'Carlos Eduardo Santos',
+      veiculo_alocado_placa: '',
+      motorista_preferencial: '',
       distancia_km: 1940,
       tempo_ciclo_horas: 34,
-      volume_mensal_ton: 250,
+      volume_mensal_ton: 0,
       
-      classes_residuos: 'Classe I (Perigosos - Corrosivos e Inflamáveis)',
-      codigo_ibama: '07.01 - Indústria Química Orgânica',
+      classes_residuos: '',
+      codigo_ibama: '',
       mtr_obrigatorio: true,
-      licenca_ambiental_num: 'LO CETESB nº ' + Math.floor(1000000 + Math.random() * 9000000) + '-SP',
-      validade_licenca: '2028-12-31',
+      licenca_ambiental_num: '',
+      validade_licenca: '',
       
       responsavel_nome: '',
-      responsavel_cargo: 'Gerente de EHS / Logística',
+      responsavel_cargo: '',
       telefone: '',
       email: '',
       observacoes: ''
@@ -628,58 +385,11 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
     setViewMode('form');
   };
 
-  // Preencher Exemplo Ambipar Rápido
-  const handleFillExample = () => {
-    const randomSuffix = Math.floor(100 + Math.random() * 900);
-    setFormData({
-      razao_social: `Oxigás Indústria Química do Brasil Ltda (Planta ${randomSuffix})`,
-      nome_fantasia: `Oxigás Brasil #${randomSuffix}`,
-      cnpj: '12.345.678/0001-' + (Math.floor(10 + Math.random() * 89)),
-      inscricao_estadual: '524.' + randomSuffix + '.890.111',
-      segmento: 'Química & Petroquímica',
-      status: 'Ativo',
-      tier_sla: 'Platinum 24/7',
-      
-      cep: '13140-000',
-      logradouro: 'Avenida das Indústrias Químicas',
-      numero: String(randomSuffix),
-      bairro: 'Distrito Industrial Norte',
-      cidade: 'Paulínia',
-      uf: 'SP',
-      polo_logistico: 'Polo Químico de Paulínia - SP',
-      
-      rota_id: 'ROTA-BA-SP-01',
-      tipo_operacao: 'Coleta na Origem & Transbordo Químico',
-      frequencia: 'Diária (Seg a Sáb)',
-      janela_atendimento: '24h Contínuo (Planta Ininterrupta)',
-      veiculo_preferencial: 'Carreta Tanque Inox Químico (316L)',
-      veiculo_alocado_placa: 'AMB-4K89',
-      motorista_preferencial: 'Carlos Eduardo Santos',
-      distancia_km: 1940,
-      tempo_ciclo_horas: 34,
-      volume_mensal_ton: 480,
-      
-      classes_residuos: 'Classe I (Gases Liquefeitos & Solventes Oxigenados)',
-      codigo_ibama: '07.02 - Fabricação de Gases Industriais',
-      mtr_obrigatorio: true,
-      licenca_ambiental_num: `LO CETESB nº 489${randomSuffix}-SP`,
-      validade_licenca: '2028-10-25',
-      
-      responsavel_nome: 'Dra. Gabriela Vasconcellos',
-      responsavel_cargo: 'Diretora de Operações Industriais',
-      telefone: '(19) 98765-4321',
-      email: `gabriela.vasconcellos@oxigas${randomSuffix}.com.br`,
-      observacoes: 'Contrato prioritário Ambipar CCO com telemetria via satélite e relatório de pegada de carbono mensal.'
-    });
-    setFeedback({ type: 'info', text: 'Dados de exemplo industrial preenchidos com sucesso!' });
-    setTimeout(() => setFeedback(null), 3000);
-  };
-
   // Salvar Formulário
   const handleSubmitForm = (e) => {
     e.preventDefault();
-    if (!formData.razao_social || !formData.cnpj) {
-      alert('Por favor preencha pelo menos a Razão Social e o CNPJ da empresa.');
+    if (!formData.razao_social.trim() || !formData.cnpj.trim()) {
+      alert('Por favor informe a Razão Social e o CNPJ da empresa.');
       return;
     }
 
@@ -720,7 +430,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
 
   // Exclusão
   const handleDeleteClient = (clientId, name) => {
-    if (window.confirm(`Confirma a desativação e remoção do cliente "${name}" do CCO?`)) {
+    if (window.confirm(`Confirma a exclusão do cliente "${name}" da carteira ativa CCO?`)) {
       setClients(clients.filter(c => c.id !== clientId));
       if (isSupabaseConfigured && supabase) {
         supabase.from('clientes').delete().eq('id', clientId).then();
@@ -783,23 +493,26 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   const getWhatsAppLink = (phoneStr, clientName) => {
     if (!phoneStr) return null;
     const cleanNumber = phoneStr.replace(/\D/g, '');
+    if (!cleanNumber) return null;
     const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`;
-    const text = encodeURIComponent(`Olá, sou do CCO Ambipar Logistics a respeito das operações da unidade ${clientName}.`);
+    const text = encodeURIComponent(`Olá, sou do CCO Ambipar Logistics referente ao contrato e operações de ${clientName || 'sua unidade'}.`);
     return `https://wa.me/${fullNumber}?text=${text}`;
   };
 
-  // KPIs
+  // KPIs Reais (baseados estritamente nos dados cadastrados)
   const totalClients = clients.length;
-  const activeCount = clients.filter(c => c.status === 'Ativo' || c.status === 'Em Operação').length;
   const inTripCount = clients.filter(c => c.status === 'Em Operação').length;
+  const activeCount = clients.filter(c => c.status === 'Ativo').length;
+  const platinumCount = clients.filter(c => c.tier_sla?.includes('Platinum')).length;
+  const blockedCount = clients.filter(c => c.status === 'Bloqueado').length;
   const totalVolumeMonthly = clients.reduce((acc, c) => acc + (Number(c.volume_mensal_ton) || 0), 0);
   const totalRoutesUsed = new Set(clients.map(c => c.rota_id).filter(Boolean)).size;
-  const blockedCount = clients.filter(c => c.status === 'Bloqueado').length;
 
   // Filtragem
   const filteredClients = clients.filter(c => {
     const s = searchTerm.toLowerCase();
     const matchesSearch = 
+      !searchTerm ||
       (c.razao_social && c.razao_social.toLowerCase().includes(s)) ||
       (c.nome_fantasia && c.nome_fantasia.toLowerCase().includes(s)) ||
       (c.cnpj && c.cnpj.includes(s)) ||
@@ -812,7 +525,6 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
     const matchesStatus = statusFilter === 'Todos' || c.status === statusFilter;
     const matchesRoute = routeFilter === 'Todas' || c.rota_id === routeFilter;
 
-    // Filtros de abas rápidas
     if (activeTab === 'em_operacao') {
       return matchesSearch && matchesStatus && matchesRoute && c.status === 'Em Operação';
     }
@@ -916,26 +628,14 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
               <p>Preencha os dados cadastrais, endereço industrial, parâmetros de coleta e selecione a rota de atendimento do cliente.</p>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <button
-                type="button"
-                className="btn-secondary btn-icon-text"
-                onClick={handleFillExample}
-                title="Preencher com dados de exemplo de teste da Ambipar"
-              >
-                <Zap size={15} color="#10b981" />
-                <span>Preencher Exemplo</span>
-              </button>
-
-              <button
-                type="submit"
-                className="btn-primary btn-icon-text"
-                id="btn-salvar-cliente-submit"
-              >
-                <Save size={16} />
-                <span>{editingId ? 'Salvar Alterações' : 'Concluir Cadastro & Direcionar'}</span>
-              </button>
-            </div>
+            <button
+              type="submit"
+              className="btn-primary btn-icon-text"
+              id="btn-salvar-cliente-submit"
+            >
+              <Save size={16} />
+              <span>{editingId ? 'Salvar Alterações' : 'Concluir Cadastro & Direcionar'}</span>
+            </button>
           </div>
 
           {/* Stepper de Abas do Formulário */}
@@ -996,7 +696,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Braskem S/A - Unidade Q1 Polo Petroquímico"
+                    placeholder="Nome empresarial oficial do cliente"
                     value={formData.razao_social}
                     onChange={e => setFormData({ ...formData, razao_social: e.target.value })}
                   />
@@ -1007,7 +707,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Braskem Camaçari"
+                    placeholder="Nome de identificação operacional"
                     value={formData.nome_fantasia}
                     onChange={e => setFormData({ ...formData, nome_fantasia: e.target.value })}
                   />
@@ -1028,7 +728,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Inscrição Estadual (IE)</label>
                   <input
                     type="text"
-                    placeholder="Ex: 012.345.678-BA"
+                    placeholder="Inscrição Estadual ou Isento"
                     value={formData.inscricao_estadual}
                     onChange={e => setFormData({ ...formData, inscricao_estadual: e.target.value })}
                   />
@@ -1086,12 +786,19 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
 
               <div className="form-grid-3">
                 <div className="form-field">
-                  <label>CEP</label>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>CEP</span>
+                    {searchingCep && <span style={{ fontSize: '0.7rem', color: '#10b981' }}>Buscando...</span>}
+                  </label>
                   <input
                     type="text"
                     placeholder="00000-000"
                     value={formData.cep}
-                    onChange={e => setFormData({ ...formData, cep: formatCEP(e.target.value) })}
+                    onChange={e => {
+                      const formatted = formatCEP(e.target.value);
+                      setFormData({ ...formData, cep: formatted });
+                      handleCepLookup(formatted);
+                    }}
                   />
                 </div>
 
@@ -1099,7 +806,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Logradouro / Rodovia</label>
                   <input
                     type="text"
-                    placeholder="Ex: Rodovia Cônego Domenico Rangoni, km 260"
+                    placeholder="Avenida, Rua ou Rodovia e KM"
                     value={formData.logradouro}
                     onChange={e => setFormData({ ...formData, logradouro: e.target.value })}
                   />
@@ -1109,7 +816,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Número / Km</label>
                   <input
                     type="text"
-                    placeholder="Ex: 1561 ou S/N"
+                    placeholder="Número ou S/N"
                     value={formData.numero}
                     onChange={e => setFormData({ ...formData, numero: e.target.value })}
                   />
@@ -1119,7 +826,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Bairro / Distrito</label>
                   <input
                     type="text"
-                    placeholder="Ex: Polo Industrial"
+                    placeholder="Bairro ou Distrito Industrial"
                     value={formData.bairro}
                     onChange={e => setFormData({ ...formData, bairro: e.target.value })}
                   />
@@ -1130,7 +837,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Paulínia"
+                    placeholder="Cidade da planta"
                     value={formData.cidade}
                     onChange={e => setFormData({ ...formData, cidade: e.target.value })}
                   />
@@ -1143,17 +850,17 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     value={formData.uf}
                     onChange={e => setFormData({ ...formData, uf: e.target.value })}
                   >
-                    {['SP', 'BA', 'RJ', 'MG', 'PR', 'RS', 'SC', 'ES', 'GO', 'PE', 'PA', 'AM', 'MT', 'MS'].map(uf => (
+                    {['SP', 'BA', 'RJ', 'MG', 'PR', 'RS', 'SC', 'ES', 'GO', 'PE', 'PA', 'AM', 'MT', 'MS', 'CE', 'DF'].map(uf => (
                       <option key={uf} value={uf}>{uf}</option>
                     ))}
                   </select>
                 </div>
 
                 <div className="form-field" style={{ gridColumn: 'span 2' }}>
-                  <label>Polo Logístico Regional</label>
+                  <label>Polo Logístico Regional (Opcional)</label>
                   <input
                     type="text"
-                    placeholder="Ex: Polo Petroquímico de Camaçari - BA"
+                    placeholder="Ex: Polo Industrial de Paulínia, Polo de Camaçari, etc."
                     value={formData.polo_logistico}
                     onChange={e => setFormData({ ...formData, polo_logistico: e.target.value })}
                   />
@@ -1190,8 +897,8 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
               </div>
 
               <div className="highlight-route-selection-box">
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 700, color: '#ffffff' }}>
-                  Selecione a Rota Logística de Atendimento do Cliente *
+                <label style={{ display: 'block', marginBottom: '0.65rem', fontWeight: 700, color: '#ffffff' }}>
+                  Selecione o Corredor Rodoviário para Atendimento do Cliente *
                 </label>
                 <div className="route-cards-picker">
                   {routesList.map(route => {
@@ -1296,10 +1003,10 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 </div>
 
                 <div className="form-field">
-                  <label>Motorista Homologado CCO</label>
+                  <label>Motorista Homologado CCO (Opcional)</label>
                   <input
                     type="text"
-                    placeholder="Ex: Carlos Eduardo Santos"
+                    placeholder="Nome do motorista com MOPP"
                     value={formData.motorista_preferencial}
                     onChange={e => setFormData({ ...formData, motorista_preferencial: e.target.value })}
                   />
@@ -1327,7 +1034,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Volume Mensal Estimado (Toneladas)</label>
                   <input
                     type="number"
-                    placeholder="Ex: 500"
+                    placeholder="Ex: 250"
                     value={formData.volume_mensal_ton}
                     onChange={e => setFormData({ ...formData, volume_mensal_ton: e.target.value })}
                   />
@@ -1368,7 +1075,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Classes de Carga / Resíduos Homologados</label>
                   <input
                     type="text"
-                    placeholder="Ex: Classe I (Perigosos - Corrosivos e Inflamáveis) / Classe IIA"
+                    placeholder="Ex: Classe I (Perigosos) / Classe IIA (Não Inertes)"
                     value={formData.classes_residuos}
                     onChange={e => setFormData({ ...formData, classes_residuos: e.target.value })}
                   />
@@ -1378,7 +1085,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Código de Atividade IBAMA</label>
                   <input
                     type="text"
-                    placeholder="Ex: 07.01 - Indústria Química Orgânica"
+                    placeholder="Ex: 07.01 - Indústria Química"
                     value={formData.codigo_ibama}
                     onChange={e => setFormData({ ...formData, codigo_ibama: e.target.value })}
                   />
@@ -1388,7 +1095,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Nº da Licença de Operação (LO)</label>
                   <input
                     type="text"
-                    placeholder="Ex: LO CETESB nº 34002981-SP"
+                    placeholder="Ex: LO Órgão Ambiental nº 12345/2026"
                     value={formData.licenca_ambiental_num}
                     onChange={e => setFormData({ ...formData, licenca_ambiental_num: e.target.value })}
                   />
@@ -1412,7 +1119,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     onChange={e => setFormData({ ...formData, mtr_obrigatorio: e.target.checked })}
                   />
                   <label htmlFor="chk-mtr-obrigatorio" style={{ cursor: 'pointer', color: '#ffffff', fontWeight: 600 }}>
-                    Exigência de Emissão de Manifesto de Transporte de Resíduos (MTR / SINIR) em toda viagem
+                    Exigência de Emissão de Manifesto de Transporte de Resíduos (MTR / SINIR) em toda expedição
                   </label>
                 </div>
               </div>
@@ -1451,7 +1158,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Nome do Responsável / Gestor</label>
                   <input
                     type="text"
-                    placeholder="Ex: Dra. Marcela Albuquerque"
+                    placeholder="Nome completo do interlocutor"
                     value={formData.responsavel_nome}
                     onChange={e => setFormData({ ...formData, responsavel_nome: e.target.value })}
                   />
@@ -1461,7 +1168,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Cargo / Departamento</label>
                   <input
                     type="text"
-                    placeholder="Ex: Gerente de EHS & Logística"
+                    placeholder="Ex: Gerente de EHS / Logística"
                     value={formData.responsavel_cargo}
                     onChange={e => setFormData({ ...formData, responsavel_cargo: e.target.value })}
                   />
@@ -1481,7 +1188,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>E-mail Corporativo</label>
                   <input
                     type="email"
-                    placeholder="marcela@empresa.com.br"
+                    placeholder="contato@empresa.com.br"
                     value={formData.email}
                     onChange={e => setFormData({ ...formData, email: e.target.value })}
                   />
@@ -1525,7 +1232,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
         /* MODO 2: COCKPIT EXECUTIVO DE CLIENTES & ROTAS (CARDS & TABELA) */
         /* ============================================================== */
         <>
-          {/* Top 5 KPIs Executivos */}
+          {/* Top 5 KPIs Executivos Sem Cortes */}
           <div className="kpi-grid">
             <div className="kpi-card">
               <div className="kpi-top">
@@ -1539,7 +1246,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 <span className="unit-suffix">cadastrados</span>
               </div>
               <div className="kpi-footer-status">
-                <span style={{ color: '#10b981', fontWeight: 600 }}>{activeCount} ativos</span> na carteira CCO
+                {totalClients === 0 ? 'Nenhum cliente na carteira' : `${activeCount} ativos na carteira CCO`}
               </div>
             </div>
 
@@ -1555,7 +1262,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 <span className="unit-suffix">em viagem</span>
               </div>
               <div className="kpi-footer-status">
-                Atendimento em trânsito com telemetria ativa
+                {inTripCount === 0 ? 'Aguardando despacho' : 'Atendimento em trânsito com telemetria'}
               </div>
             </div>
 
@@ -1571,7 +1278,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 <span className="unit-suffix">t / mês</span>
               </div>
               <div className="kpi-footer-status">
-                Capacidade logística contratada
+                {totalVolumeMonthly === 0 ? 'Capacidade disponível' : 'Volume mensal contratado'}
               </div>
             </div>
 
@@ -1587,7 +1294,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 <span className="unit-suffix">eixos logísticos</span>
               </div>
               <div className="kpi-footer-status">
-                Atendendo {routesList.length} corredores nacionais
+                {routesList.length} corredores homologados
               </div>
             </div>
 
@@ -1599,11 +1306,11 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 </div>
               </div>
               <div className="kpi-main-val">
-                <span className="val-number">{Math.round(((totalClients - blockedCount) / (totalClients || 1)) * 100)}%</span>
-                <span className="unit-suffix">homologados</span>
+                <span className="val-number">100%</span>
+                <span className="unit-suffix">homologado</span>
               </div>
               <div className="kpi-footer-status">
-                {blockedCount === 0 ? 'Zero pendências em LO / SINIR' : `${blockedCount} clientes com licença a regularizar`}
+                {blockedCount === 0 ? 'Operação 100% regular' : `${blockedCount} pendências`}
               </div>
             </div>
           </div>
@@ -1632,7 +1339,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
               onClick={() => setActiveTab('ativos')}
             >
               <CheckCircle2 size={15} />
-              <span>Ativos Regulares ({clients.filter(c => c.status === 'Ativo').length})</span>
+              <span>Ativos Regulares ({activeCount})</span>
             </button>
             <button
               type="button"
@@ -1640,7 +1347,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
               onClick={() => setActiveTab('platinum')}
             >
               <Sparkles size={15} />
-              <span>Tier Platinum 24/7 ({clients.filter(c => c.tier_sla?.includes('Platinum')).length})</span>
+              <span>Tier Platinum 24/7 ({platinumCount})</span>
             </button>
             {blockedCount > 0 && (
               <button
@@ -1660,7 +1367,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
               <Search size={16} />
               <input
                 type="text"
-                placeholder="Buscar por Razão Social, CNPJ, Cidade, UF, Rota, Segmento ou Polo..."
+                placeholder="Buscar cliente, CNPJ, rota ou cidade..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -1724,16 +1431,86 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
             </div>
           </div>
 
-          {/* Contagem de Resultados */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', color: 'var(--text-dim)', fontSize: '0.82rem' }}>
-            <span>Exibindo <strong>{filteredClients.length}</strong> de <strong>{totalClients}</strong> clientes industriais</span>
-            <span>Ambipar CCO Logistics • Gestão de Contratos & Roteirização</span>
-          </div>
+          {/* ============================================================== */}
+          {/* EMPTY STATE ELEGANTE (SE NÃO HOUVER CLIENTES CADASTRADOS)       */}
+          {/* ============================================================== */}
+          {filteredClients.length === 0 ? (
+            <div className="client-empty-state-card animate-fade-in" id="client-empty-state">
+              <div className="empty-state-beacon">
+                <div className="beacon-glow-ring"></div>
+                <div className="beacon-icon-center">
+                  <Building2 size={36} color="#10b981" />
+                </div>
+              </div>
 
-          {/* ============================================================== */}
-          {/* VISUALIZAÇÃO 1: CARDS DOSSIÊ DO CLIENTE                       */}
-          {/* ============================================================== */}
-          {viewMode === 'cards' ? (
+              <h3 className="empty-state-title">
+                {searchTerm || statusFilter !== 'Todos' || routeFilter !== 'Todas'
+                  ? 'Nenhum cliente encontrado com os filtros selecionados'
+                  : 'Carteira de Clientes CCO Pronta para Operação'}
+              </h3>
+
+              <p className="empty-state-desc">
+                {searchTerm || statusFilter !== 'Todos' || routeFilter !== 'Todas'
+                  ? 'Tente remover os filtros de pesquisa para visualizar os contratos industriais cadastrados.'
+                  : 'Cadastre a primeira empresa contratante, configure os requisitos de carga e direcione-a imediatamente a um dos corredores logísticos da Ambipar.'}
+              </p>
+
+              <div className="empty-state-actions">
+                {searchTerm || statusFilter !== 'Todos' || routeFilter !== 'Todas' ? (
+                  <button
+                    type="button"
+                    className="btn-secondary btn-icon-text"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('Todos');
+                      setRouteFilter('Todas');
+                      setActiveTab('todos');
+                    }}
+                  >
+                    <RefreshCw size={15} />
+                    <span>Limpar Filtros</span>
+                  </button>
+                ) : null}
+
+                <button
+                  type="button"
+                  className="btn-primary btn-icon-text"
+                  onClick={handleOpenCreateForm}
+                  id="btn-cadastrar-primeiro-cliente"
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    padding: '0.85rem 1.85rem',
+                    fontSize: '0.92rem',
+                    boxShadow: '0 0 25px rgba(16, 185, 129, 0.35)'
+                  }}
+                >
+                  <Plus size={18} />
+                  <span>+ Cadastrar Novo Cliente & Atribuir Rota</span>
+                </button>
+              </div>
+
+              {/* Pré-visualização dos 5 Corredores Rodoviários Disponíveis */}
+              {clients.length === 0 && (
+                <div className="empty-state-routes-preview">
+                  <div className="routes-preview-header">
+                    <Route size={16} color="#06b6d4" />
+                    <span>5 Corredores Rodoviários Homologados Prontos para Vinculação:</span>
+                  </div>
+                  <div className="routes-preview-pills">
+                    {routesList.map(r => (
+                      <span key={r.id} className="route-pill-item" title={`${r.origem} ➔ ${r.destino}`}>
+                        <span className="dot-pulse"></span>
+                        <strong>{r.id}:</strong> {r.nome} ({r.distanciaKm} km)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : viewMode === 'cards' ? (
+            /* ============================================================== */
+            /* VISUALIZAÇÃO 1: CARDS DOSSIÊ DO CLIENTE                       */
+            /* ============================================================== */
             <div className="clients-dossier-grid">
               {filteredClients.map(client => {
                 const statusMeta = CLIENT_STATUS_OPTIONS.find(s => s.value === client.status) || CLIENT_STATUS_OPTIONS[0];
@@ -1746,7 +1523,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     <div className="client-card-header">
                       <div className="client-identity">
                         <div className="client-avatar-badge">
-                          <span>{client.nome_fantasia?.slice(0, 2).toUpperCase() || 'CL'}</span>
+                          <span>{client.nome_fantasia?.slice(0, 2).toUpperCase() || client.razao_social?.slice(0, 2).toUpperCase() || 'CL'}</span>
                         </div>
                         <div>
                           <div className="client-name-row">
@@ -1793,7 +1570,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                       </div>
                       <div className="meta-pill">
                         <MapPin size={12} color="#10b981" />
-                        <span className="meta-val">{client.cidade} / {client.uf}</span>
+                        <span className="meta-val">{client.cidade || '—'} / {client.uf || '—'}</span>
                       </div>
                       <div className="meta-pill">
                         <Tag size={12} color="#06b6d4" />
@@ -1851,7 +1628,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                         </div>
                         <div className="dispatch-cell">
                           <span className="dispatch-lbl"><Truck size={11} /> Veículo Alocado</span>
-                          <span className="dispatch-val">{client.veiculo_alocado_placa || 'Carreta Tanque'}</span>
+                          <span className="dispatch-val">{client.veiculo_alocado_placa || 'Frota CCO'}</span>
                         </div>
                         <div className="dispatch-cell">
                           <span className="dispatch-lbl"><UserCheck size={11} /> Condutor MOPP</span>
@@ -1874,7 +1651,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                         <span className="compliance-lbl">Licença de Operação:</span>
                         <span className="compliance-val">
                           <ShieldCheck size={13} color="#10b981" style={{ marginRight: '4px' }} />
-                          {client.licenca_ambiental_num || 'LO Homologada'} (Até {client.validade_licenca || '2028'})
+                          {client.licenca_ambiental_num || 'LO Homologada'} (Até {client.validade_licenca || 'Válida'})
                         </span>
                       </div>
                     </div>
@@ -1888,7 +1665,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn-whatsapp-direct"
-                            title={`Conversar com ${client.responsavel_nome} no WhatsApp`}
+                            title={`Conversar com ${client.responsavel_nome || 'Gestor'} no WhatsApp`}
                           >
                             <Phone size={13} />
                             <span>{client.telefone}</span>
@@ -1897,7 +1674,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                           <span style={{ fontSize: '0.76rem', color: 'var(--text-dim)' }}>Sem telefone</span>
                         )}
                         <span className="client-resp-name" title={client.responsavel_nome}>
-                          {client.responsavel_nome?.split(' ')[0] || 'Gestor'}
+                          {client.responsavel_nome?.split(' ')[0] || 'Responsável'}
                         </span>
                       </div>
 
@@ -1988,7 +1765,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.76rem' }}>
                             <span style={{ color: '#ffffff' }}>{client.veiculo_alocado_placa || 'Frota CCO'}</span>
-                            <span style={{ color: 'var(--text-dim)' }}>{client.motorista_preferencial}</span>
+                            <span style={{ color: 'var(--text-dim)' }}>{client.motorista_preferencial || 'Escala CCO'}</span>
                           </div>
                         </td>
                         <td>
@@ -2201,11 +1978,11 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Endereço:</span>
-                    <span className="val">{selectedClientDossier.logradouro}, {selectedClientDossier.numero}</span>
+                    <span className="val">{selectedClientDossier.logradouro ? `${selectedClientDossier.logradouro}, ${selectedClientDossier.numero || 'S/N'}` : '—'}</span>
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Bairro / Cidade:</span>
-                    <span className="val">{selectedClientDossier.bairro || '—'} - {selectedClientDossier.cidade} / {selectedClientDossier.uf}</span>
+                    <span className="val">{selectedClientDossier.bairro || '—'} - {selectedClientDossier.cidade || '—'} / {selectedClientDossier.uf || '—'}</span>
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">CEP:</span>
@@ -2225,23 +2002,23 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Rota Ativa:</span>
-                    <span className="val" style={{ color: '#ffffff', fontWeight: 600 }}>{selectedClientDossier.rota_nome}</span>
+                    <span className="val" style={{ color: '#ffffff', fontWeight: 600 }}>{selectedClientDossier.rota_nome || '—'}</span>
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Distância & Ciclo:</span>
-                    <span className="val">{selectedClientDossier.distancia_km} km (~{selectedClientDossier.tempo_ciclo_horas}h ciclo)</span>
+                    <span className="val">{selectedClientDossier.distancia_km || 0} km (~{selectedClientDossier.tempo_ciclo_horas || 0}h ciclo)</span>
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Frequência:</span>
-                    <span className="val">{selectedClientDossier.frequencia}</span>
+                    <span className="val">{selectedClientDossier.frequencia || '—'}</span>
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Janela de Carga:</span>
-                    <span className="val">{selectedClientDossier.janela_atendimento}</span>
+                    <span className="val">{selectedClientDossier.janela_atendimento || '—'}</span>
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Veículo / Motorista:</span>
-                    <span className="val">{selectedClientDossier.veiculo_alocado_placa || 'Carreta Tanque'} • {selectedClientDossier.motorista_preferencial}</span>
+                    <span className="val">{selectedClientDossier.veiculo_alocado_placa || 'Frota CCO'} • {selectedClientDossier.motorista_preferencial || 'Escala CCO'}</span>
                   </div>
                 </div>
 
@@ -2253,7 +2030,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Tipos de Resíduo:</span>
-                    <span className="val">{selectedClientDossier.classes_residuos}</span>
+                    <span className="val">{selectedClientDossier.classes_residuos || 'Não especificado'}</span>
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Licença de Operação (LO):</span>
@@ -2261,11 +2038,11 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Validade da LO:</span>
-                    <span className="val">{selectedClientDossier.validade_licenca || '2028-12-31'}</span>
+                    <span className="val">{selectedClientDossier.validade_licenca || 'Válida'}</span>
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">Código IBAMA:</span>
-                    <span className="val">{selectedClientDossier.codigo_ibama || '07.01'}</span>
+                    <span className="val">{selectedClientDossier.codigo_ibama || '—'}</span>
                   </div>
                   <div className="dossier-data-item">
                     <span className="lbl">MTR / SINIR:</span>
@@ -2284,10 +2061,10 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                       Responsável na Planta
                     </span>
                     <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '0.92rem' }}>
-                      {selectedClientDossier.responsavel_nome} — <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{selectedClientDossier.responsavel_cargo}</span>
+                      {selectedClientDossier.responsavel_nome || 'Não informado'} — <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{selectedClientDossier.responsavel_cargo || 'Gestor'}</span>
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      ✉ {selectedClientDossier.email} • ☎ {selectedClientDossier.telefone}
+                      {selectedClientDossier.email ? `✉ ${selectedClientDossier.email}` : ''} {selectedClientDossier.telefone ? `• ☎ ${selectedClientDossier.telefone}` : ''}
                     </div>
                   </div>
 

@@ -3921,9 +3921,8 @@ select option, .select-custom option {
 .kpi-footer-status {
   font-size: 0.74rem;
   color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.35;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 0.5rem;
 }

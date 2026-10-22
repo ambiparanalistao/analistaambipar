@@ -1,6 +1,94 @@
 /* ========================================================================== */
 /* MÓDULO DE GESTÃO DE CLIENTES & ROTEIRIZAÇÃO LOGÍSTICA (AMBIPAR CCO)        */
+/* ESTILO PREMIUM EXECUTIVO - SEM CORTES, COMPATIBILIDADE TOTAL               */
 /* ========================================================================== */
+
+/* Ajustes Globais para Evitar Cortes no Módulo */
+#clients-module-root {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Override dos KPIs para garantir que NENHUM texto seja cortado */
+#clients-module-root .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  #clients-module-root .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  #clients-module-root .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+#clients-module-root .kpi-card {
+  padding: 1.15rem;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface, #0d1523);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: visible !important;
+}
+
+#clients-module-root .kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+#clients-module-root .kpi-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+#clients-module-root .kpi-main-val {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin: 0.25rem 0;
+}
+
+#clients-module-root .kpi-main-val .val-number {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+  font-family: var(--font-heading);
+}
+
+#clients-module-root .kpi-main-val .unit-suffix {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+/* O rodapé do KPI NUNCA corta texto: permite quebra natural */
+#clients-module-root .kpi-footer-status {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  line-height: 1.4;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.5rem;
+}
 
 /* Abas Rápidas de Navegação de Clientes */
 .client-tabs-bar {
@@ -78,6 +166,144 @@
   background: rgba(16, 185, 129, 0.25);
   color: #34d399;
   border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+/* ========================================================================== */
+/* EMPTY STATE PREMIUM EXECUTIVO                                              */
+/* ========================================================================== */
+.client-empty-state-card {
+  background: linear-gradient(180deg, rgba(17, 27, 43, 0.75) 0%, rgba(10, 16, 26, 0.95) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-lg);
+  padding: 3.5rem 2rem;
+  text-align: center;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.6), 0 0 30px rgba(16, 185, 129, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.client-empty-state-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #10b981, #06b6d4, transparent);
+  opacity: 0.8;
+}
+
+.empty-state-beacon {
+  position: relative;
+  width: 86px;
+  height: 86px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.beacon-glow-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, rgba(6, 182, 212, 0.1) 60%, transparent 80%);
+  animation: pulseGlow 3s infinite ease-in-out;
+}
+
+.beacon-icon-center {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(13, 21, 35, 0.9);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
+}
+
+.empty-state-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 0.65rem;
+  letter-spacing: -0.01em;
+}
+
+.empty-state-desc {
+  max-width: 580px;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 1.75rem;
+}
+
+.empty-state-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.empty-state-routes-preview {
+  width: 100%;
+  max-width: 900px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-md);
+  padding: 1.15rem 1.35rem;
+  text-align: left;
+}
+
+.routes-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.routes-preview-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.route-pill-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(13, 21, 35, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.route-pill-item strong {
+  color: #34d399;
+}
+
+.dot-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
 }
 
 /* Grid de Cards Dossiê de Clientes */
