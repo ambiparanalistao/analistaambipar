@@ -47,11 +47,13 @@ import {
   ArrowDownRight,
   FileSpreadsheet,
   UploadCloud,
-  FileDown
+  FileDown,
+  ShieldAlert
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import FuelExcelImportModal from './FuelExcelImportModal';
 import FuelSpreadsheetWorkspace from './FuelSpreadsheetWorkspace';
+import FuelAuditWorkspace, { runPredictiveAudit } from './FuelAuditWorkspace';
 import ErrorBoundary from './ErrorBoundary';
 import { exportFuelRecordsToExcel, generateBlankTemplateExcel } from '../utils/excelFuelIntegration';
 import './FuelModule.css';
@@ -240,6 +242,15 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showDispatchOrderModal, setShowDispatchOrderModal] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // Auditoria Preditiva Forense CCO
+  const auditAlerts = useMemo(() => {
+    return runPredictiveAudit(records, availablePlates);
+  }, [records, availablePlates]);
+
+  const auditCriticalCount = useMemo(() => {
+    return auditAlerts.filter(a => a.severity === 'CRITICAL' && a.status !== 'JUSTIFICADO').length;
+  }, [auditAlerts]);
 
   // Disparo em tempo real para Google Sheets / Excel 365
   const triggerGoogleSheetWebhook = (action, rec) => {
@@ -1046,6 +1057,33 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
           <Compass size={17} />
           <span>Simulador de Autonomia & Rota CCO</span>
         </button>
+
+        <button
+          type="button"
+          className={`fuel-mode-tab-btn ${viewMode === 'auditoria' ? 'active' : ''}`}
+          onClick={() => setViewMode('auditoria')}
+          id="btn-tab-auditoria-anomalias"
+          style={viewMode === 'auditoria' ? { borderBottomColor: '#f43f5e' } : {}}
+        >
+          <ShieldAlert size={17} color={auditCriticalCount > 0 ? '#f43f5e' : '#06b6d4'} />
+          <span>
+            Auditoria Preditiva CCO
+            {auditAlerts.length > 0 && (
+              <span style={{
+                marginLeft: '6px',
+                fontSize: '0.68rem',
+                padding: '2px 7px',
+                background: auditCriticalCount > 0 ? '#f43f5e' : '#eab308',
+                color: '#ffffff',
+                borderRadius: '10px',
+                fontWeight: 800,
+                boxShadow: auditCriticalCount > 0 ? '0 0 10px rgba(244, 63, 94, 0.4)' : undefined
+              }}>
+                {auditAlerts.length}
+              </span>
+            )}
+          </span>
+        </button>
       </div>
 
       {/* Feedback Toast */}
@@ -1077,6 +1115,70 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
       {/* VIEW 1: DASHBOARD COMPLETA DE CONSUMO, CARROS & MOTORISTAS */}
       {viewMode === 'dashboard' ? (
         <div className="fuel-analytics-dashboard animate-fade-in" id="fuel-analytics-dashboard-workspace">
+          {/* BANNER DE AUDITORIA PREDITIVA CCO */}
+          {auditAlerts.length > 0 && (
+            <div 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '1rem 1.35rem',
+                background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.14) 0%, rgba(15, 23, 42, 0.75) 100%)',
+                border: '1px solid rgba(244, 63, 94, 0.4)',
+                borderRadius: '14px',
+                marginBottom: '1.25rem',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                boxShadow: '0 8px 24px rgba(244, 63, 94, 0.12)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: 'rgba(244, 63, 94, 0.25)',
+                  border: '1px solid #f43f5e',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#f43f5e',
+                  flexShrink: 0
+                }}>
+                  <ShieldAlert size={24} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <strong style={{ color: '#ffffff', fontSize: '0.96rem' }}>
+                      Auditoria Forense CCO: {auditAlerts.length} Anomalias Requerem Atenção
+                    </strong>
+                    <span style={{ fontSize: '0.72rem', background: '#f43f5e', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
+                      {auditCriticalCount} Críticas
+                    </span>
+                  </div>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.82rem', color: '#cbd5e1' }}>
+                    Identificados desvios de consumo KM/L (pé pesado), litragem excedente à capacidade do tanque e sobrepreços na frota Ambipar.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="fuel-btn fuel-btn-primary"
+                onClick={() => setViewMode('auditoria')}
+                style={{
+                  background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)',
+                  borderColor: '#f43f5e',
+                  fontSize: '0.82rem',
+                  padding: '0.55rem 1.15rem'
+                }}
+              >
+                <ShieldAlert size={15} />
+                <span>Abrir Central de Auditoria Preditiva</span>
+              </button>
+            </div>
+          )}
+
           {/* 3 Banners de Destaque no Topo: Quem Mais Consome, Eco-Leader e Potencial de Economia */}
           <div className="dash-insights-summary-grid">
             {/* Destaque 1: Motorista Consumindo Mais */}
@@ -2263,6 +2365,17 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
             </button>
           </div>
         </form>
+      ) : viewMode === 'auditoria' ? (
+        /* VIEW 5: AUDITORIA PREDITIVA & ANOMALIAS CCO */
+        <ErrorBoundary>
+          <FuelAuditWorkspace
+            records={records}
+            availablePlates={availablePlates}
+            availableDrivers={availableDrivers}
+            onOpenTicketDetails={(rec) => setSelectedTicket(rec)}
+            onNavigateModule={onNavigateModule}
+          />
+        </ErrorBoundary>
       ) : (
         /* VIEW 4: EXTRATO & GESTÃO DE ABASTECIMENTOS (TABELA / CARDS) */
         <>
