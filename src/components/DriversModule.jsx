@@ -445,7 +445,7 @@ export default function DriversModule({ user }) {
 
           <div className="driver-form-sections-grid">
             {/* Bloco 1: Identificação & Área de Contato do Motorista */}
-            <div className="card-panel">
+            <div className="card-panel card-z-top" style={{ position: 'relative', zIndex: 40 }}>
               <div className="panel-header">
                 <div className="header-icon-label">
                   <User size={20} className="icon-emerald" />
@@ -544,7 +544,7 @@ export default function DriversModule({ user }) {
             </div>
 
             {/* Bloco 2: CNH & Exame Toxicológico com Contadores Regressivos */}
-            <div className="card-panel">
+            <div className="card-panel card-z-mid-high" style={{ position: 'relative', zIndex: 35 }}>
               <div className="panel-header">
                 <div className="header-icon-label">
                   <ShieldCheck size={20} className="icon-cyan" />
@@ -621,7 +621,7 @@ export default function DriversModule({ user }) {
             </div>
 
             {/* Bloco 3: Curso MOPP & Treinamentos de Segurança (NRs) com Contadores */}
-            <div className="card-panel">
+            <div className="card-panel card-z-mid" style={{ position: 'relative', zIndex: 10 }}>
               <div className="panel-header">
                 <div className="header-icon-label">
                   <Award size={20} className="icon-emerald" />
@@ -705,7 +705,7 @@ export default function DriversModule({ user }) {
             </div>
 
             {/* Bloco 4: Veículo Vinculado & Observações */}
-            <div className="card-panel">
+            <div className="card-panel card-z-low" style={{ position: 'relative', zIndex: 5 }}>
               <div className="panel-header">
                 <div className="header-icon-label">
                   <Truck size={20} className="icon-cyan" />

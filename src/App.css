@@ -2968,6 +2968,40 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+  overflow: visible;
+  position: relative;
+}
+
+.driver-form-sections-grid > .card-panel {
+  overflow: visible;
+  transition: z-index 0.1s ease;
+}
+
+.card-z-top {
+  position: relative;
+  z-index: 40 !important;
+}
+
+.card-z-mid-high {
+  position: relative;
+  z-index: 35 !important;
+}
+
+.card-z-mid {
+  position: relative;
+  z-index: 10 !important;
+}
+
+.card-z-low {
+  position: relative;
+  z-index: 5 !important;
+}
+
+.card-panel:has(.premium-select-container.is-open),
+.card-panel:has(.is-open),
+.card-panel.has-open-dropdown,
+.card-panel:focus-within {
+  z-index: 1000 !important;
 }
 
 @media (max-width: 960px) {
@@ -3325,9 +3359,28 @@
   border-radius: var(--radius-md);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 0 1px 1px rgba(255, 255, 255, 0.08);
   padding: 0.4rem;
-  z-index: 1200;
-  max-height: 320px;
+  z-index: 9999;
+  max-height: min(480px, 85vh);
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(16, 185, 129, 0.4) transparent;
+}
+
+.premium-select-dropdown::-webkit-scrollbar {
+  width: 5px;
+}
+
+.premium-select-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.premium-select-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.35);
+  border-radius: 4px;
+}
+
+.premium-select-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.65);
 }
 
 .premium-select-options-list {

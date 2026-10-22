@@ -62,6 +62,7 @@ export default function PremiumSelect({
       className={`premium-select-container ${size} ${className} ${isOpen ? 'is-open' : ''} ${disabled ? 'is-disabled' : ''}`}
       ref={containerRef}
       id={id}
+      style={{ zIndex: isOpen ? 9999 : 'auto', position: 'relative' }}
     >
       {/* Botão Gatilho (Trigger) */}
       <button

@@ -106,3 +106,30 @@ input {
   animation: spin 0.7s linear infinite;
   display: inline-block;
 }
+
+/* ========================================================================== */
+/* BARRAS DE ROLAGEM GLOBAIS MODERNAS (DARK THEME) */
+/* Elimina permanentemente a barra de rolagem branca padrão do Windows/Chrome */
+/* ========================================================================== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(16, 185, 129, 0.35) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-emerald);
+}
