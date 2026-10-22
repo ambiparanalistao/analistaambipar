@@ -10,6 +10,7 @@ import {
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import Sidebar from './components/Sidebar';
 import LogisticsDashboard from './components/LogisticsDashboard';
+import VehiclesModule from './components/VehiclesModule';
 import TripsModule from './components/TripsModule';
 import MtrModule from './components/MtrModule';
 import DriversModule from './components/DriversModule';
@@ -21,12 +22,58 @@ import AuthCard from './components/AuthCard';
 import SupabaseConfigModal from './components/SupabaseConfigModal';
 import './App.css';
 
+// Mapeamento de Rotas Web para cada Módulo
+export const MODULE_ROUTES = {
+  dashboard: '/dashboard',
+  frotas: '/frotas',
+  motoristas: '/motoristas',
+  viagens: '/viagens',
+  mtr: '/mtr',
+  calculadora_frete: '/calculadora-frete',
+  antt_formulas: '/antt-formulas',
+  ocorrencias: '/ocorrencias',
+  esg: '/esg'
+};
+
+export const PATH_TO_MODULE = {
+  '/': 'dashboard',
+  '/dashboard': 'dashboard',
+  '/frotas': 'frotas',
+  '/frota': 'frotas',
+  '/veiculos': 'frotas',
+  '/veiculo': 'frotas',
+  '/motoristas': 'motoristas',
+  '/motorista': 'motoristas',
+  '/viagens': 'viagens',
+  '/viagem': 'viagens',
+  '/mtr': 'mtr',
+  '/sinir': 'mtr',
+  '/calculadora': 'calculadora_frete',
+  '/calculadora-frete': 'calculadora_frete',
+  '/frete': 'calculadora_frete',
+  '/antt': 'antt_formulas',
+  '/antt-formulas': 'antt_formulas',
+  '/formulas': 'antt_formulas',
+  '/ocorrencias': 'ocorrencias',
+  '/emergencias': 'ocorrencias',
+  '/esg': 'esg',
+  '/sustentabilidade': 'esg'
+};
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [currentModule, setCurrentModule] = useState('dashboard');
+
+  // Inicializa o módulo ativo a partir da URL no navegador
+  const getInitialModule = () => {
+    if (typeof window === 'undefined') return 'dashboard';
+    const rawPath = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+    return PATH_TO_MODULE[rawPath] || 'dashboard';
+  };
+
+  const [currentModule, setCurrentModule] = useState(getInitialModule);
 
   useEffect(() => {
     // Se o Supabase não estiver configurado com credenciais, para o loading
@@ -80,17 +127,21 @@ export default function App() {
       title: 'Torre de Controle Operacional', 
       subtitle: 'Painel Geral de Operações, KPIs Consolidados e Monitoramento do Banco de Dados' 
     },
+    frotas: { 
+      title: 'Gestão de Frotas & Veículos Homologados', 
+      subtitle: 'Controle de cavalos mecânicos, carretas tanques, vistorias CIPP/CIV, tacógrafo e telemetria' 
+    },
+    motoristas: { 
+      title: 'Quadro de Motoristas & Certificações MOPP', 
+      subtitle: 'Habilitação, exames toxicológicos, cursos regulamentares e conformidade de condutores' 
+    },
     viagens: { 
-      title: 'Monitoramento de Frotas & Viagens', 
+      title: 'Monitoramento de Viagens & Rotas', 
       subtitle: 'Rastreamento operacional de veículos, carga/descarga e gestão de motoristas' 
     },
     mtr: { 
       title: 'Manifestos de Transporte de Resíduos (MTR)', 
       subtitle: 'Controle de resíduos industriais perigosos (Classe I/II) e conformidade com o SINIR' 
-    },
-    motoristas: { 
-      title: 'Quadro de Motoristas & Certificações MOPP', 
-      subtitle: 'Habilitação, exames toxicológicos, cursos regulamentares e conformidade de condutores' 
     },
     calculadora_frete: { 
       title: 'Calculadora Avançada de Frete & Carbono', 
@@ -109,6 +160,49 @@ export default function App() {
       subtitle: 'Metas corporativas de sustentabilidade, créditos verdes e descarte sustentável' 
     }
   };
+
+  // Navegação que atualiza a URL na barra de endereços (sem recarregar a página)
+  const handleSelectModule = (targetModule) => {
+    setCurrentModule(targetModule);
+    if (typeof window !== 'undefined') {
+      const targetPath = MODULE_ROUTES[targetModule] || '/dashboard';
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({ module: targetModule }, '', targetPath);
+      }
+      const title = moduleInfo[targetModule]?.title ? `${moduleInfo[targetModule].title} | Analista Ambipar` : 'Analista Ambipar';
+      document.title = title;
+    }
+  };
+
+  // Escuta os botões Voltar / Avançar do navegador (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+      const mod = PATH_TO_MODULE[path] || 'dashboard';
+      setCurrentModule(mod);
+      const title = moduleInfo[mod]?.title ? `${moduleInfo[mod].title} | Analista Ambipar` : 'Analista Ambipar';
+      document.title = title;
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Garante que o document.title e a URL fiquem sincronizados no primeiro carregamento
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+      const mapped = PATH_TO_MODULE[currentPath];
+      if (mapped) {
+        const canonical = MODULE_ROUTES[mapped];
+        if (currentPath === '/' && canonical) {
+          window.history.replaceState({ module: mapped }, '', canonical);
+        }
+        const title = moduleInfo[mapped]?.title ? `${moduleInfo[mapped].title} | Analista Ambipar` : 'Analista Ambipar';
+        document.title = title;
+      }
+    }
+  }, []);
 
   return (
     <div className="app-wrapper" id="ambipar-app-root">
@@ -161,7 +255,7 @@ export default function App() {
           {/* Sidebar Lateral Expansível */}
           <Sidebar
             currentModule={currentModule}
-            onSelectModule={setCurrentModule}
+            onSelectModule={handleSelectModule}
             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             user={session.user}
@@ -175,9 +269,19 @@ export default function App() {
             {/* Top Bar da Dashboard */}
             <header className="stage-topbar" id="stage-topbar">
               <div className="topbar-breadcrumb">
-                <span className="breadcrumb-root">Ambipar Logistics</span>
+                <span 
+                  className="breadcrumb-root" 
+                  onClick={() => handleSelectModule('dashboard')}
+                  style={{ cursor: 'pointer' }}
+                  title="Ir para a Torre de Controle"
+                >
+                  Ambipar Logistics
+                </span>
                 <ChevronRight size={14} className="breadcrumb-separator" />
                 <span className="breadcrumb-current">{moduleInfo[currentModule]?.title}</span>
+                <span className="breadcrumb-route-tag" style={{ marginLeft: '0.65rem', fontSize: '0.72rem', color: 'var(--accent-emerald)', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                  {MODULE_ROUTES[currentModule] || '/dashboard'}
+                </span>
               </div>
 
               <div className="topbar-actions">
@@ -211,13 +315,24 @@ export default function App() {
               {currentModule === 'dashboard' && (
                 <LogisticsDashboard 
                   user={session.user} 
-                  onNavigateModule={setCurrentModule} 
+                  onNavigateModule={handleSelectModule} 
+                />
+              )}
+              {currentModule === 'frotas' && (
+                <VehiclesModule 
+                  user={session.user} 
+                  onNavigateDrivers={() => handleSelectModule('motoristas')}
+                />
+              )}
+              {currentModule === 'motoristas' && (
+                <DriversModule 
+                  user={session.user} 
+                  onNavigateVehicles={() => handleSelectModule('frotas')}
                 />
               )}
               {currentModule === 'viagens' && <TripsModule user={session.user} />}
               {currentModule === 'mtr' && <MtrModule user={session.user} />}
-              {currentModule === 'motoristas' && <DriversModule user={session.user} />}
-              {currentModule === 'calculadora_frete' && <FreightCarbonCalculator onNavigateMtr={() => setCurrentModule('mtr')} />}
+              {currentModule === 'calculadora_frete' && <FreightCarbonCalculator onNavigateMtr={() => handleSelectModule('mtr')} />}
               {currentModule === 'antt_formulas' && <AnttFormulasModule />}
               {currentModule === 'ocorrencias' && <OcorrenciasModule />}
               {currentModule === 'esg' && <EsgModule />}

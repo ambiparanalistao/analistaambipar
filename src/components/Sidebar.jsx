@@ -11,8 +11,9 @@ import {
   Settings, 
   LogOut, 
   ChevronLeft, 
-  ChevronRight,
-  Leaf
+  ChevronRight, 
+  Leaf,
+  Route
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -38,19 +39,24 @@ export default function Sidebar({
           icon: LayoutDashboard
         },
         {
-          id: 'viagens',
-          label: 'Monitoramento de Viagens',
+          id: 'frotas',
+          label: 'Gestão de Frotas & Veículos',
           icon: Truck
-        },
-        {
-          id: 'mtr',
-          label: 'MTR & Destinação Resíduos',
-          icon: FileText
         },
         {
           id: 'motoristas',
           label: 'Gestão de Motoristas (MOPP)',
           icon: UserCheck
+        },
+        {
+          id: 'viagens',
+          label: 'Monitoramento de Viagens',
+          icon: Route
+        },
+        {
+          id: 'mtr',
+          label: 'MTR & Destinação Resíduos',
+          icon: FileText
         }
       ]
     },

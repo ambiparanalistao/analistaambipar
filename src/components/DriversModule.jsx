@@ -20,13 +20,10 @@ import {
   Flame,
   Layers,
   User,
-  ShieldAlert,
-  FileText,
-  Upload
+  ShieldAlert
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
-import { readCnhPdfFile } from '../utils/cnhPdfReader';
 
 export const STATUS_OPTIONS = [
   { 
@@ -195,63 +192,6 @@ export default function DriversModule({ user }) {
   };
 
   const [formData, setFormData] = useState(initialForm);
-  const [pdfExtracting, setPdfExtracting] = useState(false);
-  const [pdfSuccessMessage, setPdfSuccessMessage] = useState(null);
-  const [pdfProgressText, setPdfProgressText] = useState('Processando CNH...');
-
-  // Leitura 100% no cliente da CNH via PDF (Sem armazenamento no Supabase)
-  const handlePdfUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Reseta o input para permitir selecionar o mesmo arquivo novamente se desejar
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    const isImage = file.type && file.type.startsWith('image/');
-
-    if (!isPdf && !isImage) {
-      alert('Por favor, selecione um arquivo em formato PDF ou Imagem (PNG/JPG) da CNH.');
-      return;
-    }
-
-    setPdfExtracting(true);
-    setPdfSuccessMessage(null);
-    setPdfProgressText('Lendo estrutura da CNH...');
-
-    try {
-      const extracted = await readCnhPdfFile(file, (msg) => setPdfProgressText(msg));
-      
-      setFormData(prev => ({
-        ...prev,
-        nome: extracted.nome || prev.nome,
-        cpf: extracted.cpf || prev.cpf,
-        cnh: extracted.cnh || prev.cnh,
-        categoria_cnh: extracted.categoria_cnh || prev.categoria_cnh,
-        validade_cnh: extracted.validade_cnh || prev.validade_cnh,
-        mopp_numero: extracted.mopp_numero || prev.mopp_numero
-      }));
-
-      const filledFields = [];
-      if (extracted.nome) filledFields.push('Nome Completo');
-      if (extracted.cpf) filledFields.push('CPF');
-      if (extracted.cnh) filledFields.push('Nº Registro CNH');
-      if (extracted.categoria_cnh) filledFields.push(`Categoria (${extracted.categoria_cnh})`);
-      if (extracted.validade_cnh) filledFields.push('Validade CNH');
-      if (extracted.mopp_numero) filledFields.push('MOPP');
-
-      if (filledFields.length > 0) {
-        setPdfSuccessMessage(`CNH processada com sucesso! Campos preenchidos: ${filledFields.join(', ')}. Zero consumo de armazenamento no Supabase.`);
-      } else {
-        console.warn('CNH Debug Text:', extracted.previewText);
-        alert(`O arquivo foi lido (${extracted.linesCount || 0} linhas identificadas), mas os campos principais não puderam ser associados automaticamente.\n\nTrecho lido: "${extracted.previewText ? extracted.previewText.slice(0, 160) : 'Texto vazio (documento protegido ou imagem sem camada OCR)'}"`);
-      }
-    } catch (err) {
-      console.error('Erro ao ler PDF da CNH:', err);
-      alert(`Falha ao ler o PDF da CNH: ${err.message || 'Verifique se o arquivo é um PDF de CNH válido'}`);
-    } finally {
-      setPdfExtracting(false);
-    }
-  };
-
   // Salva no localStorage como backup persistente
   useEffect(() => {
     try {
@@ -289,8 +229,6 @@ export default function DriversModule({ user }) {
   const handleOpenCreateForm = () => {
     setEditingId(null);
     setFormData(initialForm);
-    setPdfSuccessMessage(null);
-    setPdfExtracting(false);
     setViewMode('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -298,8 +236,6 @@ export default function DriversModule({ user }) {
   // Prepara formulário para editar
   const handleOpenEditForm = (driver) => {
     setEditingId(driver.id);
-    setPdfSuccessMessage(null);
-    setPdfExtracting(false);
     setFormData({
       nome: driver.nome || '',
       cpf: driver.cpf || '',
@@ -554,39 +490,6 @@ export default function DriversModule({ user }) {
                 <span>{editingId ? 'Salvar Alterações' : 'Concluir Cadastro do Motorista'}</span>
               </button>
             </div>
-          </div>
-
-          {/* Banner de Leitura & Preenchimento Automático de CNH em Memória (Zero Armazenamento no Supabase) */}
-          <div className="cnh-pdf-import-banner">
-            <div className="cnh-pdf-import-info">
-              <div className="cnh-pdf-icon-wrap">
-                <FileText size={24} />
-              </div>
-              <div>
-                <h4>Leitura & Preenchimento Automático por CNH (PDF)</h4>
-                <p>
-                  Carregue o PDF da CNH Digital (CDT / Senatran). O sistema extrai <strong>Nome Completo, Registro CNH, CPF e Data de Validade</strong> diretamente na memória do seu navegador. <strong>Nenhum arquivo é salvo no Supabase</strong>, economizando 100% do seu espaço de nuvem.
-                </p>
-                {pdfSuccessMessage && (
-                  <div className="pdf-success-pill">
-                    <CheckCircle2 size={15} />
-                    <span>{pdfSuccessMessage}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <label className={`cnh-upload-btn ${pdfExtracting ? 'loading' : ''}`}>
-              <Upload size={17} />
-              <span>{pdfExtracting ? pdfProgressText : 'Importar CNH (PDF ou Imagem)'}</span>
-              <input
-                type="file"
-                accept="application/pdf,.pdf,image/png,image/jpeg,image/webp,image/*"
-                onChange={handlePdfUpload}
-                disabled={pdfExtracting}
-                style={{ display: 'none' }}
-              />
-            </label>
           </div>
 
           <div className="driver-form-sections-grid">
