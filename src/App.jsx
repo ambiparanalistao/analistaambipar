@@ -19,6 +19,7 @@ import AnttFormulasModule from './components/AnttFormulasModule';
 import OcorrenciasModule from './components/OcorrenciasModule';
 import EsgModule from './components/EsgModule';
 import ClientsModule from './components/ClientsModule';
+import FuelModule from './components/FuelModule';
 import AuthCard from './components/AuthCard';
 import SupabaseConfigModal from './components/SupabaseConfigModal';
 import './App.css';
@@ -29,6 +30,7 @@ export const MODULE_ROUTES = {
   frotas: '/frotas',
   motoristas: '/motoristas',
   viagens: '/viagens',
+  combustivel: '/combustivel',
   clientes: '/clientes',
   mtr: '/mtr',
   calculadora_frete: '/calculadora-frete',
@@ -48,6 +50,12 @@ export const PATH_TO_MODULE = {
   '/motorista': 'motoristas',
   '/viagens': 'viagens',
   '/viagem': 'viagens',
+  '/combustivel': 'combustivel',
+  '/combustiveis': 'combustivel',
+  '/abastecimento': 'combustivel',
+  '/abastecimentos': 'combustivel',
+  '/diesel': 'combustivel',
+  '/arla': 'combustivel',
   '/clientes': 'clientes',
   '/cliente': 'clientes',
   '/rotas-clientes': 'clientes',
@@ -144,6 +152,10 @@ export default function App() {
     viagens: { 
       title: 'Monitoramento de Viagens & Rotas', 
       subtitle: 'Rastreamento operacional de veículos, carga/descarga e gestão de motoristas' 
+    },
+    combustivel: { 
+      title: 'Controle de Combustível, ARLA 32 & Eficiência Energética', 
+      subtitle: 'Auditoria de abastecimentos, rendimento médio (km/l), custo por quilômetro (CPK) e conformidade fiscal' 
     },
     clientes: { 
       title: 'Gestão de Clientes & Roteirização Dedicada', 
@@ -341,6 +353,7 @@ export default function App() {
                 />
               )}
               {currentModule === 'viagens' && <TripsModule user={session.user} />}
+              {currentModule === 'combustivel' && <FuelModule user={session.user} />}
               {currentModule === 'clientes' && (
                 <ClientsModule 
                   user={session.user} 

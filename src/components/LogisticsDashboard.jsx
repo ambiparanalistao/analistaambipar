@@ -11,7 +11,8 @@ import {
   ArrowRight,
   TrendingUp,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Fuel
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
@@ -217,6 +218,27 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
             id="go-to-mtr-module-btn"
           >
             <span>Gerenciar MTRs</span>
+            <ArrowRight size={16} />
+          </button>
+        </div>
+
+        <div className="quick-access-banner-card">
+          <div className="banner-icon-circle amber">
+            <Fuel size={26} />
+          </div>
+          <div className="banner-text-content">
+            <h4>Controle de Combustível & ARLA 32</h4>
+            <p>
+              Audite abastecimentos da frota, controle o rendimento médio (km/l), custo por km (CPK) e notas fiscais.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary btn-icon-text"
+            onClick={() => onNavigateModule && onNavigateModule('combustivel')}
+            id="go-to-fuel-module-btn"
+          >
+            <span>Gerenciar Combustível</span>
             <ArrowRight size={16} />
           </button>
         </div>

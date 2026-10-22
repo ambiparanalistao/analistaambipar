@@ -14,7 +14,8 @@ import {
   ChevronRight, 
   Leaf,
   Route,
-  Building2
+  Building2,
+  Fuel
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -53,6 +54,11 @@ export default function Sidebar({
           id: 'viagens',
           label: 'Monitoramento de Viagens',
           icon: Route
+        },
+        {
+          id: 'combustivel',
+          label: 'Controle de Combustível & ARLA',
+          icon: Fuel
         },
         {
           id: 'clientes',
