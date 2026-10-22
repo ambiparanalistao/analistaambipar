@@ -23,7 +23,59 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import PremiumSelect from './PremiumSelect';
 
+export const STATUS_OPTIONS = [
+  { 
+    value: 'Disponível', 
+    label: 'Disponível no Pátio / CCO', 
+    sublabel: 'Pronto para alocação e escala imediata', 
+    color: '#10b981',
+    badge: 'Liberado'
+  },
+  { 
+    value: 'Em Viagem', 
+    label: 'Em Viagem / Rota Ativa', 
+    sublabel: 'Operando em trânsito com carga perigosa', 
+    color: '#06b6d4',
+    badge: 'Em Rota'
+  },
+  { 
+    value: 'Folga', 
+    label: 'Folga Regulamentar', 
+    sublabel: 'Descanso obrigatório em conformidade (Lei 13.103)', 
+    color: '#f59e0b',
+    badge: 'Repouso'
+  },
+  { 
+    value: 'Bloqueado', 
+    label: 'Bloqueado (Documentação / CCO)', 
+    sublabel: 'Pendência em CNH, MOPP, Toxicológico ou NR', 
+    color: '#f43f5e',
+    badge: 'Impedido'
+  }
+];
+
+export const CNH_CATEGORIES = [
+  {
+    value: 'E',
+    label: 'Categoria E (Combinações Pesadas)',
+    sublabel: 'Carretas Tanque, Bitrens, Rodotrens e Articulados',
+    icon: '🚛'
+  },
+  {
+    value: 'D',
+    label: 'Categoria D (Caminhões Pesados)',
+    sublabel: 'Caminhões Truck, Bi-truck e Coletivos',
+    icon: '🚚'
+  },
+  {
+    value: 'C',
+    label: 'Categoria C (Carga Média)',
+    sublabel: 'Caminhões Toco, VUC e Cargas Fracionadas',
+    icon: '📦'
+  }
+];
 // Utilitário de cálculo automático de contagem regressiva de validade
 export const getCountdown = (dateStr) => {
   if (!dateStr) return { status: 'none', text: 'Não informada', days: null, badgeClass: 'badge-muted', color: '#64748b' };
@@ -428,16 +480,12 @@ export default function DriversModule({ user }) {
 
                 <div className="input-group-custom">
                   <label>Status Operacional Inicial</label>
-                  <select
+                  <PremiumSelect
                     value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="select-custom"
-                  >
-                    <option value="Disponível">Disponível no Pátio / CCO</option>
-                    <option value="Em Viagem">Em Viagem / Rota Ativa</option>
-                    <option value="Folga">Folga Regulamentar (Lei 13.103)</option>
-                    <option value="Bloqueado">Bloqueado (Documentação)</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, status: val })}
+                    options={STATUS_OPTIONS}
+                    id="driver-status-select"
+                  />
                 </div>
               </div>
 
@@ -521,15 +569,12 @@ export default function DriversModule({ user }) {
 
                 <div className="input-group-custom">
                   <label>Categoria CNH</label>
-                  <select
+                  <PremiumSelect
                     value={formData.categoria_cnh}
-                    onChange={(e) => setFormData({ ...formData, categoria_cnh: e.target.value })}
-                    className="select-custom"
-                  >
-                    <option value="E">Categoria E (Carretas & Bitrens)</option>
-                    <option value="D">Categoria D (Caminhões Pesados)</option>
-                    <option value="C">Categoria C (Truck & Médios)</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, categoria_cnh: val })}
+                    options={CNH_CATEGORIES}
+                    id="driver-cnh-category-select"
+                  />
                 </div>
               </div>
 
@@ -939,16 +984,13 @@ export default function DriversModule({ user }) {
 
                           {/* Coluna 7: Status Operacional */}
                           <td>
-                            <select
-                              className={`status-select-inline ${d.status.toLowerCase().replace(' ', '_')}`}
+                            <PremiumSelect
                               value={d.status}
-                              onChange={(e) => handleChangeStatus(d.id, e.target.value)}
-                            >
-                              <option value="Disponível">Disponível</option>
-                              <option value="Em Viagem">Em Viagem</option>
-                              <option value="Folga">Folga</option>
-                              <option value="Bloqueado">Bloqueado</option>
-                            </select>
+                              onChange={(val) => handleChangeStatus(d.id, val)}
+                              options={STATUS_OPTIONS}
+                              size="inline"
+                              id={`status-select-${d.id}`}
+                            />
                           </td>
 
                           {/* Coluna 8: Ações */}
