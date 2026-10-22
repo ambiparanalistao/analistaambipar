@@ -238,9 +238,10 @@ export default function DriversModule({ user }) {
       if (extracted.mopp_numero) filledFields.push('MOPP');
 
       if (filledFields.length > 0) {
-        setPdfSuccessMessage(`CNH processada em memória! Campos preenchidos: ${filledFields.join(', ')}. Zero consumo de armazenamento no Supabase.`);
+        setPdfSuccessMessage(`CNH processada com sucesso! Campos preenchidos: ${filledFields.join(', ')}. Zero consumo de armazenamento no Supabase.`);
       } else {
-        alert('Não foi possível identificar os dados da CNH neste arquivo. Certifique-se de carregar o PDF oficial exportado da Carteira Digital de Trânsito (CDT) ou Detran.');
+        console.warn('CNH Debug Text:', extracted.previewText);
+        alert(`O arquivo foi lido (${extracted.linesCount || 0} linhas identificadas), mas os campos principais não puderam ser associados automaticamente.\n\nTrecho lido: "${extracted.previewText ? extracted.previewText.slice(0, 160) : 'Texto vazio (documento protegido ou imagem sem camada OCR)'}"`);
       }
     } catch (err) {
       console.error('Erro ao ler PDF da CNH:', err);
