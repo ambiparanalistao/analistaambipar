@@ -197,6 +197,7 @@ export default function DriversModule({ user }) {
   const [formData, setFormData] = useState(initialForm);
   const [pdfExtracting, setPdfExtracting] = useState(false);
   const [pdfSuccessMessage, setPdfSuccessMessage] = useState(null);
+  const [pdfProgressText, setPdfProgressText] = useState('Processando CNH...');
 
   // Leitura 100% no cliente da CNH via PDF (Sem armazenamento no Supabase)
   const handlePdfUpload = async (e) => {
@@ -213,9 +214,10 @@ export default function DriversModule({ user }) {
 
     setPdfExtracting(true);
     setPdfSuccessMessage(null);
+    setPdfProgressText('Lendo estrutura da CNH...');
 
     try {
-      const extracted = await readCnhPdfFile(file);
+      const extracted = await readCnhPdfFile(file, (msg) => setPdfProgressText(msg));
       
       setFormData(prev => ({
         ...prev,
@@ -228,7 +230,7 @@ export default function DriversModule({ user }) {
       }));
 
       const filledFields = [];
-      if (extracted.nome) filledFields.push('Nome');
+      if (extracted.nome) filledFields.push('Nome Completo');
       if (extracted.cpf) filledFields.push('CPF');
       if (extracted.cnh) filledFields.push('Nº Registro CNH');
       if (extracted.categoria_cnh) filledFields.push(`Categoria (${extracted.categoria_cnh})`);
@@ -236,9 +238,9 @@ export default function DriversModule({ user }) {
       if (extracted.mopp_numero) filledFields.push('MOPP');
 
       if (filledFields.length > 0) {
-        setPdfSuccessMessage(`CNH processada em memória! Campos preenchidos: ${filledFields.join(', ')}. Zero espaço consumido no Supabase.`);
+        setPdfSuccessMessage(`CNH processada em memória! Campos preenchidos: ${filledFields.join(', ')}. Zero consumo de armazenamento no Supabase.`);
       } else {
-        alert('O PDF foi lido, mas nenhum campo de CNH foi identificado. O arquivo pode ser uma imagem escaneada sem OCR.');
+        alert('Não foi possível identificar os dados da CNH neste arquivo. Certifique-se de carregar o PDF oficial exportado da Carteira Digital de Trânsito (CDT) ou Detran.');
       }
     } catch (err) {
       console.error('Erro ao ler PDF da CNH:', err);
@@ -574,7 +576,7 @@ export default function DriversModule({ user }) {
 
             <label className={`cnh-upload-btn ${pdfExtracting ? 'loading' : ''}`}>
               <Upload size={17} />
-              <span>{pdfExtracting ? 'Lendo CNH no Navegador...' : 'Importar CNH (PDF)'}</span>
+              <span>{pdfExtracting ? pdfProgressText : 'Importar CNH (PDF)'}</span>
               <input
                 type="file"
                 accept="application/pdf,.pdf"
