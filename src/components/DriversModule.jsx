@@ -20,10 +20,13 @@ import {
   Flame,
   Layers,
   User,
-  ShieldAlert
+  ShieldAlert,
+  FileText,
+  Upload
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
+import { readCnhPdfFile } from '../utils/cnhPdfReader';
 
 export const STATUS_OPTIONS = [
   { 
@@ -192,6 +195,58 @@ export default function DriversModule({ user }) {
   };
 
   const [formData, setFormData] = useState(initialForm);
+  const [pdfExtracting, setPdfExtracting] = useState(false);
+  const [pdfSuccessMessage, setPdfSuccessMessage] = useState(null);
+
+  // Leitura 100% no cliente da CNH via PDF (Sem armazenamento no Supabase)
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reseta o input para permitir selecionar o mesmo arquivo novamente se desejar
+    e.target.value = '';
+
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      alert('Por favor, selecione um arquivo em formato PDF da CNH.');
+      return;
+    }
+
+    setPdfExtracting(true);
+    setPdfSuccessMessage(null);
+
+    try {
+      const extracted = await readCnhPdfFile(file);
+      
+      setFormData(prev => ({
+        ...prev,
+        nome: extracted.nome || prev.nome,
+        cpf: extracted.cpf || prev.cpf,
+        cnh: extracted.cnh || prev.cnh,
+        categoria_cnh: extracted.categoria_cnh || prev.categoria_cnh,
+        validade_cnh: extracted.validade_cnh || prev.validade_cnh,
+        mopp_numero: extracted.mopp_numero || prev.mopp_numero
+      }));
+
+      const filledFields = [];
+      if (extracted.nome) filledFields.push('Nome');
+      if (extracted.cpf) filledFields.push('CPF');
+      if (extracted.cnh) filledFields.push('Nº Registro CNH');
+      if (extracted.categoria_cnh) filledFields.push(`Categoria (${extracted.categoria_cnh})`);
+      if (extracted.validade_cnh) filledFields.push('Validade CNH');
+      if (extracted.mopp_numero) filledFields.push('MOPP');
+
+      if (filledFields.length > 0) {
+        setPdfSuccessMessage(`CNH processada em memória! Campos preenchidos: ${filledFields.join(', ')}. Zero espaço consumido no Supabase.`);
+      } else {
+        alert('O PDF foi lido, mas nenhum campo de CNH foi identificado. O arquivo pode ser uma imagem escaneada sem OCR.');
+      }
+    } catch (err) {
+      console.error('Erro ao ler PDF da CNH:', err);
+      alert(`Falha ao ler o PDF da CNH: ${err.message || 'Verifique se o arquivo é um PDF de CNH válido'}`);
+    } finally {
+      setPdfExtracting(false);
+    }
+  };
 
   // Salva no localStorage como backup persistente
   useEffect(() => {
@@ -230,6 +285,8 @@ export default function DriversModule({ user }) {
   const handleOpenCreateForm = () => {
     setEditingId(null);
     setFormData(initialForm);
+    setPdfSuccessMessage(null);
+    setPdfExtracting(false);
     setViewMode('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -237,6 +294,8 @@ export default function DriversModule({ user }) {
   // Prepara formulário para editar
   const handleOpenEditForm = (driver) => {
     setEditingId(driver.id);
+    setPdfSuccessMessage(null);
+    setPdfExtracting(false);
     setFormData({
       nome: driver.nome || '',
       cpf: driver.cpf || '',
@@ -493,6 +552,39 @@ export default function DriversModule({ user }) {
             </div>
           </div>
 
+          {/* Banner de Leitura & Preenchimento Automático de CNH em Memória (Zero Armazenamento no Supabase) */}
+          <div className="cnh-pdf-import-banner">
+            <div className="cnh-pdf-import-info">
+              <div className="cnh-pdf-icon-wrap">
+                <FileText size={24} />
+              </div>
+              <div>
+                <h4>Leitura & Preenchimento Automático por CNH (PDF)</h4>
+                <p>
+                  Carregue o PDF da CNH Digital (CDT / Senatran). O sistema extrai <strong>Nome Completo, Registro CNH, CPF e Data de Validade</strong> diretamente na memória do seu navegador. <strong>Nenhum arquivo é salvo no Supabase</strong>, economizando 100% do seu espaço de nuvem.
+                </p>
+                {pdfSuccessMessage && (
+                  <div className="pdf-success-pill">
+                    <CheckCircle2 size={15} />
+                    <span>{pdfSuccessMessage}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <label className={`cnh-upload-btn ${pdfExtracting ? 'loading' : ''}`}>
+              <Upload size={17} />
+              <span>{pdfExtracting ? 'Lendo CNH no Navegador...' : 'Importar CNH (PDF)'}</span>
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={handlePdfUpload}
+                disabled={pdfExtracting}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </div>
+
           <div className="driver-form-sections-grid">
             {/* Bloco 1: Identificação & Área de Contato do Motorista */}
             <div className="card-panel card-z-top" style={{ position: 'relative', zIndex: 40 }}>
@@ -546,9 +638,10 @@ export default function DriversModule({ user }) {
                   <strong>Área de Contato Operacional & WhatsApp</strong>
                 </div>
 
-                <div className="grid-2-cols">
+                {/* Enquadramento e alinhamento dos 2 números na mesma altura exata */}
+                <div className="contact-numbers-aligned-grid">
                   <div className="input-group-custom">
-                    <label>Telefone / WhatsApp Principal (com DDD) *</label>
+                    <label>Telefone / WhatsApp Principal *</label>
                     <div className="input-with-unit">
                       <input
                         type="text"
@@ -565,12 +658,17 @@ export default function DriversModule({ user }) {
 
                   <div className="input-group-custom">
                     <label>Telefone de Emergência / Recado</label>
-                    <input
-                      type="text"
-                      placeholder="(19) 3876-0000"
-                      value={formData.telefone_emergencia}
-                      onChange={(e) => setFormData({ ...formData, telefone_emergencia: e.target.value })}
-                    />
+                    <div className="input-with-unit">
+                      <input
+                        type="text"
+                        placeholder="(19) 3876-0000"
+                        value={formData.telefone_emergencia}
+                        onChange={(e) => setFormData({ ...formData, telefone_emergencia: e.target.value })}
+                      />
+                      <span className="unit-tag">
+                        <Phone size={15} style={{ color: '#94a3b8' }} />
+                      </span>
+                    </div>
                   </div>
                 </div>
 
