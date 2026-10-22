@@ -11,13 +11,18 @@ import {
   Layers,
   HelpCircle,
   FileDown,
-  Info
+  Info,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  Table
 } from 'lucide-react';
 import {
   FIELD_DEFINITIONS,
-  readSpreadsheetFile,
+  readSpreadsheetWorkbook,
   convertRowsToFuelRecords,
-  generateBlankTemplateExcel
+  generateBlankTemplateExcel,
+  MATRIX_MONTHS
 } from '../utils/excelFuelIntegration';
 
 export default function FuelExcelImportModal({ isOpen, onClose, existingRecords = [], onImportComplete }) {
@@ -25,6 +30,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sheetData, setSheetData] = useState(null);
+  const [selectedSheetName, setSelectedSheetName] = useState('');
   const [mapping, setMapping] = useState({});
   const [importMode, setImportMode] = useState('append'); // 'append' | 'replace'
   const [skipDuplicates, setSkipDuplicates] = useState(true);
@@ -46,22 +52,30 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
     await processSelectedFile(droppedFile);
   };
 
-  const processSelectedFile = async (fileObj) => {
+  const processSelectedFile = async (fileObj, targetSheet = null) => {
     try {
       setLoading(true);
       setError(null);
       setFile(fileObj);
 
-      const parsed = await readSpreadsheetFile(fileObj);
+      const parsed = await readSpreadsheetWorkbook(fileObj, targetSheet);
       setSheetData(parsed);
-      setMapping(parsed.detectedMapping);
+      setSelectedSheetName(parsed.activeSheet);
+      setMapping(parsed.detectedMapping || {});
     } catch (err) {
-      setError(err.message || 'Erro ao ler arquivo da planilha.');
+      console.error('Falha na leitura da planilha:', err);
+      setError(err.message || 'Erro ao processar o arquivo. Se a planilha estiver aberta no Excel, salve e feche-a antes de importar.');
       setFile(null);
       setSheetData(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Troca de Aba dentro da mesma planilha (ex: CUSTO FROTA GERAL -> BAÚ 3-4 -> HIDROVÁCUO)
+  const handleSwitchSheet = async (newSheet) => {
+    if (!file || newSheet === selectedSheetName) return;
+    await processSelectedFile(file, newSheet);
   };
 
   const handleMappingChange = (fieldKey, selectedHeader) => {
@@ -71,56 +85,90 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
     }));
   };
 
-  // Pré-visualização dinâmica dos 5 primeiros registros gerados
+  // Pré-visualização dinâmica dos primeiros registros
   const previewData = useMemo(() => {
-    if (!sheetData || !sheetData.parsedRows) return [];
+    if (!sheetData) return [];
+    
+    // Se for a Matriz Mensal (como a foto)
+    if (sheetData.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' && sheetData.matrixResult) {
+      return sheetData.matrixResult.monthlyFuelExpenses.slice(0, 7);
+    }
+
+    // Se for tabela de abastecimentos padrão
+    if (!sheetData.parsedRows) return [];
     const sampleRows = sheetData.parsedRows.slice(0, 5);
     const { records } = convertRowsToFuelRecords(sampleRows, mapping, [], { skipDuplicates: false });
     return records;
   }, [sheetData, mapping]);
 
-  // Contagem de campos obrigatórios mapeados
+  // Contagem de campos obrigatórios mapeados (apenas se for tabela normal)
   const requiredFieldsCheck = useMemo(() => {
+    if (!sheetData) return { isValid: false, missing: [] };
+    if (sheetData.sheetFormat === 'MATRIZ_CUSTOS_MENSAL') {
+      return { isValid: true, missing: [] };
+    }
     const required = FIELD_DEFINITIONS.filter(f => f.required);
     const missing = required.filter(f => !mapping[f.key]);
     return {
       isValid: missing.length === 0,
       missing
     };
-  }, [mapping]);
+  }, [sheetData, mapping]);
 
   // Execução da Importação
   const handleExecuteImport = () => {
-    if (!sheetData || !sheetData.parsedRows) return;
-    if (!requiredFieldsCheck.isValid) {
-      alert(`Por favor mapeie as colunas obrigatórias: ${requiredFieldsCheck.missing.map(m => m.label).join(', ')}`);
-      return;
-    }
+    if (!sheetData) return;
 
     setIsProcessing(true);
-    setProgressPct(10);
+    setProgressPct(20);
 
     setTimeout(() => {
-      setProgressPct(50);
+      setProgressPct(60);
       try {
-        const { records, skippedDuplicates, invalidRows, totalImported } = convertRowsToFuelRecords(
-          sheetData.parsedRows,
-          mapping,
-          importMode === 'replace' ? [] : existingRecords,
-          { skipDuplicates }
-        );
+        let generatedRecords = [];
+        let totalImported = 0;
+        let skippedDuplicates = 0;
+        let invalidRows = 0;
+
+        // Caso 1: Matriz de Custos da Frota (Como a foto)
+        if (sheetData.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' && sheetData.matrixResult) {
+          generatedRecords = sheetData.matrixResult.monthlyFuelExpenses;
+          totalImported = generatedRecords.length;
+
+          // Salva os custos de todas as categorias da frota (Manutenção, Pneus, IPVA, etc.)
+          try {
+            localStorage.setItem(
+              'ambipar_monthly_fleet_costs_2026', 
+              JSON.stringify(sheetData.matrixResult.matrixData)
+            );
+          } catch (e) {
+            console.warn('Erro ao salvar custos da frota:', e);
+          }
+        } else {
+          // Caso 2: Tabela de abastecimentos individuais
+          const res = convertRowsToFuelRecords(
+            sheetData.parsedRows,
+            mapping,
+            importMode === 'replace' ? [] : (existingRecords || []),
+            { skipDuplicates }
+          );
+          generatedRecords = res.records;
+          totalImported = res.totalImported;
+          skippedDuplicates = res.skippedDuplicates;
+          invalidRows = res.invalidRows;
+        }
 
         setProgressPct(100);
 
         setTimeout(() => {
           onImportComplete({
-            records,
+            records: generatedRecords,
             mode: importMode,
             stats: {
               totalImported,
               skippedDuplicates,
               invalidRows,
-              totalInFile: sheetData.totalRows
+              totalInFile: sheetData.totalRows || generatedRecords.length
             }
           });
           setIsProcessing(false);
@@ -131,7 +179,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
         setIsProcessing(false);
         setError('Ocorreu um erro ao processar os dados da planilha: ' + err.message);
       }
-    }, 200);
+    }, 250);
   };
 
   return (
@@ -163,7 +211,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
                 Importador Inteligente de Planilhas XLS / XLSX / CSV
               </h3>
               <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
-                Alimente o sistema com planilhas gigantescas de abastecimento com detecção automática de colunas e cálculos de km/l
+                Compatível com planilhas de abastecimento e com a <strong>Matriz de Custos da Frota Ambipar (DCX 2026)</strong>
               </p>
             </div>
           </div>
@@ -222,54 +270,35 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
                 <h4 style={{ margin: '0 0 0.5rem 0', color: '#ffffff', fontSize: '1.1rem', fontWeight: 700 }}>
                   {loading ? 'Lendo e Analisando Planilha...' : 'Clique ou Arraste sua Planilha Aqui'}
                 </h4>
-                <p style={{ margin: '0 auto', maxWidth: '480px', color: '#94a3b8', fontSize: '0.86rem', lineHeight: 1.5 }}>
-                  Compatível com <strong>.XLSX, .XLS e .CSV</strong>. Suporta planilhas gigantescas com milhares de abastecimentos sem travar o navegador.
+                <p style={{ margin: '0 auto', maxWidth: '520px', color: '#94a3b8', fontSize: '0.86rem', lineHeight: 1.5 }}>
+                  Compatível com <strong>CUSTOS FROTA 2026 (Matrix)</strong>, planilhas com múltiplas abas (`BAÚ 3-4`, `HIDROVÁCUO`, `ROLLON`) ou listagens diretas de abastecimentos.
                 </p>
 
                 <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.75rem', padding: '4px 10px', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', color: '#cbd5e1' }}>
-                    Auto-reconhece: Placa, Data, Litros, Valor, KM, Motorista, Posto
+                  <span style={{ fontSize: '0.75rem', padding: '4px 10px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '6px', color: '#34d399', fontWeight: 600 }}>
+                    ✓ Reconhece Matriz Mensal Ambipar (Janeiro a Dezembro)
                   </span>
-                  <span style={{ fontSize: '0.75rem', padding: '4px 10px', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', color: '#cbd5e1' }}>
-                    Calcula automaticamente KM/L e Custo por KM
+                  <span style={{ fontSize: '0.75rem', padding: '4px 10px', background: 'rgba(6, 182, 212, 0.15)', border: '1px solid rgba(6, 182, 212, 0.3)', borderRadius: '6px', color: '#38bdf8', fontWeight: 600 }}>
+                    ✓ Suporte a múltiplas abas de conjuntos/veículos
                   </span>
                 </div>
               </div>
 
-              {/* Botão de Download do Modelo Padrão */}
+              {/* Dica para arquivos abertos no Excel */}
               <div style={{
                 marginTop: '1.25rem',
-                padding: '1rem 1.25rem',
+                padding: '0.85rem 1.25rem',
                 borderRadius: '12px',
-                background: 'rgba(6, 182, 212, 0.08)',
-                border: '1px solid rgba(6, 182, 212, 0.25)',
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '1rem'
+                gap: '0.75rem'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <FileDown size={22} color="#06b6d4" />
-                  <div>
-                    <strong style={{ color: '#ffffff', fontSize: '0.88rem', display: 'block' }}>
-                      Não tem certeza do formato da planilha?
-                    </strong>
-                    <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
-                      Baixe o modelo oficial da Ambipar em Excel pré-formatado com exemplos e regras.
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="fuel-btn fuel-btn-secondary"
-                  onClick={generateBlankTemplateExcel}
-                  style={{ fontSize: '0.8rem', padding: '0.45rem 0.9rem' }}
-                >
-                  <FileDown size={14} />
-                  <span>Baixar Modelo Padrão (.xlsx)</span>
-                </button>
+                <Info size={20} color="#fbbf24" style={{ flexShrink: 0 }} />
+                <span style={{ color: '#cbd5e1', fontSize: '0.82rem' }}>
+                  <strong>Importante:</strong> Se a sua planilha estiver aberta no Microsoft Excel, certifique-se de salvá-la para que as alterações mais recentes sejam lidas pelo sistema.
+                </span>
               </div>
 
               {error && (
@@ -293,7 +322,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
           ) : (
             /* SE O ARQUIVO FOI CARREGADO COM SUCESSO: REVISÃO & MAPEAMENTO */
             <div className="animate-fade-in">
-              {/* Card de Resumo do Arquivo */}
+              {/* Card de Resumo do Arquivo e Seletor de Aba */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -302,161 +331,276 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
                 background: 'rgba(16, 185, 129, 0.1)',
                 border: '1px solid rgba(16, 185, 129, 0.3)',
                 borderRadius: '12px',
-                marginBottom: '1.5rem',
+                marginBottom: '1.25rem',
                 flexWrap: 'wrap',
                 gap: '1rem'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <FileCheck size={26} color="#10b981" />
+                  <FileCheck size={28} color="#10b981" />
                   <div>
-                    <strong style={{ color: '#ffffff', fontSize: '0.95rem', display: 'block' }}>
+                    <strong style={{ color: '#ffffff', fontSize: '0.98rem', display: 'block' }}>
                       {sheetData.fileName}
                     </strong>
-                    <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
-                      Aba: <strong>{sheetData.activeSheet}</strong> • <strong>{sheetData.totalRows.toLocaleString('pt-BR')}</strong> linhas de abastecimento detectadas
+                    <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
+                      Formato detectado: <strong style={{ color: sheetData.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' ? '#38bdf8' : '#34d399' }}>
+                        {sheetData.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' 
+                          ? 'Matriz de Custos da Frota (Ambipar DCX)' 
+                          : 'Tabela de Abastecimentos por Veículo'}
+                      </strong>
                     </span>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  className="fuel-btn fuel-btn-secondary"
-                  style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
-                  onClick={() => {
-                    setSheetData(null);
-                    setFile(null);
-                    setMapping({});
-                  }}
-                >
-                  <RefreshCw size={13} />
-                  <span>Trocar Arquivo</span>
-                </button>
-              </div>
-
-              {/* Seção 1: Mapeamento de Colunas Inteligente */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Layers size={18} color="#06b6d4" />
-                    <h4 style={{ margin: 0, color: '#ffffff', fontSize: '0.95rem', fontWeight: 700 }}>
-                      Mapeamento das Colunas da sua Planilha
-                    </h4>
-                  </div>
-                  <span style={{ fontSize: '0.76rem', color: requiredFieldsCheck.isValid ? '#34d399' : '#f59e0b', fontWeight: 600 }}>
-                    {requiredFieldsCheck.isValid 
-                      ? '✓ Colunas obrigatórias mapeadas com sucesso' 
-                      : `⚠ Faltam colunas obrigatórias: ${requiredFieldsCheck.missing.map(m => m.label).join(', ')}`}
-                  </span>
-                </div>
-
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                  gap: '0.75rem',
-                  maxHeight: '260px',
-                  overflowY: 'auto',
-                  padding: '0.75rem',
-                  background: 'rgba(15, 23, 42, 0.4)',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255,255,255,0.06)'
-                }}>
-                  {FIELD_DEFINITIONS.map(field => {
-                    const isMapped = !!mapping[field.key];
-                    return (
-                      <div 
-                        key={field.key}
-                        style={{
-                          padding: '0.65rem 0.85rem',
-                          background: isMapped ? 'rgba(255,255,255,0.03)' : 'rgba(244, 63, 94, 0.05)',
-                          borderRadius: '8px',
-                          border: `1px solid ${isMapped ? 'rgba(255,255,255,0.08)' : 'rgba(244, 63, 94, 0.2)'}`
-                        }}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  {/* Seletor de Aba se houver múltiplas abas */}
+                  {sheetData.sheetNames && sheetData.sheetNames.length > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Aba Ativa:</span>
+                      <select
+                        className="styled-native-select"
+                        style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem', background: '#0f172a', borderColor: '#10b981', color: '#ffffff' }}
+                        value={selectedSheetName}
+                        onChange={(e) => handleSwitchSheet(e.target.value)}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: field.required ? '#ffffff' : '#94a3b8' }}>
-                            {field.label} {field.required && <strong style={{ color: '#f43f5e' }}>*</strong>}
-                          </span>
-                          {isMapped && <span style={{ color: '#10b981', fontSize: '0.7rem' }}>✓ Reconhecido</span>}
-                        </div>
+                        {sheetData.sheetNames.map(name => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                        <select
-                          className="styled-native-select"
-                          style={{
-                            width: '100%',
-                            fontSize: '0.76rem',
-                            padding: '0.35rem 0.5rem',
-                            background: '#0f172a',
-                            border: `1px solid ${isMapped ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.15)'}`,
-                            color: isMapped ? '#ffffff' : '#64748b'
-                          }}
-                          value={mapping[field.key] || ''}
-                          onChange={(e) => handleMappingChange(field.key, e.target.value)}
-                        >
-                          <option value="">— Não mapeado / Deixar padrão —</option>
-                          {sheetData.rawHeaders.map(header => (
-                            <option key={header} value={header}>
-                              Coluna: {header}
-                            </option>
+                  <button
+                    type="button"
+                    className="fuel-btn fuel-btn-secondary"
+                    style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                    onClick={() => {
+                      setSheetData(null);
+                      setFile(null);
+                      setMapping({});
+                    }}
+                  >
+                    <RefreshCw size={13} />
+                    <span>Trocar Arquivo</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* CENÁRIO 1: A PLANILHA É A MATRIZ DE CUSTOS DA FROTA (COMO A FOTO DO USUÁRIO) */}
+              {sheetData.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' && sheetData.matrixResult ? (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{
+                    padding: '1rem 1.25rem',
+                    background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%)',
+                    border: '1px solid rgba(6, 182, 212, 0.3)',
+                    borderRadius: '12px',
+                    marginBottom: '1rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
+                      <Table size={18} color="#06b6d4" />
+                      <strong style={{ color: '#ffffff', fontSize: '0.95rem' }}>
+                        Matriz Ambipar Reconhecida: {selectedSheetName}
+                      </strong>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+                      Identificamos o <strong>Relatório de Custo Frota Mensal 2026</strong> com as categorias 
+                      (Combustíveis, Lubrificantes, Manutenção, Pneus, IPVA, Pedágios, Telemetria...). 
+                      Os custos mensais de combustível serão consolidados automaticamente nos indicadores do CCO.
+                    </p>
+                  </div>
+
+                  {/* Pré-visualização da Matriz de Custos da Frota */}
+                  <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '320px' }}>
+                    <table className="fuel-records-table" style={{ fontSize: '0.74rem', width: '100%', minWidth: '900px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '220px' }}>Custos com Frota</th>
+                          {MATRIX_MONTHS.slice(0, 7).map(m => (
+                            <th key={m.key} style={{ textAlign: 'right' }}>{m.label.toUpperCase()}</th>
                           ))}
-                        </select>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Seção 2: Pré-visualização dos Primeiros Registros Calculados */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <h4 style={{ margin: 0, color: '#ffffff', fontSize: '0.88rem', fontWeight: 700 }}>
-                    Pré-visualização do Cálculo (Primeiras {previewData.length} Linhas):
-                  </h4>
-                  <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
-                    O sistema calcula a autonomia e valida as placas em tempo real
-                  </span>
-                </div>
-
-                <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <table className="fuel-records-table" style={{ fontSize: '0.76rem' }}>
-                    <thead>
-                      <tr>
-                        <th>Placa</th>
-                        <th>Data</th>
-                        <th>Litros</th>
-                        <th>Total R$</th>
-                        <th>KM Percorrido</th>
-                        <th>Média KM/L</th>
-                        <th>Motorista</th>
-                        <th>Posto</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewData.map((rec, i) => (
-                        <tr key={i}>
-                          <td><span className="fuel-plate-badge" style={{ fontSize: '0.72rem' }}>{rec.placa}</span></td>
-                          <td>{rec.data_abastecimento}</td>
-                          <td><strong>{rec.litros} L</strong></td>
-                          <td><span style={{ color: '#10b981', fontWeight: 600 }}>R$ {rec.valor_total}</span></td>
-                          <td>{rec.distancia_percorrida_km ? `${rec.distancia_percorrida_km} km` : '—'}</td>
-                          <td>
-                            {rec.km_por_litro ? (
-                              <strong style={{ color: rec.km_por_litro >= 2.3 ? '#34d399' : '#f59e0b' }}>
-                                {rec.km_por_litro} km/l
-                              </strong>
-                            ) : (
-                              <span style={{ color: '#64748b' }}>—</span>
-                            )}
-                          </td>
-                          <td>{rec.motorista}</td>
-                          <td>{rec.posto_nome}</td>
+                          <th style={{ textAlign: 'right', color: '#10b981' }}>TOTAL ANO</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                      </thead>
+                      <tbody>
+                        {sheetData.matrixResult.matrixData.map((item, i) => {
+                          const isFuel = item.categoria.toLowerCase().includes('combustivel');
+                          const isTotal = item.categoria.toLowerCase().includes('total');
+                          return (
+                            <tr 
+                              key={i}
+                              style={{
+                                background: isFuel 
+                                  ? 'rgba(16, 185, 129, 0.15)' 
+                                  : isTotal ? 'rgba(255, 255, 255, 0.05)' : undefined,
+                                fontWeight: isFuel || isTotal ? 700 : 400
+                              }}
+                            >
+                              <td>
+                                <span style={{ color: isFuel ? '#34d399' : '#ffffff' }}>
+                                  {item.categoria}
+                                </span>
+                              </td>
+                              {MATRIX_MONTHS.slice(0, 7).map(m => (
+                                <td key={m.key} style={{ textAlign: 'right' }}>
+                                  {item.meses[m.key] > 0 ? (
+                                    <span style={{ color: isFuel ? '#34d399' : '#cbd5e1' }}>
+                                      R$ {Number(item.meses[m.key]).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: '#64748b' }}>R$ 0,00</span>
+                                  )}
+                                </td>
+                              ))}
+                              <td style={{ textAlign: 'right', color: '#10b981', fontWeight: 700 }}>
+                                R$ {Number(item.totalAno).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
 
-              {/* Seção 3: Opções de Importação */}
+                  <div style={{ marginTop: '0.65rem', fontSize: '0.75rem', color: '#94a3b8' }}>
+                    * Mostrando colunas de Janeiro a Julho 2026 conforme dados apurados na planilha.
+                  </div>
+                </div>
+              ) : (
+                /* CENÁRIO 2: TABELA DE ABASTECIMENTOS INDIVIDUAIS (POR PLACA / TICKET) */
+                <>
+                  {/* Seção de Mapeamento de Colunas */}
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Layers size={18} color="#06b6d4" />
+                        <h4 style={{ margin: 0, color: '#ffffff', fontSize: '0.95rem', fontWeight: 700 }}>
+                          Mapeamento das Colunas da Planilha
+                        </h4>
+                      </div>
+                      <span style={{ fontSize: '0.76rem', color: requiredFieldsCheck.isValid ? '#34d399' : '#f59e0b', fontWeight: 600 }}>
+                        {requiredFieldsCheck.isValid 
+                          ? '✓ Colunas obrigatórias mapeadas com sucesso' 
+                          : `⚠ Faltam colunas obrigatórias: ${requiredFieldsCheck.missing.map(m => m.label).join(', ')}`}
+                      </span>
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                      gap: '0.75rem',
+                      maxHeight: '260px',
+                      overflowY: 'auto',
+                      padding: '0.75rem',
+                      background: 'rgba(15, 23, 42, 0.4)',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(255,255,255,0.06)'
+                    }}>
+                      {FIELD_DEFINITIONS.map(field => {
+                        const isMapped = !!mapping[field.key];
+                        return (
+                          <div 
+                            key={field.key}
+                            style={{
+                              padding: '0.65rem 0.85rem',
+                              background: isMapped ? 'rgba(255,255,255,0.03)' : 'rgba(244, 63, 94, 0.05)',
+                              borderRadius: '8px',
+                              border: `1px solid ${isMapped ? 'rgba(255,255,255,0.08)' : 'rgba(244, 63, 94, 0.2)'}`
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: field.required ? '#ffffff' : '#94a3b8' }}>
+                                {field.label} {field.required && <strong style={{ color: '#f43f5e' }}>*</strong>}
+                              </span>
+                              {isMapped && <span style={{ color: '#10b981', fontSize: '0.7rem' }}>✓ Reconhecido</span>}
+                            </div>
+
+                            <select
+                              className="styled-native-select"
+                              style={{
+                                width: '100%',
+                                fontSize: '0.76rem',
+                                padding: '0.35rem 0.5rem',
+                                background: '#0f172a',
+                                border: `1px solid ${isMapped ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.15)'}`,
+                                color: isMapped ? '#ffffff' : '#64748b'
+                              }}
+                              value={mapping[field.key] || ''}
+                              onChange={(e) => handleMappingChange(field.key, e.target.value)}
+                            >
+                              <option value="">— Não mapeado / Deixar padrão —</option>
+                              {(sheetData.rawHeaders || []).map(header => (
+                                <option key={header} value={header}>
+                                  Coluna: {header}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Pré-visualização da Tabela */}
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <h4 style={{ margin: 0, color: '#ffffff', fontSize: '0.88rem', fontWeight: 700 }}>
+                        Pré-visualização do Cálculo (Primeiras {previewData.length} Linhas):
+                      </h4>
+                      <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
+                        Validação de autonomia e consumo em tempo real
+                      </span>
+                    </div>
+
+                    <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <table className="fuel-records-table" style={{ fontSize: '0.76rem' }}>
+                        <thead>
+                          <tr>
+                            <th>Placa</th>
+                            <th>Data</th>
+                            <th>Litros</th>
+                            <th>Total R$</th>
+                            <th>KM Percorrido</th>
+                            <th>Média KM/L</th>
+                            <th>Motorista</th>
+                            <th>Posto</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {previewData.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>
+                                Nenhuma linha reconhecida com o mapeamento atual. Mapeie as colunas de Placa, Data e Litros acima.
+                              </td>
+                            </tr>
+                          ) : (
+                            previewData.map((rec, i) => (
+                              <tr key={i}>
+                                <td><span className="fuel-plate-badge" style={{ fontSize: '0.72rem' }}>{rec.placa}</span></td>
+                                <td>{rec.data_abastecimento}</td>
+                                <td><strong>{rec.litros} L</strong></td>
+                                <td><span style={{ color: '#10b981', fontWeight: 600 }}>R$ {rec.valor_total}</span></td>
+                                <td>{rec.distancia_percorrida_km ? `${rec.distancia_percorrida_km} km` : '—'}</td>
+                                <td>
+                                  {rec.km_por_litro ? (
+                                    <strong style={{ color: rec.km_por_litro >= 2.3 ? '#34d399' : '#f59e0b' }}>
+                                      {rec.km_por_litro} km/l
+                                    </strong>
+                                  ) : (
+                                    <span style={{ color: '#64748b' }}>—</span>
+                                  )}
+                                </td>
+                                <td>{rec.motorista}</td>
+                                <td>{rec.posto_nome}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Opções de Importação */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
@@ -480,7 +624,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
                         checked={importMode === 'append'} 
                         onChange={() => setImportMode('append')}
                       />
-                      <span><strong>Acrescentar (Recomendado):</strong> adiciona novos abastecimentos sem apagar os que já existem.</span>
+                      <span><strong>Acrescentar (Recomendado):</strong> integra novos lançamentos sem apagar os existentes.</span>
                     </label>
 
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: '#cbd5e1', cursor: 'pointer' }}>
@@ -491,7 +635,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
                         checked={importMode === 'replace'} 
                         onChange={() => setImportMode('replace')}
                       />
-                      <span><strong>Substituir Tudo:</strong> apaga todos os registros atuais e deixa apenas os desta planilha.</span>
+                      <span><strong>Substituir Tudo:</strong> define esta planilha como fonte única de dados.</span>
                     </label>
                   </div>
                 </div>
@@ -508,17 +652,17 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
                       style={{ marginTop: '2px' }}
                     />
                     <span>
-                      <strong>Pular registros duplicados:</strong> se já existir um abastecimento para o mesmo veículo na mesma data com mesmo volume ou nota fiscal, ignora para não somar duas vezes.
+                      <strong>Pular registros duplicados:</strong> evita somar duas vezes lançamentos já existentes na base.
                     </span>
                   </label>
                 </div>
               </div>
 
-              {/* Barra de Progresso de Importação em Massa */}
+              {/* Barra de Progresso */}
               {isProcessing && (
                 <div style={{ marginBottom: '1.25rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#ffffff', marginBottom: '4px' }}>
-                    <span>Processando e Validando {sheetData.totalRows} registros...</span>
+                    <span>Processando e consolidando dados da planilha...</span>
                     <span>{progressPct}%</span>
                   </div>
                   <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
@@ -555,12 +699,16 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
               {isProcessing ? (
                 <>
                   <RefreshCw size={16} className="animate-spin" />
-                  <span>Importando em Lote...</span>
+                  <span>Consolidando Dados...</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 size={16} />
-                  <span>Confirmar e Importar {sheetData.totalRows.toLocaleString('pt-BR')} Registros</span>
+                  <span>
+                    {sheetData.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' 
+                      ? 'Confirmar e Importar Matriz da Frota Ambipar' 
+                      : `Confirmar e Importar ${(sheetData.totalRows || 0).toLocaleString('pt-BR')} Registros`}
+                  </span>
                 </>
               )}
             </button>

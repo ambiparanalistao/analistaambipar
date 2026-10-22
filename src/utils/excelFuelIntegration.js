@@ -6,13 +6,13 @@ export const FIELD_DEFINITIONS = [
     key: 'placa', 
     label: 'Placa do Veículo', 
     required: true, 
-    aliases: ['placa', 'veiculo', 'veículo', 'placa veiculo', 'placa_veiculo', 'placa cavalo', 'carro', 'frota', 'cavalo', 'plate', 'veic'] 
+    aliases: ['placa', 'veiculo', 'veículo', 'placa veiculo', 'placa_veiculo', 'placa cavalo', 'carro', 'frota', 'cavalo', 'plate', 'veic', 'conjunto'] 
   },
   { 
     key: 'data_abastecimento', 
     label: 'Data do Abastecimento', 
     required: true, 
-    aliases: ['data', 'dt_abastecimento', 'data abastecimento', 'data_abastecimento', 'data/hora', 'emissao', 'dt emissao', 'dia', 'date', 'data_hora'] 
+    aliases: ['data', 'dt_abastecimento', 'data abastecimento', 'data_abastecimento', 'data/hora', 'emissao', 'dt emissao', 'dia', 'date', 'data_hora', 'mes', 'periodo'] 
   },
   { 
     key: 'hora_abastecimento', 
@@ -24,7 +24,7 @@ export const FIELD_DEFINITIONS = [
     key: 'modelo_veiculo', 
     label: 'Modelo do Veículo', 
     required: false, 
-    aliases: ['modelo', 'modelo veiculo', 'veiculo modelo', 'tipo veiculo', 'caminhao', 'veiculo_modelo', 'descricao_veiculo'] 
+    aliases: ['modelo', 'modelo veiculo', 'veiculo modelo', 'tipo veiculo', 'caminhao', 'veiculo_modelo', 'descricao_veiculo', 'tipo'] 
   },
   { 
     key: 'motorista', 
@@ -36,7 +36,7 @@ export const FIELD_DEFINITIONS = [
     key: 'tipo_combustivel', 
     label: 'Combustível', 
     required: false, 
-    aliases: ['combustivel', 'combustível', 'tipo combustivel', 'produto', 'combustivel tipo', 'tipo', 'fuel', 'descricao_produto'] 
+    aliases: ['combustivel', 'combustível', 'tipo combustivel', 'produto', 'combustivel tipo', 'fuel', 'descricao_produto'] 
   },
   { 
     key: 'litros', 
@@ -54,7 +54,7 @@ export const FIELD_DEFINITIONS = [
     key: 'valor_total', 
     label: 'Valor Total (R$)', 
     required: false, 
-    aliases: ['valor', 'valor total', 'total', 'vl total', 'r$ total', 'total pago', 'valor pago', 'valor_total', 'amount', 'vlr_total'] 
+    aliases: ['valor', 'valor total', 'total', 'vl total', 'r$ total', 'total pago', 'valor pago', 'valor_total', 'amount', 'vlr_total', 'total (r$)'] 
   },
   { 
     key: 'hodometro_atual', 
@@ -100,6 +100,42 @@ export const FIELD_DEFINITIONS = [
   }
 ];
 
+// Meses para leitura da Matriz de Custos da Frota (Como a da foto)
+export const MATRIX_MONTHS = [
+  { key: 'janeiro', label: 'Janeiro', num: '01' },
+  { key: 'fevereiro', label: 'Fevereiro', num: '02' },
+  { key: 'marco', label: 'Março', num: '03' },
+  { key: 'abril', label: 'Abril', num: '04' },
+  { key: 'maio', label: 'Maio', num: '05' },
+  { key: 'junho', label: 'Junho', num: '06' },
+  { key: 'julho', label: 'Julho', num: '07' },
+  { key: 'agosto', label: 'Agosto', num: '08' },
+  { key: 'setembro', label: 'Setembro', num: '09' },
+  { key: 'outubro', label: 'Outubro', num: '10' },
+  { key: 'novembro', label: 'Novembro', num: '11' },
+  { key: 'dezembro', label: 'Dezembro', num: '12' }
+];
+
+// Categorias padrão da Matriz Ambipar (Relatório de Custo Mensal da Frota)
+export const MATRIX_CATEGORIES = [
+  'COMBUSTIVEIS',
+  'LUBRIFICANTES',
+  'MAN. FROTAS - MAO DE OBRA',
+  'MAN. FROTAS - PECAS',
+  'PNEUS',
+  'IPVA, DPVAT, LICENCIAMENTO',
+  'LAVAGEM DE FROTA',
+  'LAUDOS FROTAS - CIPP, CIVV',
+  'RASTREAMENTO',
+  'LOCACAO DE VEICULOS',
+  'GERENCIAMENTO DE RISCO',
+  'PEDAGIOS',
+  'MULTA DE TRANSITO',
+  'SERV DE TELEMETRIA',
+  'SEGURO DE FROTAS',
+  'TOTAL (R$)'
+];
+
 // Normaliza strings para comparação flexível
 export const normalizeHeader = (str) => {
   if (!str) return '';
@@ -112,26 +148,140 @@ export const normalizeHeader = (str) => {
     .replace(/\s+/g, ' ');           // espaços únicos
 };
 
+// Conversão inteligente de números (trata formatos brasileiros "1.520,30" ou "R$ 31.552,51")
+export const parseSmartNumber = (val) => {
+  if (val === null || val === undefined || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+
+  let str = String(val).trim().replace(/[\u00A0\u202F\s]/g, '');
+  // Remove prefixos como "R$", "$", etc.
+  str = str.replace(/[^0-9.,\-]/g, '');
+  if (!str) return 0;
+
+  // Se tem vírgula e ponto (ex: "31.552,51")
+  if (str.includes('.') && str.includes(',')) {
+    str = str.replace(/\./g, '').replace(',', '.');
+  } else if (str.includes(',')) {
+    // Apenas vírgula (ex: "31552,51")
+    str = str.replace(',', '.');
+  }
+
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+};
+
+// Conversão inteligente de datas de Excel e strings comuns
+export const parseSmartDate = (val) => {
+  if (!val) return new Date().toISOString().split('T')[0];
+
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return val.toISOString().split('T')[0];
+  }
+
+  if (typeof val === 'number' && val > 30000 && val < 60000) {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const millis = val * 86400000;
+    const dateObj = new Date(excelEpoch.getTime() + millis);
+    return dateObj.toISOString().split('T')[0];
+  }
+
+  const str = String(val).trim();
+  const brMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (brMatch) {
+    const day = brMatch[1].padStart(2, '0');
+    const month = brMatch[2].padStart(2, '0');
+    let year = brMatch[3];
+    if (year.length === 2) year = '20' + year;
+    return `${year}-${month}-${day}`;
+  }
+
+  const isoMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (isoMatch) {
+    const year = isoMatch[1];
+    const month = isoMatch[2].padStart(2, '0');
+    const day = isoMatch[3].padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  return new Date().toISOString().split('T')[0];
+};
+
+// Localiza de forma inteligente a linha de cabeçalho na planilha (pulando logos e títulos mesclados)
+export const findHeaderRow = (rawJson) => {
+  if (!rawJson || rawJson.length === 0) return { headerIndex: 0, headers: [] };
+
+  let bestIndex = 0;
+  let maxScore = -1;
+  let bestHeaders = [];
+
+  const maxScan = Math.min(rawJson.length, 15);
+  const keywords = [
+    'placa', 'veiculo', 'data', 'litros', 'valor', 'combustivel', 'motorista',
+    'unidade', 'tipo', 'custos', 'janeiro', 'fevereiro', 'marco', 'total', 'posto', 'km'
+  ];
+
+  for (let i = 0; i < maxScan; i++) {
+    const row = rawJson[i];
+    if (!Array.isArray(row)) continue;
+
+    const nonEmptyCells = row.map(c => String(c || '').trim()).filter(Boolean);
+    if (nonEmptyCells.length === 0) continue;
+
+    let score = nonEmptyCells.length;
+    row.forEach(cell => {
+      const norm = normalizeHeader(cell);
+      if (keywords.some(k => norm.includes(k))) {
+        score += 5;
+      }
+    });
+
+    if (score > maxScore) {
+      maxScore = score;
+      bestIndex = i;
+      bestHeaders = row.map(c => String(c || '').trim());
+    }
+  }
+
+  return { headerIndex: bestIndex, headers: bestHeaders };
+};
+
+// Detecta se a aba é uma Matriz de Custos da Frota (como a da foto do usuário)
+export const detectSheetFormat = (headers, rows) => {
+  const normHeaders = headers.map(normalizeHeader);
+  const hasMonths = normHeaders.some(h => h.includes('janeiro') || h.includes('fevereiro') || h.includes('marco'));
+  const hasCostsCol = normHeaders.some(h => h.includes('custos') || h.includes('frota') || h.includes('tipo'));
+
+  // Verifica se nas linhas aparecem palavras como "combustiveis", "manutencao", "pneus"
+  const hasMatrixRows = rows.slice(0, 15).some(r => {
+    const rowStr = Object.values(r).map(normalizeHeader).join(' ');
+    return rowStr.includes('combustivel') || rowStr.includes('pneu') || rowStr.includes('lubrificante') || rowStr.includes('ipva');
+  });
+
+  if ((hasMonths && (hasCostsCol || hasMatrixRows)) || (hasMatrixRows && hasMonths)) {
+    return 'MATRIZ_CUSTOS_MENSAL';
+  }
+
+  return 'TABELA_ABASTECIMENTOS';
+};
+
 // Detecção Automática Inteligente de Colunas
 export const detectColumnMapping = (rawHeaders) => {
   const mapping = {};
   const usedIndices = new Set();
 
   FIELD_DEFINITIONS.forEach(field => {
-    // Procura por correspondência exata ou alias
     let matchedIndex = -1;
     for (let i = 0; i < rawHeaders.length; i++) {
       if (usedIndices.has(i)) continue;
       const normalizedCol = normalizeHeader(rawHeaders[i]);
+      if (!normalizedCol) continue;
 
-      // 1. Testa se o alias é idêntico
       const exactMatch = field.aliases.some(alias => normalizeHeader(alias) === normalizedCol);
       if (exactMatch) {
         matchedIndex = i;
         break;
       }
 
-      // 2. Testa se o alias está contido
       const containsMatch = field.aliases.some(alias => {
         const normAlias = normalizeHeader(alias);
         return normalizedCol.includes(normAlias) || normAlias.includes(normalizedCol);
@@ -152,136 +302,206 @@ export const detectColumnMapping = (rawHeaders) => {
   return mapping;
 };
 
-// Conversão inteligente de números (trata formatos brasileiros "1.520,30" ou internacionais "1520.30")
-export const parseSmartNumber = (val) => {
-  if (val === null || val === undefined || val === '') return 0;
-  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+// Extrai dados da Matriz Mensal da Frota (Como a da foto)
+export const parseFleetCostMatrix = (rawJson, headerIndex, headers, sheetName) => {
+  const matrixData = [];
+  const monthlyFuelExpenses = [];
+  const unit = 'DCX';
+  const fleetType = sheetName || 'FROTA COMPLETA';
 
-  let str = String(val).trim().replace(/[R$\s]/g, '');
-  if (!str) return 0;
+  // Identifica colunas dos meses
+  const monthColMap = {};
+  headers.forEach((h, colIdx) => {
+    const norm = normalizeHeader(h);
+    MATRIX_MONTHS.forEach(m => {
+      if (norm.includes(m.key) || norm.includes(normalizeHeader(m.label))) {
+        monthColMap[m.key] = colIdx;
+      }
+    });
+  });
 
-  // Se tem vírgula e ponto (ex: "1.250,50")
-  if (str.includes('.') && str.includes(',')) {
-    str = str.replace(/\./g, '').replace(',', '.');
-  } else if (str.includes(',')) {
-    // Apenas vírgula (ex: "1250,50")
-    str = str.replace(',', '.');
-  }
+  // Identifica a coluna da descrição do custo
+  let costDescCol = headers.findIndex(h => {
+    const norm = normalizeHeader(h);
+    return norm.includes('custo') || norm.includes('descricao') || norm.includes('item');
+  });
+  if (costDescCol === -1) costDescCol = 2; // Na planilha da foto é a coluna C (índice 2)
 
-  const num = parseFloat(str);
-  return isNaN(num) ? 0 : num;
+  // Varre as linhas da matriz
+  const dataRows = rawJson.slice(headerIndex + 1);
+  dataRows.forEach((row, rowIdx) => {
+    if (!Array.isArray(row)) return;
+    const rawCategory = String(row[costDescCol] || row[1] || row[0] || '').trim();
+    if (!rawCategory || rawCategory.length < 3) return;
+
+    const rowObj = {
+      categoria: rawCategory,
+      unidade: String(row[0] || unit).trim(),
+      tipo: String(row[1] || fleetType).trim(),
+      meses: {},
+      totalAno: 0
+    };
+
+    let rowTotal = 0;
+    MATRIX_MONTHS.forEach(m => {
+      const colIdx = monthColMap[m.key];
+      const val = colIdx !== undefined ? parseSmartNumber(row[colIdx]) : 0;
+      rowObj.meses[m.key] = val;
+      rowTotal += val;
+    });
+    rowObj.totalAno = rowTotal;
+    matrixData.push(rowObj);
+
+    // Se for a linha de COMBUSTÍVEIS, cria os registros de abastecimento mensais automáticos!
+    const normCat = normalizeHeader(rawCategory);
+    if (normCat.includes('combustivel')) {
+      MATRIX_MONTHS.forEach(m => {
+        const val = rowObj.meses[m.key];
+        if (val > 0) {
+          const precoMedioEst = 6.15;
+          const litrosEst = Number((val / precoMedioEst).toFixed(1));
+          monthlyFuelExpenses.push({
+            id: `MAT_${m.key}_${fleetType.replace(/[^A-Za-z0-9]/g, '_')}_${Date.now()}`,
+            data_abastecimento: `2026-${m.num}-15`,
+            hora_abastecimento: '12:00',
+            placa: `FROTA-${sheetName?.slice(0, 8).toUpperCase() || 'DCX'}`,
+            modelo_veiculo: fleetType,
+            motorista: 'Gestão de Frota CCO',
+            tipo_combustivel: 'Diesel S10',
+            litros: litrosEst,
+            preco_litro: precoMedioEst.toFixed(2),
+            valor_total: val.toFixed(2),
+            hodometro_atual: '',
+            hodometro_anterior: '',
+            distancia_percorrida_km: Math.round(litrosEst * 2.3),
+            km_por_litro: 2.3,
+            custo_por_km: Number((val / (litrosEst * 2.3)).toFixed(2)),
+            posto_nome: 'Rede Convênio / Matriz Ambipar',
+            cidade: 'Paulínia',
+            uf: 'SP',
+            nota_fiscal: `FECH-${m.key.toUpperCase()}-2026`,
+            forma_pagamento: 'Faturado Convênio Corporativo',
+            observacoes: `Importado da Matriz de Custos da Frota (${sheetName}) - Mês de ${m.label}`,
+            origem_importacao: 'matriz_custo_frota'
+          });
+        }
+      });
+    }
+  });
+
+  return { matrixData, monthlyFuelExpenses };
 };
 
-// Conversão inteligente de datas de Excel e strings comuns
-export const parseSmartDate = (val) => {
-  if (!val) return new Date().toISOString().split('T')[0];
-
-  // Se já for uma instância de Date
-  if (val instanceof Date && !isNaN(val.getTime())) {
-    return val.toISOString().split('T')[0];
-  }
-
-  // Se for serial number de data do Excel (ex: 45230)
-  if (typeof val === 'number' && val > 30000 && val < 60000) {
-    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-    const millis = val * 86400000;
-    const dateObj = new Date(excelEpoch.getTime() + millis);
-    return dateObj.toISOString().split('T')[0];
-  }
-
-  const str = String(val).trim();
-  // Formato brasileiro DD/MM/AAAA ou DD-MM-AAAA
-  const brMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-  if (brMatch) {
-    const day = brMatch[1].padStart(2, '0');
-    const month = brMatch[2].padStart(2, '0');
-    let year = brMatch[3];
-    if (year.length === 2) year = '20' + year;
-    return `${year}-${month}-${day}`;
-  }
-
-  // Formato ISO AAAA-MM-DD
-  const isoMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-  if (isoMatch) {
-    const year = isoMatch[1];
-    const month = isoMatch[2].padStart(2, '0');
-    const day = isoMatch[3].padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  return new Date().toISOString().split('T')[0];
-};
-
-// Leitor assíncrono de arquivo Excel (.xlsx, .xls) ou CSV
-export const readSpreadsheetFile = (file) => {
+// Leitor assíncrono avançado de arquivo Excel (.xlsx, .xls) ou CSV
+export const readSpreadsheetWorkbook = (file, targetSheetName = null) => {
   return new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error('Nenhum arquivo de planilha foi fornecido.'));
+      return;
+    }
+
     const reader = new FileReader();
 
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true, raw: false });
         
         if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
           throw new Error('A planilha selecionada não possui abas visíveis.');
         }
 
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
+        const sheetNames = workbook.SheetNames;
+        const activeSheet = (targetSheetName && sheetNames.includes(targetSheetName)) 
+          ? targetSheetName 
+          : sheetNames[0];
 
-        // Converte a aba para matriz de objetos brutos
-        const rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-        
-        if (!rawJson || rawJson.length < 2) {
-          throw new Error('A planilha selecionada está vazia ou contém apenas o cabeçalho.');
+        const worksheet = workbook.Sheets[activeSheet];
+        if (!worksheet) {
+          throw new Error(`A aba "${activeSheet}" não pôde ser aberta.`);
         }
 
-        const rawHeaders = rawJson[0].map(h => String(h || '').trim()).filter(Boolean);
-        const dataRows = rawJson.slice(1).filter(row => row.some(cell => cell !== '' && cell !== null && cell !== undefined));
+        // Converte a aba para matriz de células (linhas brutas)
+        const rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+        
+        if (!rawJson || rawJson.length === 0) {
+          throw new Error(`A aba "${activeSheet}" está vazia.`);
+        }
 
-        // Mapeia para objetos { [header]: value }
+        // Localiza dinamicamente o cabeçalho real
+        const { headerIndex, headers } = findHeaderRow(rawJson);
+        const validHeaders = headers.filter(Boolean);
+
+        // Mapeia linhas de dados a partir do cabeçalho
+        const rawDataRows = rawJson.slice(headerIndex + 1);
+        const dataRows = rawDataRows.filter(row => Array.isArray(row) && row.some(cell => String(cell || '').trim() !== ''));
+
         const parsedRows = dataRows.map(row => {
           const rowObj = {};
-          rawHeaders.forEach((header, colIndex) => {
-            rowObj[header] = row[colIndex] !== undefined ? row[colIndex] : '';
+          headers.forEach((header, colIndex) => {
+            if (header) {
+              rowObj[header] = row[colIndex] !== undefined ? row[colIndex] : '';
+            }
           });
           return rowObj;
         });
 
-        const detectedMapping = detectColumnMapping(rawHeaders);
+        // Detecta se é a Matriz de Custos da Frota (Como a foto do usuário) ou Tabela Normal
+        const sheetFormat = detectSheetFormat(headers, parsedRows);
+        let matrixResult = null;
+
+        if (sheetFormat === 'MATRIZ_CUSTOS_MENSAL') {
+          matrixResult = parseFleetCostMatrix(rawJson, headerIndex, headers, activeSheet);
+        }
+
+        const detectedMapping = detectColumnMapping(validHeaders);
 
         resolve({
           fileName: file.name,
-          sheetNames: workbook.SheetNames,
-          activeSheet: sheetName,
-          rawHeaders,
+          sheetNames,
+          activeSheet,
+          rawHeaders: validHeaders,
           totalRows: parsedRows.length,
           parsedRows,
-          detectedMapping
+          detectedMapping,
+          sheetFormat,
+          matrixResult,
+          workbook
         });
       } catch (err) {
-        reject(err);
+        console.error('Erro ao ler planilha:', err);
+        reject(new Error(err.message || 'Falha ao processar arquivo da planilha.'));
       }
     };
 
-    reader.onerror = () => reject(new Error('Falha ao ler o arquivo selecionado no disco.'));
-    reader.readAsArrayBuffer(file);
+    reader.onerror = (err) => {
+      console.error('FileReader error:', err);
+      reject(new Error('Falha ao acessar o arquivo. Verifique se o arquivo não está bloqueado pelo Excel e tente novamente.'));
+    };
+
+    try {
+      reader.readAsArrayBuffer(file);
+    } catch (err) {
+      reject(new Error('Não foi possível iniciar a leitura do arquivo: ' + err.message));
+    }
   });
 };
 
-// Transforma linhas brutas mapeadas em registros completos do FuelModule com cálculos derivados
+// Converte linhas de abastecimento convencionais em registros do FuelModule
 export const convertRowsToFuelRecords = (rawRows, mapping, existingRecords = [], options = { skipDuplicates: true }) => {
   const records = [];
   let skippedDuplicates = 0;
   let invalidRows = 0;
 
-  // Cria set para detectar duplicatas rápidas (placa + data + litros ou nf)
+  // Garante que existingRecords seja seguro e não lance exceção com itens nulos
+  const safeExisting = Array.isArray(existingRecords) ? existingRecords.filter(Boolean) : [];
   const existingKeys = new Set(
-    existingRecords.map(r => `${(r.placa || '').toUpperCase()}_${r.data_abastecimento}_${Number(r.litros).toFixed(1)}_${r.nota_fiscal || ''}`)
+    safeExisting.map(r => `${(r.placa || '').toUpperCase()}_${r.data_abastecimento || ''}_${Number(r.litros || 0).toFixed(1)}_${r.nota_fiscal || ''}`)
   );
 
-  rawRows.forEach((row, idx) => {
-    // Extrai valores a partir do mapeamento
+  (rawRows || []).forEach((row, idx) => {
+    if (!row || typeof row !== 'object') return;
+
     const getVal = (fieldKey) => {
       const headerName = mapping[fieldKey];
       return headerName && row[headerName] !== undefined ? row[headerName] : '';
@@ -290,7 +510,6 @@ export const convertRowsToFuelRecords = (rawRows, mapping, existingRecords = [],
     const placaRaw = String(getVal('placa') || '').toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
     const litrosNum = parseSmartNumber(getVal('litros'));
 
-    // Validação mínima de integridade
     if (!placaRaw || litrosNum <= 0) {
       invalidRows++;
       return;
@@ -300,7 +519,6 @@ export const convertRowsToFuelRecords = (rawRows, mapping, existingRecords = [],
     const horaAbast = String(getVal('hora_abastecimento') || '12:00').trim().slice(0, 5);
     const nf = String(getVal('nota_fiscal') || '').trim();
 
-    // Verificação de Duplicatas
     const duplicateKey = `${placaRaw}_${dataAbast}_${litrosNum.toFixed(1)}_${nf}`;
     if (options.skipDuplicates && existingKeys.has(duplicateKey)) {
       skippedDuplicates++;
@@ -326,7 +544,6 @@ export const convertRowsToFuelRecords = (rawRows, mapping, existingRecords = [],
     let fuelType = String(getVal('tipo_combustivel') || 'Diesel S10').trim();
     if (!fuelType) fuelType = 'Diesel S10';
 
-    // Cálculo ESG de CO2
     let co2Kg = 0;
     if (fuelType.includes('HVO')) {
       co2Kg = Number((litrosNum * 0.53).toFixed(1));
@@ -384,21 +601,18 @@ export const parseClipboardTable = (clipboardText) => {
   const lines = clipboardText.trim().split(/\r\n|\r|\n/);
   if (lines.length === 0) return [];
 
-  // Quebra por tabulações (\t)
-  const rows = lines.map(line => line.split('\t').map(cell => cell.trim()));
-  return rows;
+  return lines.map(line => line.split('\t').map(cell => cell.trim()));
 };
 
 // Exportador profissional para arquivo nativo .xlsx com abas e formatação
 export const exportFuelRecordsToExcel = (records, fileName = 'abastecimentos_frota_ambipar.xlsx') => {
   const wb = XLSX.utils.book_new();
 
-  // 1. Aba Principal: Abastecimentos Detalhados
-  const formattedRows = records.map((r, index) => ({
+  const formattedRows = (records || []).map((r, index) => ({
     'Nº': index + 1,
-    'Data': r.data_abastecimento,
+    'Data': r.data_abastecimento || '',
     'Hora': r.hora_abastecimento || '',
-    'Placa': r.placa,
+    'Placa': r.placa || '',
     'Modelo do Veículo': r.modelo_veiculo || '',
     'Motorista / Condutor': r.motorista || '',
     'Tipo de Combustível': r.tipo_combustivel || 'Diesel S10',
@@ -420,38 +634,19 @@ export const exportFuelRecordsToExcel = (records, fileName = 'abastecimentos_fro
 
   const ws = XLSX.utils.json_to_sheet(formattedRows);
 
-  // Largura automática das colunas
   const colWidths = [
-    { wch: 6 },  // Nº
-    { wch: 12 }, // Data
-    { wch: 8 },  // Hora
-    { wch: 11 }, // Placa
-    { wch: 24 }, // Modelo
-    { wch: 22 }, // Motorista
-    { wch: 20 }, // Combustível
-    { wch: 12 }, // Litros
-    { wch: 15 }, // Preço/L
-    { wch: 16 }, // Total R$
-    { wch: 12 }, // KM Anterior
-    { wch: 12 }, // KM Atual
-    { wch: 14 }, // Distância
-    { wch: 14 }, // KM/L
-    { wch: 14 }, // CPK
-    { wch: 26 }, // Posto
-    { wch: 16 }, // Cidade
-    { wch: 6 },  // UF
-    { wch: 14 }, // NF
-    { wch: 22 }, // Pagamento
-    { wch: 16 }  // CO2
+    { wch: 6 },  { wch: 12 }, { wch: 8 },  { wch: 11 }, { wch: 24 },
+    { wch: 22 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 16 },
+    { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+    { wch: 26 }, { wch: 16 }, { wch: 6 },  { wch: 14 }, { wch: 22 }, { wch: 16 }
   ];
   ws['!cols'] = colWidths;
-
   XLSX.utils.book_append_sheet(wb, ws, 'Abastecimentos');
 
-  // 2. Aba Executiva: Resumo CCO
-  const totalLitros = records.reduce((acc, r) => acc + (Number(r.litros) || 0), 0);
-  const totalValor = records.reduce((acc, r) => acc + (Number(r.valor_total) || 0), 0);
-  const totalKm = records.reduce((acc, r) => acc + (Number(r.distancia_percorrida_km) || 0), 0);
+  // Resumo Executivo
+  const totalLitros = (records || []).reduce((acc, r) => acc + (Number(r.litros) || 0), 0);
+  const totalValor = (records || []).reduce((acc, r) => acc + (Number(r.valor_total) || 0), 0);
+  const totalKm = (records || []).reduce((acc, r) => acc + (Number(r.distancia_percorrida_km) || 0), 0);
   const mediaGeral = totalLitros > 0 && totalKm > 0 ? (totalKm / totalLitros).toFixed(2) : '0.00';
   const cpkGeral = totalKm > 0 && totalValor > 0 ? (totalValor / totalKm).toFixed(2) : '0.00';
 
@@ -469,11 +664,10 @@ export const exportFuelRecordsToExcel = (records, fileName = 'abastecimentos_fro
   wsSummary['!cols'] = [{ wch: 38 }, { wch: 24 }];
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo_CCO');
 
-  // Grava e dispara o download do arquivo no navegador
   XLSX.writeFile(wb, fileName);
 };
 
-// Gera o Modelo Oficial em Branco (.xlsx) com instruções para preenchimento da equipe
+// Gera o Modelo Oficial em Branco (.xlsx)
 export const generateBlankTemplateExcel = () => {
   const wb = XLSX.utils.book_new();
 
@@ -495,75 +689,18 @@ export const generateBlankTemplateExcel = () => {
       'UF': 'SP',
       'NOTA_FISCAL': '109842',
       'FORMA_PAGAMENTO': 'Cartão Frota - Ticket Log'
-    },
-    {
-      'PLACA': 'XYZ9E87',
-      'DATA': '2026-10-22',
-      'HORA': '14:15',
-      'MODELO': 'Scania R450 6x2',
-      'MOTORISTA': 'Carlos Eduardo Santos',
-      'COMBUSTIVEL': 'Diesel S10',
-      'LITROS': 380.0,
-      'PRECO_LITRO': 6.25,
-      'VALOR_TOTAL': 2375.00,
-      'KM_ANTERIOR': 98200,
-      'KM_ATUAL': 99120,
-      'POSTO': 'Posto Ipiranga Rodovia Presidente Dutra',
-      'CIDADE': 'Resende',
-      'UF': 'RJ',
-      'NOTA_FISCAL': '541289',
-      'FORMA_PAGAMENTO': 'Cartão Frota - Sem Parar / Veloe Go'
     }
   ];
 
   const ws = XLSX.utils.json_to_sheet(templateRows);
-  ws['!cols'] = [
-    { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 22 }, { wch: 22 },
-    { wch: 15 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
-    { wch: 14 }, { wch: 30 }, { wch: 16 }, { wch: 6 }, { wch: 14 }, { wch: 24 }
-  ];
-
   XLSX.utils.book_append_sheet(wb, ws, 'Modelo_Abastecimentos');
-
-  // Aba de Instruções e Dicionário de Dados
-  const instructions = [
-    { 'Instrução Operacional CCO': '1. Preencha as linhas abaixo da linha de cabeçalho na aba Modelo_Abastecimentos.' },
-    { 'Instrução Operacional CCO': '2. As colunas obrigatórias são: PLACA, DATA e LITROS.' },
-    { 'Instrução Operacional CCO': '3. O sistema calcula automaticamente: KM Rodados, KM/L, CPK e CO2 se os dados de KM forem preenchidos.' },
-    { 'Instrução Operacional CCO': '4. Se o PREÇO_LITRO for deixado em branco, o sistema divide o VALOR_TOTAL pelos LITROS.' },
-    { 'Instrução Operacional CCO': '5. Após preencher, importe o arquivo diretamente no sistema clicando em "+ Importar Planilha XLS".' },
-    { 'Instrução Operacional CCO': '6. Você também pode copiar as células no Excel (Ctrl+C) e colar direto no sistema (Ctrl+V).' }
-  ];
-  const wsInst = XLSX.utils.json_to_sheet(instructions);
-  wsInst['!cols'] = [{ wch: 90 }];
-  XLSX.utils.book_append_sheet(wb, wsInst, 'Como_Preencher');
-
   XLSX.writeFile(wb, 'modelo_padrao_abastecimentos_ambipar.xlsx');
 };
 
-// Código pronto do Google Apps Script para sincronização bidirecional em tempo real
+// Código do Google Apps Script
 export const GOOGLE_APPS_SCRIPT_TEMPLATE = `/**
- * ============================================================================
- * SINCRONIZAÇÃO AUTOMÁTICA EM TEMPO REAL: SISTEMA AMBIPAR <-> GOOGLE SHEETS
- * ============================================================================
- * 
- * COMO CONFIGURAR EM 3 MINUTOS:
- * 1. Crie uma planilha nova no Google Sheets (ex: "Frota Ambipar CCO").
- * 2. No menu superior, clique em: Extensões > Apps Script.
- * 3. Apague tudo o que estiver lá e cole este código completo.
- * 4. Clique em "Salvar" (ícone de disquete).
- * 5. Clique no botão azul "Implantar" (canto superior direito) > "Nova implantação".
- * 6. Em "Selecionar tipo", escolha "App da Web".
- * 7. Configure:
- *    - Descrição: "Ambipar Sync Webhook"
- *    - Executar como: "Eu (seu email)"
- *    - Quem pode acessar: "Qualquer pessoa" (fundamental para receber os dados do site).
- * 8. Clique em "Implantar" e conceda as permissões solicitadas.
- * 9. Copie a "URL do app da Web" gerada (termina com /exec) e cole no Sistema Ambipar!
- * 
- * PRONTO! Toda vez que alguém salvar, editar ou excluir no site, a planilha atualiza na hora!
+ * Sincronização Automática Ambipar CCO <-> Google Sheets
  */
-
 function doPost(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -573,48 +710,20 @@ function doPost(e) {
     var record = payload.record;
 
     if (!record) {
-      return ContentService.createTextOutput(JSON.stringify({ error: 'Nenhum registro recebido' })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ error: 'Nenhum registro' })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Se a planilha estiver vazia, cria o cabeçalho executivo Ambipar
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
-        'ID_SISTEMA',
-        'DATA',
-        'HORA',
-        'PLACA',
-        'MODELO_VEICULO',
-        'MOTORISTA',
-        'COMBUSTIVEL',
-        'LITROS',
-        'PRECO_LITRO',
-        'VALOR_TOTAL',
-        'KM_ANTERIOR',
-        'KM_ATUAL',
-        'KM_PERCORRIDO',
-        'KM_POR_LITRO',
-        'CPK_R$_KM',
-        'POSTO',
-        'CIDADE',
-        'UF',
-        'NOTA_FISCAL',
-        'FORMA_PAGAMENTO',
-        'ULTIMA_ATUALIZACAO'
+        'ID_SISTEMA', 'DATA', 'HORA', 'PLACA', 'MODELO_VEICULO', 'MOTORISTA', 'COMBUSTIVEL',
+        'LITROS', 'PRECO_LITRO', 'VALOR_TOTAL', 'KM_ANTERIOR', 'KM_ATUAL', 'KM_PERCORRIDO',
+        'KM_POR_LITRO', 'CPK_R$_KM', 'POSTO', 'CIDADE', 'UF', 'NOTA_FISCAL', 'FORMA_PAGAMENTO', 'ULTIMA_ATUALIZACAO'
       ]);
-      
-      // Estiliza o cabeçalho
-      var headerRange = sheet.getRange(1, 1, 1, 21);
-      headerRange.setBackground('#0f172a');
-      headerRange.setFontColor('#10b981');
-      headerRange.setFontWeight('bold');
-      headerRange.setHorizontalAlignment('center');
-      sheet.setFrozenRows(1);
+      sheet.getRange(1, 1, 1, 21).setBackground('#0f172a').setFontColor('#10b981').setFontWeight('bold');
     }
 
     var data = sheet.getDataRange().getValues();
     var targetRow = -1;
-
-    // Busca se o registro já existe pelo ID
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]) === String(record.id)) {
         targetRow = i + 1;
@@ -622,73 +731,28 @@ function doPost(e) {
       }
     }
 
-    // Ação de Exclusão
-    if (action === 'DELETE') {
-      if (targetRow > -1) {
-        sheet.deleteRow(targetRow);
-        return ContentService.createTextOutput(JSON.stringify({ success: true, message: 'Linha excluída com sucesso', id: record.id })).setMimeType(ContentService.MimeType.JSON);
-      }
-      return ContentService.createTextOutput(JSON.stringify({ success: true, message: 'Registro já não existia na planilha' })).setMimeType(ContentService.MimeType.JSON);
+    if (action === 'DELETE' && targetRow > -1) {
+      sheet.deleteRow(targetRow);
+      return ContentService.createTextOutput(JSON.stringify({ success: true, id: record.id })).setMimeType(ContentService.MimeType.JSON);
     }
 
     var rowValues = [
-      String(record.id || ''),
-      String(record.data_abastecimento || ''),
-      String(record.hora_abastecimento || ''),
-      String(record.placa || ''),
-      String(record.modelo_veiculo || ''),
-      String(record.motorista || ''),
-      String(record.tipo_combustivel || 'Diesel S10'),
-      Number(record.litros) || 0,
-      Number(record.preco_litro) || 0,
-      Number(record.valor_total) || 0,
-      Number(record.hodometro_anterior) || '',
-      Number(record.hodometro_atual) || '',
-      Number(record.distancia_percorrida_km) || '',
-      Number(record.km_por_litro) || '',
-      Number(record.custo_por_km) || '',
-      String(record.posto_nome || ''),
-      String(record.cidade || ''),
-      String(record.uf || ''),
-      String(record.nota_fiscal || ''),
-      String(record.forma_pagamento || ''),
-      Utilities.formatDate(new Date(), 'GMT-3', 'dd/MM/yyyy HH:mm:ss')
+      String(record.id || ''), String(record.data_abastecimento || ''), String(record.hora_abastecimento || ''),
+      String(record.placa || ''), String(record.modelo_veiculo || ''), String(record.motorista || ''),
+      String(record.tipo_combustivel || 'Diesel S10'), Number(record.litros) || 0, Number(record.preco_litro) || 0,
+      Number(record.valor_total) || 0, Number(record.hodometro_anterior) || '', Number(record.hodometro_atual) || '',
+      Number(record.distancia_percorrida_km) || '', Number(record.km_por_litro) || '', Number(record.custo_por_km) || '',
+      String(record.posto_nome || ''), String(record.cidade || ''), String(record.uf || ''),
+      String(record.nota_fiscal || ''), String(record.forma_pagamento || ''), Utilities.formatDate(new Date(), 'GMT-3', 'dd/MM/yyyy HH:mm:ss')
     ];
 
     if (targetRow > -1) {
-      // Atualiza linha existente
       sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
-      return ContentService.createTextOutput(JSON.stringify({ success: true, message: 'Linha atualizada com sucesso', row: targetRow })).setMimeType(ContentService.MimeType.JSON);
     } else {
-      // Insere nova linha no final
       sheet.appendRow(rowValues);
-      return ContentService.createTextOutput(JSON.stringify({ success: true, message: 'Nova linha inserida com sucesso', row: sheet.getLastRow() })).setMimeType(ContentService.MimeType.JSON);
     }
 
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function doGet(e) {
-  try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var values = sheet.getDataRange().getValues();
-    if (values.length <= 1) {
-      return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
-    }
-
-    var headers = values[0];
-    var list = [];
-    for (var i = 1; i < values.length; i++) {
-      var item = {};
-      for (var j = 0; j < headers.length; j++) {
-        item[headers[j]] = values[i][j];
-      }
-      list.push(item);
-    }
-
-    return ContentService.createTextOutput(JSON.stringify(list)).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   }

@@ -52,6 +52,7 @@ import {
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import FuelExcelImportModal from './FuelExcelImportModal';
 import FuelSpreadsheetWorkspace from './FuelSpreadsheetWorkspace';
+import ErrorBoundary from './ErrorBoundary';
 import { exportFuelRecordsToExcel, generateBlankTemplateExcel } from '../utils/excelFuelIntegration';
 import './FuelModule.css';
 
@@ -1402,17 +1403,19 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
           </div>
         </div>
       ) : viewMode === 'spreadsheet' ? (
-        <FuelSpreadsheetWorkspace
-          records={records}
-          onUpdateRecords={(updated) => {
-            setRecords(updated);
-            setFeedback({ type: 'success', text: `Base atualizada a partir da planilha! (${updated.length} abastecimentos)` });
-            setTimeout(() => setFeedback(null), 3500);
-          }}
-          onOpenImportModal={() => setIsImportModalOpen(true)}
-          availablePlates={availablePlates}
-          availableDrivers={availableDrivers}
-        />
+        <ErrorBoundary>
+          <FuelSpreadsheetWorkspace
+            records={records}
+            onUpdateRecords={(updated) => {
+              setRecords(updated);
+              setFeedback({ type: 'success', text: `Base atualizada a partir da planilha! (${updated.length} abastecimentos)` });
+              setTimeout(() => setFeedback(null), 3500);
+            }}
+            onOpenImportModal={() => setIsImportModalOpen(true)}
+            availablePlates={availablePlates}
+            availableDrivers={availableDrivers}
+          />
+        </ErrorBoundary>
       ) : viewMode === 'simulator' ? (
         /* VIEW 2: SIMULADOR DE AUTONOMIA & CONSUMO DE ROTA CCO */
         <div className="fuel-simulator-full-area animate-fade-in" id="fuel-simulator-full-workspace">
@@ -2795,26 +2798,28 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
       )}
 
       {/* MODAL INTELIGENTE DE IMPORTAÇÃO DE PLANILHAS GIGANTESCAS */}
-      <FuelExcelImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        existingRecords={records}
-        onImportComplete={({ records: newRecords, mode, stats }) => {
-          let consolidated = [];
-          if (mode === 'replace') {
-            consolidated = newRecords;
-          } else {
-            consolidated = [...newRecords, ...records];
-          }
-          setRecords(consolidated);
-          setFeedback({
-            type: 'success',
-            text: `Importação concluída! ${stats.totalImported.toLocaleString('pt-BR')} abastecimentos adicionados da planilha (${stats.skippedDuplicates} duplicatas evitadas).`
-          });
-          setTimeout(() => setFeedback(null), 5000);
-          newRecords.slice(0, 10).forEach(r => triggerGoogleSheetWebhook('UPSERT', r));
-        }}
-      />
+      <ErrorBoundary>
+        <FuelExcelImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          existingRecords={records}
+          onImportComplete={({ records: newRecords, mode, stats }) => {
+            let consolidated = [];
+            if (mode === 'replace') {
+              consolidated = newRecords;
+            } else {
+              consolidated = [...newRecords, ...records];
+            }
+            setRecords(consolidated);
+            setFeedback({
+              type: 'success',
+              text: `Importação concluída! ${stats.totalImported.toLocaleString('pt-BR')} abastecimentos adicionados da planilha (${stats.skippedDuplicates} duplicatas evitadas).`
+            });
+            setTimeout(() => setFeedback(null), 5000);
+            newRecords.slice(0, 10).forEach(r => triggerGoogleSheetWebhook('UPSERT', r));
+          }}
+        />
+      </ErrorBoundary>
 
       {/* MODAL 2: ORDEM DE ABASTECIMENTO PARA O MOTORISTA */}
       {showDispatchOrderModal && (

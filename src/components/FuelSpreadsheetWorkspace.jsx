@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FileSpreadsheet,
   UploadCloud,
@@ -19,15 +19,126 @@ import {
   ArrowRight,
   ShieldCheck,
   HelpCircle,
-  Database
+  Database,
+  Table,
+  Building,
+  Truck,
+  TrendingUp,
+  DollarSign,
+  Calendar
 } from 'lucide-react';
 import {
   exportFuelRecordsToExcel,
   generateBlankTemplateExcel,
   parseClipboardTable,
   convertRowsToFuelRecords,
-  GOOGLE_APPS_SCRIPT_TEMPLATE
+  GOOGLE_APPS_SCRIPT_TEMPLATE,
+  MATRIX_MONTHS
 } from '../utils/excelFuelIntegration';
+
+// Dados padrão baseados exatamente no Relatório Mensal da Ambipar (Imagem 2 do usuário)
+const INITIAL_MATRIX_DATA = [
+  {
+    categoria: 'COMBUSTIVEIS',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 31552.51, fevereiro: 23801.67, marco: 30308.25, abril: 32348.57, maio: 24055.58, junho: 33297.03, julho: 29237.10, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'LUBRIFICANTES',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 0, fevereiro: 60.47, marco: 2031.54, abril: 1032.00, maio: 403.50, junho: 2392.05, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'MAN. FROTAS - MÃO DE OBRA',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 9620.00, fevereiro: 55732.20, marco: 14558.29, abril: 6566.00, maio: 806.00, junho: 3272.50, julho: 8160.00, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'MAN FROTAS - PEÇAS',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 5489.18, fevereiro: 0, marco: 4990.20, abril: 3199.96, maio: 12693.60, junho: 11060.06, julho: 11052.77, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'PNEUS',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 0, fevereiro: 0, marco: 285.00, abril: 280.00, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'IPVA, DPVAT, LICENCIAMENTO',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'LAVAGEM DE FROTA',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 0, fevereiro: 0, marco: 2400.00, abril: 0, maio: 350.00, junho: 130.00, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'LAUDOS FROTAS - CIPP, CIVV',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 1250.00, maio: 1742.50, junho: 6115.00, julho: 405.99, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'RASTREAMENTO',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 671.00, fevereiro: 671.00, marco: 732.00, abril: 732.00, maio: 966.00, junho: 671.00, julho: 610.00, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'LOCAÇÃO DE VEÍCULOS',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'GERENCIAMENTO DE RISCO',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'PEDÁGIOS',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 2231.86, fevereiro: 256.03, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'MULTA DE TRÂNSITO',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'SERV DE TELEMETRIA',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 71.00, fevereiro: 71.00, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  },
+  {
+    categoria: 'SEGURO DE FROTAS',
+    unidade: 'DCX',
+    tipo: 'FROTA COMPLETA',
+    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
+  }
+];
+
+const VEHICLE_FAMILIES = [
+  'CUSTO FROTA GERAL',
+  'BAÚ 3-4',
+  'BAÚ TOCO',
+  'BAÚ VUC',
+  'HIDROVÁCUO',
+  'POLIGUINDASTE DUPLO',
+  'ROLLON'
+];
 
 export default function FuelSpreadsheetWorkspace({
   records = [],
@@ -36,6 +147,21 @@ export default function FuelSpreadsheetWorkspace({
   availablePlates = [],
   availableDrivers = []
 }) {
+  // Sub-abas da Central de Planilhas
+  // 'matrix' (Matriz Mensal da Foto) | 'grid' (Grade ao vivo) | 'sync' (Google Sheets)
+  const [activeSubTab, setActiveSubTab] = useState('matrix');
+  const [selectedFleetTab, setSelectedFleetTab] = useState('CUSTO FROTA GERAL');
+
+  // Estado da Matriz de Custos da Frota (Como a foto do usuário)
+  const [fleetMatrix, setFleetMatrix] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ambipar_monthly_fleet_costs_2026');
+      return saved ? JSON.parse(saved) : INITIAL_MATRIX_DATA;
+    } catch {
+      return INITIAL_MATRIX_DATA;
+    }
+  });
+
   // Estado da Sincronização em Nuvem (Google Sheets / Excel 365)
   const [webhookUrl, setWebhookUrl] = useState(() => {
     return localStorage.getItem('ambipar_sheet_webhook_url') || '';
@@ -49,19 +175,66 @@ export default function FuelSpreadsheetWorkspace({
   const [scriptCopied, setScriptCopied] = useState(false);
 
   // Estado da Grade Interativa (Spreadsheet Grid)
-  const [gridData, setGridData] = useState(() => [...records]);
+  const [gridData, setGridData] = useState(() => [...(records || [])]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [gridSearch, setGridSearch] = useState('');
   const [pasteBoxText, setPasteBoxText] = useState('');
   const [showPasteBox, setShowPasteBox] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
 
-  // Sincroniza gridData quando records externos mudam (apenas se não houver edições pendentes)
-  React.useEffect(() => {
+  useEffect(() => {
     if (!hasUnsavedChanges) {
-      setGridData([...records]);
+      setGridData([...(records || [])]);
     }
   }, [records, hasUnsavedChanges]);
+
+  const showNotification = (text, type = 'success') => {
+    setFeedbackMsg({ text, type });
+    setTimeout(() => setFeedbackMsg(null), 3500);
+  };
+
+  // Alteração de valor na Matriz Mensal
+  const handleMatrixCellChange = (rowIndex, monthKey, value) => {
+    const num = parseFloat(value) || 0;
+    setFleetMatrix(prev => {
+      const updated = [...prev];
+      updated[rowIndex] = {
+        ...updated[rowIndex],
+        meses: {
+          ...updated[rowIndex].meses,
+          [monthKey]: num
+        }
+      };
+      return updated;
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  // Salvar Matriz no LocalStorage
+  const handleSaveMatrix = () => {
+    try {
+      localStorage.setItem('ambipar_monthly_fleet_costs_2026', JSON.stringify(fleetMatrix));
+      setHasUnsavedChanges(false);
+      showNotification('Matriz de Custos da Frota salva com sucesso!');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Totais por mês da Matriz (Linha TOTAL R$)
+  const matrixMonthTotals = useMemo(() => {
+    const totals = {};
+    let grandTotal = 0;
+    MATRIX_MONTHS.forEach(m => {
+      let sum = 0;
+      fleetMatrix.forEach(row => {
+        sum += Number(row.meses?.[m.key] || 0);
+      });
+      totals[m.key] = sum;
+      grandTotal += sum;
+    });
+    return { totals, grandTotal };
+  }, [fleetMatrix]);
 
   // Salvar URL do Webhook
   const handleSaveWebhookSettings = (url, autoSync) => {
@@ -70,11 +243,6 @@ export default function FuelSpreadsheetWorkspace({
     localStorage.setItem('ambipar_sheet_webhook_url', url);
     localStorage.setItem('ambipar_sheet_auto_sync', autoSync ? 'true' : 'false');
     showNotification('Configurações de sincronização com Google Sheets salvas!');
-  };
-
-  const showNotification = (text, type = 'success') => {
-    setFeedbackMsg({ text, type });
-    setTimeout(() => setFeedbackMsg(null), 3500);
   };
 
   // Testar conexão com o Webhook do Google Sheets
@@ -117,7 +285,7 @@ export default function FuelSpreadsheetWorkspace({
       const startTime = Date.now();
       await fetch(webhookUrl, {
         method: 'POST',
-        mode: 'no-cors', // Apps Script web app requer no-cors para chamadas diretas sem preflight
+        mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(testPayload)
       });
@@ -137,20 +305,18 @@ export default function FuelSpreadsheetWorkspace({
     }
   };
 
-  // Copiar código do script
   const handleCopyScript = () => {
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_TEMPLATE);
     setScriptCopied(true);
     setTimeout(() => setScriptCopied(false), 3000);
   };
 
-  // Manipulação de Célula na Grade Interativa
+  // Grade Interativa
   const handleCellChange = (index, field, value) => {
     setGridData(prev => {
       const updated = [...prev];
       const item = { ...updated[index], [field]: value };
 
-      // Recalcula derivados em tempo real
       const litros = parseFloat(item.litros) || 0;
       const preco = parseFloat(item.preco_litro) || 0;
       if (field === 'litros' || field === 'preco_litro') {
@@ -180,7 +346,6 @@ export default function FuelSpreadsheetWorkspace({
     setHasUnsavedChanges(true);
   };
 
-  // Adicionar Linha Vazia na Grade
   const handleAddBlankRow = () => {
     const newRow = {
       id: `row_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -209,7 +374,6 @@ export default function FuelSpreadsheetWorkspace({
     setHasUnsavedChanges(true);
   };
 
-  // Remover Linha da Grade
   const handleRemoveRow = (index) => {
     if (confirm('Tem certeza que deseja remover esta linha da planilha?')) {
       setGridData(prev => prev.filter((_, i) => i !== index));
@@ -217,23 +381,19 @@ export default function FuelSpreadsheetWorkspace({
     }
   };
 
-  // Salvar Alterações da Grade no Sistema
   const handleSaveGridChanges = () => {
-    // Valida se linhas têm placa e litros
     const validRows = gridData.filter(r => r.placa && r.placa.trim() && Number(r.litros) > 0);
     onUpdateRecords(validRows);
     setHasUnsavedChanges(false);
     showNotification(`Planilha salva com sucesso! ${validRows.length} abastecimentos consolidados.`);
   };
 
-  // Processar Colar do Excel (Ctrl+V)
   const handleProcessPastedData = () => {
     if (!pasteBoxText.trim()) return;
 
     const rawRows = parseClipboardTable(pasteBoxText);
     if (rawRows.length === 0) return;
 
-    // Detecta se a primeira linha é cabeçalho
     let startIndex = 0;
     const firstRowStr = rawRows[0].join(' ').toLowerCase();
     if (firstRowStr.includes('placa') || firstRowStr.includes('litro') || firstRowStr.includes('data')) {
@@ -290,13 +450,12 @@ export default function FuelSpreadsheetWorkspace({
       setHasUnsavedChanges(true);
       setPasteBoxText('');
       setShowPasteBox(false);
-      showNotification(`${newRows.length} linhas coladas do Excel com sucesso! Clique em "Salvar Alterações".`);
+      showNotification(`${newRows.length} linhas coladas do Excel com sucesso!`);
     } else {
-      alert('Nenhuma linha válida reconhecida. Certifique-se de que copiou colunas válidas (Placa, Data, Litros...).');
+      alert('Nenhuma linha válida reconhecida.');
     }
   };
 
-  // Filtragem da Grade
   const filteredGridData = useMemo(() => {
     if (!gridSearch) return gridData;
     const q = gridSearch.toLowerCase();
@@ -335,8 +494,8 @@ export default function FuelSpreadsheetWorkspace({
         background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%)',
         border: '1px solid rgba(16, 185, 129, 0.25)',
         borderRadius: '16px',
-        padding: '1.5rem',
-        marginBottom: '1.5rem',
+        padding: '1.25rem 1.5rem',
+        marginBottom: '1.25rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -345,8 +504,8 @@ export default function FuelSpreadsheetWorkspace({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{
-            width: '54px',
-            height: '54px',
+            width: '50px',
+            height: '50px',
             borderRadius: '14px',
             background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(6, 182, 212, 0.15) 100%)',
             border: '1px solid rgba(16, 185, 129, 0.4)',
@@ -355,30 +514,30 @@ export default function FuelSpreadsheetWorkspace({
             justifyContent: 'center',
             color: '#10b981'
           }}>
-            <FileSpreadsheet size={28} />
+            <FileSpreadsheet size={26} />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#ffffff' }}>
-                Central de Planilhas & Sincronização Automática
+              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#ffffff' }}>
+                Central de Planilhas & Custos da Frota (Matrix 2026)
               </h3>
-              <span className="fuel-header-tag" style={{ background: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4', borderColor: 'rgba(6, 182, 212, 0.4)' }}>
-                Zero Retrabalho
+              <span className="fuel-header-tag" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.4)' }}>
+                Modelo Oficial Ambipar DCX
               </span>
             </div>
-            <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.86rem', color: '#94a3b8', maxWidth: '750px', lineHeight: 1.4 }}>
-              Anexe planilhas gigantescas (.xlsx/.csv), edite em grade como no Excel ou conecte sua planilha do <strong>Google Sheets / Excel 365</strong> para que cada lançamento no site atualize sua planilha em tempo real.
+            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.84rem', color: '#94a3b8', maxWidth: '750px', lineHeight: 1.4 }}>
+              Gerencie a <strong>Matriz de Custo Frota Mensal 2026</strong> por conjunto, importe planilhas gigantescas sem travar e sincronize em tempo real sem retrabalho.
             </p>
           </div>
         </div>
 
         {/* Ações Rápidas no Topo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
           <button
             type="button"
             className="fuel-btn fuel-btn-primary"
             onClick={onOpenImportModal}
-            id="btn-anexar-planilha-xls"
+            id="btn-anexar-planilha-xls-main"
           >
             <UploadCloud size={16} />
             <span>+ Anexar Planilha XLS</span>
@@ -391,563 +550,670 @@ export default function FuelSpreadsheetWorkspace({
             id="btn-baixar-excel-atualizado"
           >
             <FileDown size={15} />
-            <span>Baixar Excel Atualizado (.xlsx)</span>
-          </button>
-
-          <button
-            type="button"
-            className="fuel-btn fuel-btn-secondary"
-            onClick={generateBlankTemplateExcel}
-            title="Baixar planilha modelo padrão da Ambipar"
-          >
-            <FileSpreadsheet size={15} />
-            <span>Modelo Padrão</span>
+            <span>Baixar Excel (.xlsx)</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Painel de Sincronização em Tempo Real (Google Sheets / Excel 365) */}
+      {/* 2. Seletor de Sub-Abas da Central */}
       <div style={{
-        background: 'rgba(15, 23, 42, 0.65)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '16px',
-        padding: '1.25rem 1.5rem',
-        marginBottom: '1.5rem'
+        display: 'flex',
+        gap: '0.5rem',
+        marginBottom: '1.25rem',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        paddingBottom: '0.5rem',
+        flexWrap: 'wrap'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: webhookUrl ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-              border: `1px solid ${webhookUrl ? '#10b981' : '#f59e0b'}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: webhookUrl ? '#10b981' : '#f59e0b'
-            }}>
-              <Zap size={20} />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <strong style={{ color: '#ffffff', fontSize: '0.98rem' }}>
-                  Sincronização Automática em Nuvem (Google Sheets / Excel 365)
-                </strong>
-                <span style={{
-                  fontSize: '0.7rem',
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  fontWeight: 700,
-                  background: webhookUrl ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                  color: webhookUrl ? '#34d399' : '#fbbf24',
-                  border: `1px solid ${webhookUrl ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`
-                }}>
-                  {webhookUrl ? '● CONECTADO & ATIVO' : '○ NÃO CONFIGURADO'}
-                </span>
-              </div>
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                Preencha no site e a sua planilha do Google Sheets é atualizada automaticamente no mesmo segundo!
-              </span>
-            </div>
-          </div>
+        <button
+          type="button"
+          className={`fuel-mode-tab-btn ${activeSubTab === 'matrix' ? 'active' : ''}`}
+          onClick={() => setActiveSubTab('matrix')}
+          style={{ fontSize: '0.84rem', padding: '0.45rem 1rem' }}
+        >
+          <Table size={16} />
+          <span>Matriz de Custo Frota Mensal (DCX 2026)</span>
+        </button>
 
-          <button
-            type="button"
-            className="fuel-btn fuel-btn-secondary"
-            onClick={() => setShowScriptModal(true)}
-            style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem' }}
-          >
-            <HelpCircle size={14} />
-            <span>Ver Passo a Passo & Código do Script</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          className={`fuel-mode-tab-btn ${activeSubTab === 'grid' ? 'active' : ''}`}
+          onClick={() => setActiveSubTab('grid')}
+          style={{ fontSize: '0.84rem', padding: '0.45rem 1rem' }}
+        >
+          <Layers size={16} />
+          <span>Grade de Lançamentos de Tickets ({gridData.length})</span>
+        </button>
 
-        {/* Inputs de Configuração do Webhook */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) auto auto',
-          gap: '0.75rem',
-          alignItems: 'center',
-          background: 'rgba(255, 255, 255, 0.02)',
-          padding: '0.85rem 1rem',
-          borderRadius: '12px',
-          border: '1px solid rgba(255, 255, 255, 0.05)'
-        }}>
-          <div>
-            <label style={{ fontSize: '0.76rem', color: '#94a3b8', display: 'block', marginBottom: '4px', fontWeight: 600 }}>
-              URL do Webhook do Google Apps Script (App da Web):
-            </label>
-            <input
-              type="url"
-              className="styled-native-input"
-              style={{ width: '100%', fontSize: '0.82rem', padding: '0.45rem 0.75rem' }}
-              placeholder="https://script.google.com/macros/s/AKfycbx.../exec"
-              value={webhookUrl}
-              onChange={(e) => setWebhookUrl(e.target.value)}
-            />
-          </div>
+        <button
+          type="button"
+          className={`fuel-mode-tab-btn ${activeSubTab === 'sync' ? 'active' : ''}`}
+          onClick={() => setActiveSubTab('sync')}
+          style={{ fontSize: '0.84rem', padding: '0.45rem 1rem' }}
+        >
+          <Zap size={16} />
+          <span>Sincronização em Nuvem (Google Sheets)</span>
+        </button>
+      </div>
 
-          <div style={{ alignSelf: 'flex-end' }}>
-            <button
-              type="button"
-              className="fuel-btn fuel-btn-secondary"
-              onClick={handleTestWebhook}
-              disabled={isTestingWebhook || !webhookUrl}
-              style={{ fontSize: '0.82rem', padding: '0.5rem 0.95rem' }}
-            >
-              {isTestingWebhook ? (
-                <>
-                  <RefreshCw size={14} className="animate-spin" />
-                  <span>Testando...</span>
-                </>
-              ) : (
-                <>
-                  <Zap size={14} color="#f59e0b" />
-                  <span>Testar Conexão</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <div style={{ alignSelf: 'flex-end' }}>
-            <button
-              type="button"
-              className="fuel-btn fuel-btn-primary"
-              onClick={() => handleSaveWebhookSettings(webhookUrl, true)}
-              style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}
-            >
-              <Save size={14} />
-              <span>Salvar Conexão</span>
-            </button>
-          </div>
-        </div>
-
-        {webhookTestResult && (
+      {/* ===================================================================== */}
+      {/* SUB-ABA 1: MATRIZ DE CUSTO FROTA MENSAL 2026 (IDÊNTICA À FOTO)        */}
+      {/* ===================================================================== */}
+      {activeSubTab === 'matrix' && (
+        <div className="animate-fade-in">
+          {/* Seletor de Conjuntos / Abas de Veículos (Como na foto do Excel) */}
           <div style={{
-            marginTop: '0.75rem',
-            padding: '0.75rem 1rem',
-            borderRadius: '8px',
-            background: webhookTestResult.success ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)',
-            border: `1px solid ${webhookTestResult.success ? '#10b981' : '#f43f5e'}`,
-            color: '#ffffff',
-            fontSize: '0.82rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.65rem'
+            justifyContent: 'space-between',
+            marginBottom: '1rem',
+            flexWrap: 'wrap',
+            gap: '0.75rem'
           }}>
-            {webhookTestResult.success ? <CheckCircle2 size={16} color="#10b981" /> : <AlertTriangle size={16} color="#f43f5e" />}
-            <span>{webhookTestResult.message}</span>
-          </div>
-        )}
-      </div>
-
-      {/* 3. Área de Colar Direto do Excel (Ctrl+V) */}
-      {showPasteBox && (
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.8)',
-          border: '1px solid rgba(6, 182, 212, 0.35)',
-          borderRadius: '16px',
-          padding: '1.25rem',
-          marginBottom: '1.5rem'
-        }} className="animate-scale-in">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Copy size={18} color="#06b6d4" />
-              <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>
-                Colar Células Diretamente do Excel (Ctrl+C no Excel ➔ Ctrl+V Aqui)
-              </strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.76rem', color: '#94a3b8', fontWeight: 700, marginRight: '4px' }}>CONJUNTO / CATEGORIA:</span>
+              {VEHICLE_FAMILIES.map(family => (
+                <button
+                  key={family}
+                  type="button"
+                  onClick={() => setSelectedFleetTab(family)}
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: selectedFleetTab === family ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.08)',
+                    background: selectedFleetTab === family ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.03)',
+                    color: selectedFleetTab === family ? '#34d399' : '#94a3b8',
+                    cursor: 'pointer',
+                    fontWeight: selectedFleetTab === family ? 700 : 500
+                  }}
+                >
+                  {family}
+                </button>
+              ))}
             </div>
-            <button
-              type="button"
-              className="fuel-btn fuel-btn-secondary"
-              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-              onClick={() => setShowPasteBox(false)}
-            >
-              Fechar
-            </button>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="fuel-btn fuel-btn-primary"
+                onClick={handleSaveMatrix}
+                style={{ fontSize: '0.78rem', padding: '0.4rem 0.85rem' }}
+              >
+                <Save size={14} />
+                <span>Salvar Alterações na Matriz</span>
+              </button>
+            </div>
           </div>
 
-          <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 0.75rem 0' }}>
-            Selecione qualquer bloco de linhas na sua planilha do Excel (com colunas como Placa, Data, Litros, Valor, KM...), copie com <strong>Ctrl+C</strong> e cole no campo abaixo com <strong>Ctrl+V</strong>:
-          </p>
+          {/* Tabela Idêntica ao Relatório do Excel da Foto */}
+          <div style={{
+            background: 'var(--card-bg, #0d1523)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '14px',
+            padding: '1.25rem',
+            overflow: 'hidden'
+          }}>
+            {/* Cabeçalho Visual Ambipar */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '0.75rem 1rem',
+              background: '#0a101d',
+              borderBottom: '2px solid #10b981',
+              borderRadius: '8px 8px 0 0',
+              marginBottom: '0.75rem'
+            }}>
+              <div>
+                <strong style={{ fontSize: '1.1rem', color: '#ffffff', letterSpacing: '-0.01em' }}>
+                  ambipar® RELATÓRIO DE CUSTO FROTA MENSAL
+                </strong>
+                <div style={{ fontSize: '0.74rem', color: '#34d399', fontWeight: 700 }}>
+                  TOTAL 2026 - DCX • {selectedFleetTab}
+                </div>
+              </div>
 
-          <textarea
-            className="styled-native-input"
-            rows={5}
-            style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.78rem', padding: '0.65rem', marginBottom: '0.75rem' }}
-            placeholder="Cole aqui os dados copiados do Excel (separados por tabulação)..."
-            value={pasteBoxText}
-            onChange={(e) => setPasteBoxText(e.target.value)}
-          ></textarea>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Total Acumulado (Jan - Jul):</span>
+                <div style={{ fontSize: '1.15rem', color: '#10b981', fontWeight: 800 }}>
+                  R$ {Number(matrixMonthTotals.grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-            <button
-              type="button"
-              className="fuel-btn fuel-btn-secondary"
-              onClick={() => setPasteBoxText('')}
-              style={{ fontSize: '0.8rem' }}
-            >
-              Limpar
-            </button>
-            <button
-              type="button"
-              className="fuel-btn fuel-btn-primary"
-              onClick={handleProcessPastedData}
-              disabled={!pasteBoxText.trim()}
-              style={{ fontSize: '0.8rem' }}
-            >
-              <Plus size={14} />
-              <span>Processar e Adicionar à Planilha</span>
-            </button>
+            {/* Tabela em Grade da Matriz */}
+            <div style={{ overflowX: 'auto', maxHeight: '560px' }}>
+              <table className="fuel-records-table spreadsheet-live-grid" style={{ width: '100%', minWidth: '1200px', fontSize: '0.76rem' }}>
+                <thead>
+                  <tr style={{ background: '#74c044', color: '#000000' }}>
+                    <th style={{ width: '70px', color: '#000000' }}>UNIDADE</th>
+                    <th style={{ width: '120px', color: '#000000' }}>TIPO</th>
+                    <th style={{ width: '220px', color: '#000000' }}>CUSTOS COM FROTA</th>
+                    {MATRIX_MONTHS.map(m => (
+                      <th key={m.key} style={{ textAlign: 'right', color: '#000000', width: '95px' }}>
+                        {m.label.toUpperCase()}
+                      </th>
+                    ))}
+                    <th style={{ textAlign: 'right', color: '#000000', width: '110px' }}>TOTAL (R$)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fleetMatrix.map((row, idx) => {
+                    const isFuel = row.categoria.toLowerCase().includes('combustivel');
+                    let rowSum = 0;
+                    MATRIX_MONTHS.forEach(m => { rowSum += Number(row.meses?.[m.key] || 0); });
+
+                    return (
+                      <tr 
+                        key={idx}
+                        style={{
+                          background: isFuel ? 'rgba(16, 185, 129, 0.12)' : undefined,
+                          fontWeight: isFuel ? 700 : 400
+                        }}
+                      >
+                        <td style={{ textAlign: 'center', fontWeight: 600, color: '#94a3b8' }}>
+                          {row.unidade || 'DCX'}
+                        </td>
+                        <td style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
+                          {row.tipo || 'FROTA COMPLETA'}
+                        </td>
+                        <td>
+                          <span style={{ color: isFuel ? '#34d399' : '#ffffff', fontWeight: isFuel ? 700 : 600 }}>
+                            {row.categoria}
+                          </span>
+                        </td>
+
+                        {/* Colunas dos 12 Meses */}
+                        {MATRIX_MONTHS.map(m => {
+                          const val = row.meses?.[m.key] || 0;
+                          return (
+                            <td key={m.key} style={{ padding: '2px 4px', textAlign: 'right' }}>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="styled-native-input"
+                                style={{
+                                  width: '100%',
+                                  textAlign: 'right',
+                                  fontSize: '0.74rem',
+                                  padding: '2px 4px',
+                                  background: 'transparent',
+                                  color: val > 0 ? (isFuel ? '#34d399' : '#ffffff') : '#64748b'
+                                }}
+                                value={val === 0 ? '' : val}
+                                placeholder="0,00"
+                                onChange={(e) => handleMatrixCellChange(idx, m.key, e.target.value)}
+                              />
+                            </td>
+                          );
+                        })}
+
+                        {/* Total Anual da Linha */}
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>
+                          R$ {Number(rowSum).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {/* Linha 20 do Excel: TOTAL (R$) */}
+                  <tr style={{ background: 'rgba(116, 192, 68, 0.25)', fontWeight: 800, borderTop: '2px solid #74c044' }}>
+                    <td style={{ textAlign: 'center', color: '#ffffff' }}>X</td>
+                    <td style={{ color: '#ffffff' }}>FROTA</td>
+                    <td style={{ color: '#ffffff', fontSize: '0.82rem' }}>TOTAL (R$)</td>
+                    {MATRIX_MONTHS.map(m => (
+                      <td key={m.key} style={{ textAlign: 'right', color: '#ffffff', fontSize: '0.78rem' }}>
+                        R$ {Number(matrixMonthTotals.totals[m.key] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </td>
+                    ))}
+                    <td style={{ textAlign: 'right', color: '#10b981', fontSize: '0.85rem' }}>
+                      R$ {Number(matrixMonthTotals.grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.76rem', color: '#94a3b8' }}>
+              <div>
+                * Dica: Você pode digitar valores em qualquer mês. O total anual e o consolidado são atualizados instantaneamente.
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="fuel-btn fuel-btn-primary"
+                  onClick={handleSaveMatrix}
+                  style={{ fontSize: '0.78rem' }}
+                >
+                  <Save size={13} />
+                  <span>Salvar Matriz</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 4. Grade de Planilha Interativa ao Vivo (Live Grid) */}
-      <div style={{
-        background: 'var(--card-bg, #111827)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '16px',
-        padding: '1.25rem',
-        overflow: 'hidden'
-      }}>
-        {/* Barra Superior da Grade */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '1rem',
-          flexWrap: 'wrap',
-          gap: '1rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <strong style={{ color: '#ffffff', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <Layers size={18} color="#10b981" />
-              <span>Modo Grade de Planilha ao Vivo</span>
-            </strong>
-            <span style={{ fontSize: '0.76rem', color: '#94a3b8' }}>
-              {gridData.length} linha(s) • Edição célula a célula em tempo real
-            </span>
-            {hasUnsavedChanges && (
-              <span style={{
-                fontSize: '0.72rem',
-                background: 'rgba(245, 158, 11, 0.2)',
-                color: '#fbbf24',
-                border: '1px solid rgba(245, 158, 11, 0.4)',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                fontWeight: 700
-              }}>
-                ● Alterações Não Salvas
-              </span>
-            )}
-          </div>
+      {/* ===================================================================== */}
+      {/* SUB-ABA 2: GRADE DETALHADA DE ABASTECIMENTOS POR TICKET               */}
+      {/* ===================================================================== */}
+      {activeSubTab === 'grid' && (
+        <div className="animate-fade-in">
+          {/* Área de Colar do Excel */}
+          {showPasteBox && (
+            <div style={{
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid rgba(6, 182, 212, 0.35)',
+              borderRadius: '14px',
+              padding: '1.25rem',
+              marginBottom: '1rem'
+            }} className="animate-scale-in">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>
+                  Colar Células Diretamente do Excel (Ctrl+C no Excel ➔ Ctrl+V Aqui)
+                </strong>
+                <button
+                  type="button"
+                  className="fuel-btn fuel-btn-secondary"
+                  style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                  onClick={() => setShowPasteBox(false)}
+                >
+                  Fechar
+                </button>
+              </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative' }}>
-              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-              <input
-                type="text"
+              <textarea
                 className="styled-native-input"
-                style={{ paddingLeft: '32px', width: '180px', fontSize: '0.78rem', height: '32px' }}
-                placeholder="Filtrar na planilha..."
-                value={gridSearch}
-                onChange={(e) => setGridSearch(e.target.value)}
-              />
+                rows={4}
+                style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.78rem', padding: '0.65rem', marginBottom: '0.75rem' }}
+                placeholder="Cole aqui os dados copiados do Excel..."
+                value={pasteBoxText}
+                onChange={(e) => setPasteBoxText(e.target.value)}
+              ></textarea>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="fuel-btn fuel-btn-primary"
+                  onClick={handleProcessPastedData}
+                  disabled={!pasteBoxText.trim()}
+                  style={{ fontSize: '0.8rem' }}
+                >
+                  <Plus size={14} />
+                  <span>Processar e Adicionar</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Grade de Tickets */}
+          <div style={{
+            background: 'var(--card-bg, #0d1523)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '14px',
+            padding: '1.25rem'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <strong style={{ color: '#ffffff', fontSize: '0.95rem' }}>
+                  Lançamentos Individuais de Combustível ({gridData.length})
+                </strong>
+                {hasUnsavedChanges && (
+                  <span style={{ fontSize: '0.72rem', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.4)', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                    ● Alterações Pendentes
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  className="styled-native-input"
+                  style={{ width: '180px', fontSize: '0.78rem', height: '32px' }}
+                  placeholder="Filtrar por placa, motorista..."
+                  value={gridSearch}
+                  onChange={(e) => setGridSearch(e.target.value)}
+                />
+
+                <button
+                  type="button"
+                  className="fuel-btn fuel-btn-secondary"
+                  onClick={() => setShowPasteBox(!showPasteBox)}
+                  style={{ fontSize: '0.78rem', height: '32px' }}
+                >
+                  <Copy size={13} />
+                  <span>Colar do Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="fuel-btn fuel-btn-secondary"
+                  onClick={handleAddBlankRow}
+                  style={{ fontSize: '0.78rem', height: '32px' }}
+                >
+                  <Plus size={13} />
+                  <span>+ Nova Linha</span>
+                </button>
+
+                {hasUnsavedChanges && (
+                  <button
+                    type="button"
+                    className="fuel-btn fuel-btn-primary"
+                    onClick={handleSaveGridChanges}
+                    style={{ fontSize: '0.78rem', height: '32px' }}
+                  >
+                    <Save size={13} />
+                    <span>Salvar Tudo</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
+              <table className="fuel-records-table spreadsheet-live-grid" style={{ width: '100%', minWidth: '1300px', fontSize: '0.76rem' }}>
+                <thead>
+                  <tr style={{ background: '#0f172a' }}>
+                    <th style={{ width: '35px', textAlign: 'center' }}>#</th>
+                    <th style={{ width: '110px' }}>Data</th>
+                    <th style={{ width: '95px' }}>Placa</th>
+                    <th style={{ width: '130px' }}>Modelo</th>
+                    <th style={{ width: '130px' }}>Motorista</th>
+                    <th style={{ width: '110px' }}>Combustível</th>
+                    <th style={{ width: '85px' }}>Litros</th>
+                    <th style={{ width: '85px' }}>Preço/L</th>
+                    <th style={{ width: '95px' }}>Total R$</th>
+                    <th style={{ width: '85px' }}>KM Ant.</th>
+                    <th style={{ width: '85px' }}>KM Atual</th>
+                    <th style={{ width: '80px' }}>Dist. KM</th>
+                    <th style={{ width: '80px' }}>KM/L</th>
+                    <th style={{ width: '80px' }}>CPK</th>
+                    <th style={{ width: '140px' }}>Posto</th>
+                    <th style={{ width: '85px' }}>NF</th>
+                    <th style={{ width: '40px', textAlign: 'center' }}>Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredGridData.length === 0 ? (
+                    <tr>
+                      <td colSpan={17} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                        Nenhum registro encontrado. Use "+ Nova Linha" ou "+ Anexar Planilha XLS".
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredGridData.map((row, index) => (
+                      <tr key={row.id || index}>
+                        <td style={{ textAlign: 'center', color: '#64748b' }}>{index + 1}</td>
+                        <td>
+                          <input
+                            type="date"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', background: 'transparent' }}
+                            value={row.data_abastecimento || ''}
+                            onChange={(e) => handleCellChange(index, 'data_abastecimento', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', fontWeight: 700, textTransform: 'uppercase', background: 'transparent' }}
+                            value={row.placa || ''}
+                            placeholder="ABC1D23"
+                            onChange={(e) => handleCellChange(index, 'placa', e.target.value.toUpperCase())}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', background: 'transparent' }}
+                            value={row.modelo_veiculo || ''}
+                            placeholder="Caminhão..."
+                            onChange={(e) => handleCellChange(index, 'modelo_veiculo', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', background: 'transparent' }}
+                            value={row.motorista || ''}
+                            placeholder="Motorista..."
+                            onChange={(e) => handleCellChange(index, 'motorista', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <select
+                            className="styled-native-select"
+                            style={{ width: '100%', fontSize: '0.72rem', padding: '2px', background: 'transparent' }}
+                            value={row.tipo_combustivel || 'Diesel S10'}
+                            onChange={(e) => handleCellChange(index, 'tipo_combustivel', e.target.value)}
+                          >
+                            <option value="Diesel S10">Diesel S10</option>
+                            <option value="Diesel S500">Diesel S500</option>
+                            <option value="Diesel Renovável HVO / R5">Diesel HVO</option>
+                            <option value="ARLA 32">ARLA 32</option>
+                            <option value="Gasolina Comum / Aditivada">Gasolina</option>
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            step="0.1"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', color: '#38bdf8', fontWeight: 700, background: 'transparent' }}
+                            value={row.litros || ''}
+                            onChange={(e) => handleCellChange(index, 'litros', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', background: 'transparent' }}
+                            value={row.preco_litro || ''}
+                            onChange={(e) => handleCellChange(index, 'preco_litro', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', color: '#10b981', fontWeight: 700, background: 'transparent' }}
+                            value={row.valor_total || ''}
+                            onChange={(e) => handleCellChange(index, 'valor_total', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', background: 'transparent' }}
+                            value={row.hodometro_anterior || ''}
+                            onChange={(e) => handleCellChange(index, 'hodometro_anterior', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', background: 'transparent' }}
+                            value={row.hodometro_atual || ''}
+                            onChange={(e) => handleCellChange(index, 'hodometro_atual', e.target.value)}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center', color: '#94a3b8' }}>
+                          {row.distancia_percorrida_km ? `${row.distancia_percorrida_km} km` : '—'}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {row.km_por_litro ? (
+                            <strong style={{ color: row.km_por_litro >= 2.3 ? '#34d399' : '#f43f5e' }}>
+                              {row.km_por_litro}
+                            </strong>
+                          ) : '—'}
+                        </td>
+                        <td style={{ textAlign: 'center', color: '#fbbf24' }}>
+                          {row.custo_por_km ? `R$ ${row.custo_por_km}` : '—'}
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', background: 'transparent' }}
+                            value={row.posto_nome || ''}
+                            placeholder="Posto..."
+                            onChange={(e) => handleCellChange(index, 'posto_nome', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="styled-native-input"
+                            style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', background: 'transparent' }}
+                            value={row.nota_fiscal || ''}
+                            placeholder="NF-e"
+                            onChange={(e) => handleCellChange(index, 'nota_fiscal', e.target.value)}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRow(index)}
+                            style={{ background: 'transparent', border: 'none', color: '#f43f5e', cursor: 'pointer' }}
+                            title="Excluir"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SUB-ABA 3: SINCRONIZAÇÃO EM NUVEM (GOOGLE SHEETS)                     */}
+      {/* ===================================================================== */}
+      {activeSubTab === 'sync' && (
+        <div className="animate-fade-in" style={{
+          background: 'rgba(15, 23, 42, 0.65)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '16px',
+          padding: '1.5rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: webhookUrl ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                border: `1px solid ${webhookUrl ? '#10b981' : '#f59e0b'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: webhookUrl ? '#10b981' : '#f59e0b'
+              }}>
+                <Zap size={22} />
+              </div>
+              <div>
+                <strong style={{ color: '#ffffff', fontSize: '1.05rem', display: 'block' }}>
+                  Conector em Tempo Real: Sistema Ambipar ➔ Google Sheets / Excel 365
+                </strong>
+                <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                  Preencha no site e veja cair na sua planilha automaticamente sem duplicar digitação.
+                </span>
+              </div>
             </div>
 
             <button
               type="button"
               className="fuel-btn fuel-btn-secondary"
-              onClick={() => setShowPasteBox(!showPasteBox)}
-              style={{ fontSize: '0.78rem', height: '32px', padding: '0 0.75rem' }}
-              title="Copie células do Excel e cole direto aqui"
+              onClick={() => setShowScriptModal(true)}
+              style={{ fontSize: '0.82rem' }}
             >
-              <Copy size={13} />
-              <span>Colar do Excel (Ctrl+V)</span>
+              <HelpCircle size={15} />
+              <span>Ver Passo a Passo & Código do Script</span>
             </button>
+          </div>
 
-            <button
-              type="button"
-              className="fuel-btn fuel-btn-secondary"
-              onClick={handleAddBlankRow}
-              style={{ fontSize: '0.78rem', height: '32px', padding: '0 0.75rem' }}
-            >
-              <Plus size={13} />
-              <span>+ Nova Linha</span>
-            </button>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto auto',
+            gap: '0.75rem',
+            alignItems: 'center',
+            background: 'rgba(255, 255, 255, 0.02)',
+            padding: '1rem',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.05)'
+          }}>
+            <div>
+              <label style={{ fontSize: '0.76rem', color: '#94a3b8', display: 'block', marginBottom: '4px', fontWeight: 600 }}>
+                URL do Webhook do Google Apps Script (App da Web terminando em /exec):
+              </label>
+              <input
+                type="url"
+                className="styled-native-input"
+                style={{ width: '100%', fontSize: '0.82rem', padding: '0.5rem 0.75rem' }}
+                placeholder="https://script.google.com/macros/s/AKfycbx.../exec"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+              />
+            </div>
 
-            {hasUnsavedChanges && (
+            <div style={{ alignSelf: 'flex-end' }}>
+              <button
+                type="button"
+                className="fuel-btn fuel-btn-secondary"
+                onClick={handleTestWebhook}
+                disabled={isTestingWebhook || !webhookUrl}
+                style={{ fontSize: '0.82rem', padding: '0.55rem 0.95rem' }}
+              >
+                {isTestingWebhook ? 'Testando...' : 'Testar Conexão'}
+              </button>
+            </div>
+
+            <div style={{ alignSelf: 'flex-end' }}>
               <button
                 type="button"
                 className="fuel-btn fuel-btn-primary"
-                onClick={handleSaveGridChanges}
-                style={{ fontSize: '0.78rem', height: '32px', padding: '0 0.85rem' }}
+                onClick={() => handleSaveWebhookSettings(webhookUrl, true)}
+                style={{ fontSize: '0.82rem', padding: '0.55rem 1rem' }}
               >
-                <Save size={13} />
-                <span>Salvar Alterações</span>
+                <Save size={14} />
+                <span>Salvar Conexão</span>
               </button>
-            )}
-          </div>
-        </div>
-
-        {/* Tabela Editável Estilo Excel */}
-        <div style={{ overflowX: 'auto', maxHeight: '520px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <table className="fuel-records-table spreadsheet-live-grid" style={{ width: '100%', minWidth: '1350px', fontSize: '0.78rem' }}>
-            <thead>
-              <tr style={{ background: '#0f172a' }}>
-                <th style={{ width: '40px', textAlign: 'center' }}>#</th>
-                <th style={{ width: '110px' }}>Data</th>
-                <th style={{ width: '100px' }}>Placa</th>
-                <th style={{ width: '140px' }}>Modelo</th>
-                <th style={{ width: '140px' }}>Motorista</th>
-                <th style={{ width: '120px' }}>Combustível</th>
-                <th style={{ width: '90px' }}>Litros</th>
-                <th style={{ width: '90px' }}>Preço/L (R$)</th>
-                <th style={{ width: '100px' }}>Total (R$)</th>
-                <th style={{ width: '90px' }}>KM Ant.</th>
-                <th style={{ width: '90px' }}>KM Atual</th>
-                <th style={{ width: '90px' }}>Dist. KM</th>
-                <th style={{ width: '90px' }}>KM/L</th>
-                <th style={{ width: '90px' }}>CPK</th>
-                <th style={{ width: '150px' }}>Posto</th>
-                <th style={{ width: '90px' }}>NF</th>
-                <th style={{ width: '50px', textAlign: 'center' }}>Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredGridData.length === 0 ? (
-                <tr>
-                  <td colSpan={17} style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
-                    Nenhum registro encontrado na planilha. Clique em "+ Nova Linha" ou "+ Anexar Planilha XLS".
-                  </td>
-                </tr>
-              ) : (
-                filteredGridData.map((row, index) => (
-                  <tr key={row.id || index}>
-                    <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.72rem' }}>
-                      {index + 1}
-                    </td>
-
-                    {/* Data */}
-                    <td>
-                      <input
-                        type="date"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', background: 'transparent' }}
-                        value={row.data_abastecimento || ''}
-                        onChange={(e) => handleCellChange(index, 'data_abastecimento', e.target.value)}
-                      />
-                    </td>
-
-                    {/* Placa */}
-                    <td>
-                      <input
-                        type="text"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', fontWeight: 700, textTransform: 'uppercase', background: 'transparent' }}
-                        value={row.placa || ''}
-                        placeholder="ABC1D23"
-                        onChange={(e) => handleCellChange(index, 'placa', e.target.value.toUpperCase())}
-                      />
-                    </td>
-
-                    {/* Modelo */}
-                    <td>
-                      <input
-                        type="text"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', background: 'transparent' }}
-                        value={row.modelo_veiculo || ''}
-                        placeholder="Volvo FH..."
-                        onChange={(e) => handleCellChange(index, 'modelo_veiculo', e.target.value)}
-                      />
-                    </td>
-
-                    {/* Motorista */}
-                    <td>
-                      <input
-                        type="text"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', background: 'transparent' }}
-                        value={row.motorista || ''}
-                        placeholder="Condutor..."
-                        onChange={(e) => handleCellChange(index, 'motorista', e.target.value)}
-                      />
-                    </td>
-
-                    {/* Combustível */}
-                    <td>
-                      <select
-                        className="styled-native-select"
-                        style={{ width: '100%', fontSize: '0.72rem', padding: '3px 4px', background: 'transparent' }}
-                        value={row.tipo_combustivel || 'Diesel S10'}
-                        onChange={(e) => handleCellChange(index, 'tipo_combustivel', e.target.value)}
-                      >
-                        <option value="Diesel S10">Diesel S10</option>
-                        <option value="Diesel S500">Diesel S500</option>
-                        <option value="Diesel Renovável HVO / R5">Diesel Verde HVO</option>
-                        <option value="ARLA 32">ARLA 32</option>
-                        <option value="Gasolina Comum / Aditivada">Gasolina</option>
-                        <option value="Etanol Hidratado">Etanol</option>
-                      </select>
-                    </td>
-
-                    {/* Litros */}
-                    <td>
-                      <input
-                        type="number"
-                        step="0.1"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', fontWeight: 700, color: '#38bdf8', background: 'transparent' }}
-                        value={row.litros || ''}
-                        onChange={(e) => handleCellChange(index, 'litros', e.target.value)}
-                      />
-                    </td>
-
-                    {/* Preço/L */}
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', background: 'transparent' }}
-                        value={row.preco_litro || ''}
-                        onChange={(e) => handleCellChange(index, 'preco_litro', e.target.value)}
-                      />
-                    </td>
-
-                    {/* Total R$ (Calculado ou editável) */}
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', fontWeight: 700, color: '#10b981', background: 'transparent' }}
-                        value={row.valor_total || ''}
-                        onChange={(e) => handleCellChange(index, 'valor_total', e.target.value)}
-                      />
-                    </td>
-
-                    {/* KM Anterior */}
-                    <td>
-                      <input
-                        type="number"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', background: 'transparent' }}
-                        value={row.hodometro_anterior || ''}
-                        onChange={(e) => handleCellChange(index, 'hodometro_anterior', e.target.value)}
-                      />
-                    </td>
-
-                    {/* KM Atual */}
-                    <td>
-                      <input
-                        type="number"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', background: 'transparent' }}
-                        value={row.hodometro_atual || ''}
-                        onChange={(e) => handleCellChange(index, 'hodometro_atual', e.target.value)}
-                      />
-                    </td>
-
-                    {/* Distância KM (Automático) */}
-                    <td style={{ textAlign: 'center', color: '#94a3b8' }}>
-                      {row.distancia_percorrida_km ? `${row.distancia_percorrida_km} km` : '—'}
-                    </td>
-
-                    {/* KM/L (Automático) */}
-                    <td style={{ textAlign: 'center' }}>
-                      {row.km_por_litro ? (
-                        <strong style={{ color: row.km_por_litro >= 2.3 ? '#34d399' : '#f43f5e' }}>
-                          {row.km_por_litro}
-                        </strong>
-                      ) : (
-                        <span style={{ color: '#64748b' }}>—</span>
-                      )}
-                    </td>
-
-                    {/* CPK */}
-                    <td style={{ textAlign: 'center', color: '#fbbf24' }}>
-                      {row.custo_por_km ? `R$ ${row.custo_por_km}` : '—'}
-                    </td>
-
-                    {/* Posto */}
-                    <td>
-                      <input
-                        type="text"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', background: 'transparent' }}
-                        value={row.posto_nome || ''}
-                        placeholder="Nome do Posto"
-                        onChange={(e) => handleCellChange(index, 'posto_nome', e.target.value)}
-                      />
-                    </td>
-
-                    {/* NF */}
-                    <td>
-                      <input
-                        type="text"
-                        className="styled-native-input"
-                        style={{ width: '100%', fontSize: '0.75rem', padding: '3px 6px', background: 'transparent' }}
-                        value={row.nota_fiscal || ''}
-                        placeholder="NF-e"
-                        onChange={(e) => handleCellChange(index, 'nota_fiscal', e.target.value)}
-                      />
-                    </td>
-
-                    {/* Ação */}
-                    <td style={{ textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveRow(index)}
-                        style={{ background: 'transparent', border: 'none', color: '#f43f5e', cursor: 'pointer', padding: '4px' }}
-                        title="Excluir Linha"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Rodapé da Grade */}
-        <div style={{ marginTop: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>
-            Dica: você pode alterar qualquer valor direto na célula. O sistema calcula a autonomia, consumo médio (km/l) e CPK na hora!
+            </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.65rem' }}>
-            <button
-              type="button"
-              className="fuel-btn fuel-btn-secondary"
-              onClick={handleAddBlankRow}
-              style={{ fontSize: '0.78rem' }}
-            >
-              <Plus size={13} />
-              <span>Adicionar Linha</span>
-            </button>
-
-            {hasUnsavedChanges && (
-              <button
-                type="button"
-                className="fuel-btn fuel-btn-primary"
-                onClick={handleSaveGridChanges}
-                style={{ fontSize: '0.78rem' }}
-              >
-                <Save size={13} />
-                <span>Salvar Tudo na Base</span>
-              </button>
-            )}
-          </div>
+          {webhookTestResult && (
+            <div style={{
+              marginTop: '1rem',
+              padding: '0.85rem 1rem',
+              borderRadius: '8px',
+              background: webhookTestResult.success ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)',
+              border: `1px solid ${webhookTestResult.success ? '#10b981' : '#f43f5e'}`,
+              color: '#ffffff',
+              fontSize: '0.84rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem'
+            }}>
+              {webhookTestResult.success ? <CheckCircle2 size={16} color="#10b981" /> : <AlertTriangle size={16} color="#f43f5e" />}
+              <span>{webhookTestResult.message}</span>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
-      {/* MODAL: CÓDIGO E INSTRUÇÕES DO GOOGLE APPS SCRIPT */}
+      {/* Modal do Script */}
       {showScriptModal && (
         <div className="fuel-modal-backdrop animate-fade-in" style={{ zIndex: 10000 }}>
           <div className="fuel-modal-dialog fuel-modal-wide animate-scale-in" style={{ maxWidth: '850px' }}>
@@ -980,10 +1246,9 @@ export default function FuelSpreadsheetWorkspace({
                 <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
                   <li>Abra sua planilha no Google Sheets (ou crie uma nova em branco).</li>
                   <li>No menu superior, clique em <strong>Extensões ➔ Apps Script</strong>.</li>
-                  <li>Apague o código que estiver lá e cole o script abaixo (clique no botão <strong>Copiar Código</strong>).</li>
-                  <li>Clique no botão azul <strong>Implantar ➔ Nova Implantação</strong>.</li>
-                  <li>Selecione o tipo <strong>App da Web</strong>, configure acesso como <strong>Qualquer pessoa</strong> e clique em <strong>Implantar</strong>.</li>
-                  <li>Copie a <strong>URL do app da Web</strong> (termina com <code>/exec</code>) e cole no campo de Webhook nesta tela!</li>
+                  <li>Apague o código existente e cole o script abaixo (clique no botão <strong>Copiar Código</strong>).</li>
+                  <li>Clique em <strong>Implantar ➔ Nova Implantação ➔ App da Web</strong> (Acesso: <em>Qualquer pessoa</em>).</li>
+                  <li>Copie a <strong>URL do app da Web</strong> (termina com <code>/exec</code>) e cole no sistema!</li>
                 </ol>
               </div>
 
@@ -999,7 +1264,7 @@ export default function FuelSpreadsheetWorkspace({
                     style={{ fontSize: '0.76rem', padding: '0.3rem 0.75rem' }}
                   >
                     {scriptCopied ? <Check size={13} /> : <Copy size={13} />}
-                    <span>{scriptCopied ? 'Copiado para Área de Transferência!' : 'Copiar Código'}</span>
+                    <span>{scriptCopied ? 'Copiado!' : 'Copiar Código'}</span>
                   </button>
                 </div>
 
@@ -1010,7 +1275,7 @@ export default function FuelSpreadsheetWorkspace({
                   padding: '1rem',
                   fontSize: '0.74rem',
                   color: '#34d399',
-                  maxHeight: '260px',
+                  maxHeight: '240px',
                   overflowY: 'auto',
                   fontFamily: 'Consolas, monospace',
                   whiteSpace: 'pre-wrap'
@@ -1026,7 +1291,7 @@ export default function FuelSpreadsheetWorkspace({
                 className="fuel-btn fuel-btn-secondary"
                 onClick={() => setShowScriptModal(false)}
               >
-                Entendi e Fechar
+                Fechar
               </button>
             </div>
           </div>

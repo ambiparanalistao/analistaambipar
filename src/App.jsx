@@ -22,6 +22,7 @@ import ClientsModule from './components/ClientsModule';
 import FuelModule from './components/FuelModule';
 import AuthCard from './components/AuthCard';
 import SupabaseConfigModal from './components/SupabaseConfigModal';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
 // Mapeamento de Rotas Web para cada Módulo
@@ -342,39 +343,41 @@ export default function App() {
 
             {/* Módulo Ativo Selecionado */}
             <main className="stage-content-body" id="stage-content-body">
-              {currentModule === 'dashboard' && (
-                <LogisticsDashboard 
-                  user={session.user} 
-                  onNavigateModule={handleSelectModule} 
-                />
-              )}
-              {currentModule === 'frotas' && (
-                <VehiclesModule 
-                  user={session.user} 
-                  onNavigateDrivers={() => handleSelectModule('motoristas')}
-                />
-              )}
-              {currentModule === 'motoristas' && (
-                <DriversModule 
-                  user={session.user} 
-                  onNavigateVehicles={() => handleSelectModule('frotas')}
-                />
-              )}
-              {currentModule === 'viagens' && <TripsModule user={session.user} />}
-              {currentModule === 'combustivel' && <FuelModule user={session.user} initialView="table" onNavigateModule={handleSelectModule} />}
-              {currentModule === 'simulador_autonomia' && <FuelModule user={session.user} initialView="simulator" onNavigateModule={handleSelectModule} />}
-              {currentModule === 'clientes' && (
-                <ClientsModule 
-                  user={session.user} 
-                  onNavigateTrips={() => handleSelectModule('viagens')}
-                  onNavigateFleet={() => handleSelectModule('frotas')}
-                />
-              )}
-              {currentModule === 'mtr' && <MtrModule user={session.user} />}
-              {currentModule === 'calculadora_frete' && <FreightCarbonCalculator onNavigateMtr={() => handleSelectModule('mtr')} />}
-              {currentModule === 'antt_formulas' && <AnttFormulasModule />}
-              {currentModule === 'ocorrencias' && <OcorrenciasModule />}
-              {currentModule === 'esg' && <EsgModule />}
+              <ErrorBoundary>
+                {currentModule === 'dashboard' && (
+                  <LogisticsDashboard 
+                    user={session.user} 
+                    onNavigateModule={handleSelectModule} 
+                  />
+                )}
+                {currentModule === 'frotas' && (
+                  <VehiclesModule 
+                    user={session.user} 
+                    onNavigateDrivers={() => handleSelectModule('motoristas')}
+                  />
+                )}
+                {currentModule === 'motoristas' && (
+                  <DriversModule 
+                    user={session.user} 
+                    onNavigateVehicles={() => handleSelectModule('frotas')}
+                  />
+                )}
+                {currentModule === 'viagens' && <TripsModule user={session.user} />}
+                {currentModule === 'combustivel' && <FuelModule user={session.user} initialView="dashboard" onNavigateModule={handleSelectModule} />}
+                {currentModule === 'simulador_autonomia' && <FuelModule user={session.user} initialView="simulator" onNavigateModule={handleSelectModule} />}
+                {currentModule === 'clientes' && (
+                  <ClientsModule 
+                    user={session.user} 
+                    onNavigateTrips={() => handleSelectModule('viagens')}
+                    onNavigateFleet={() => handleSelectModule('frotas')}
+                  />
+                )}
+                {currentModule === 'mtr' && <MtrModule user={session.user} />}
+                {currentModule === 'calculadora_frete' && <FreightCarbonCalculator onNavigateMtr={() => handleSelectModule('mtr')} />}
+                {currentModule === 'antt_formulas' && <AnttFormulasModule />}
+                {currentModule === 'ocorrencias' && <OcorrenciasModule />}
+                {currentModule === 'esg' && <EsgModule />}
+              </ErrorBoundary>
             </main>
           </div>
         </div>
