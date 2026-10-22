@@ -20,7 +20,9 @@ import {
   Flame,
   Layers,
   User,
-  ShieldAlert
+  ShieldAlert,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
@@ -71,24 +73,64 @@ export const CNH_CATEGORIES = [
     icon: '📦'
   }
 ];
+
+// Formatadores e utilitários de exibição executiva
+export const formatCPF = (val) => {
+  if (!val) return '—';
+  const clean = String(val).replace(/\D/g, '');
+  if (clean.length === 11) {
+    return clean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  }
+  return val;
+};
+
+export const formatPhone = (val) => {
+  if (!val) return '—';
+  const clean = String(val).replace(/\D/g, '');
+  if (clean.length === 11) {
+    return clean.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  }
+  if (clean.length === 10) {
+    return clean.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  }
+  return val;
+};
+
+export const getInitials = (name) => {
+  if (!name) return 'MO';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
 // Utilitário de cálculo automático de contagem regressiva de validade
 export const getCountdown = (dateStr) => {
-  if (!dateStr) return { status: 'none', text: 'Não informada', days: null, badgeClass: 'badge-muted', color: '#64748b' };
+  if (!dateStr) return { 
+    status: 'empty', 
+    text: 'Não informada', 
+    compactText: '— Não inf.',
+    formattedDate: '',
+    days: null, 
+    badgeClass: 'badge-muted', 
+    color: '#64748b' 
+  };
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  // Garante parsing local correto sem desvio de fuso
   const [year, month, day] = dateStr.split('-');
   const target = new Date(Number(year), Number(month) - 1, Number(day));
   
   const diffTime = target - today;
   const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const formattedDate = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
 
   if (days < 0) {
     return {
       status: 'expired',
       days,
+      formattedDate,
       text: `VENCIDO há ${Math.abs(days)} dia(s)`,
+      compactText: `Vencido (${Math.abs(days)}d)`,
       badgeClass: 'badge-expired',
       color: '#f43f5e'
     };
@@ -97,7 +139,9 @@ export const getCountdown = (dateStr) => {
     return {
       status: 'today',
       days: 0,
+      formattedDate,
       text: 'VENCE HOJE!',
+      compactText: 'Vence Hoje!',
       badgeClass: 'badge-expired',
       color: '#f43f5e'
     };
@@ -106,7 +150,9 @@ export const getCountdown = (dateStr) => {
     return {
       status: 'critical',
       days,
+      formattedDate,
       text: `Faltam ${days} dia(s) (Alerta Crítico)`,
+      compactText: `${days}d restantes`,
       badgeClass: 'badge-warning',
       color: '#f59e0b'
     };
@@ -115,7 +161,9 @@ export const getCountdown = (dateStr) => {
     return {
       status: 'attention',
       days,
+      formattedDate,
       text: `Restam ${days} dia(s) (Atenção)`,
+      compactText: `${days}d restantes`,
       badgeClass: 'badge-attention',
       color: '#38bdf8'
     };
@@ -123,7 +171,9 @@ export const getCountdown = (dateStr) => {
   return {
     status: 'valid',
     days,
+    formattedDate,
     text: `Válido (${days} dias restantes)`,
+    compactText: `Em dia (${days}d)`,
     badgeClass: 'badge-valid',
     color: '#10b981'
   };
@@ -132,6 +182,7 @@ export const getCountdown = (dateStr) => {
 export default function DriversModule({ user }) {
   // Controle de visualização: 'list' (Quadro Geral) ou 'form' (Formulário Amplo na Página, sem pop-up)
   const [viewMode, setViewMode] = useState('list');
+  const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' (Cards Operacionais VIP) ou 'table' (Tabela Executiva)
   const [editingId, setEditingId] = useState(null);
 
   // Motoristas reais
@@ -951,12 +1002,12 @@ export default function DriversModule({ user }) {
             </div>
           </div>
 
-          {/* Tabela de Motoristas com Contadores Automáticos e WhatsApp Direto */}
+          {/* Quadro Operacional de Motoristas & Validades */}
           <div className="card-panel" style={{ marginTop: '1.5rem' }}>
             <div className="live-board-header">
               <div>
                 <h3>Quadro Operacional de Motoristas & Validades</h3>
-                <p>Contadores automáticos de dias restantes para renovação e botão de WhatsApp direto</p>
+                <p>Gestão técnica de condutores homologados, controle de validades MOPP/NRs e acionamento direto CCO</p>
               </div>
 
               <div className="table-controls-bar">
@@ -1002,201 +1053,388 @@ export default function DriversModule({ user }) {
                     Alertas Críticos ({alertDrivers})
                   </button>
                 </div>
+
+                {/* Alternador de Visualização: Cards vs Tabela */}
+                <div className="view-mode-toggle">
+                  <button
+                    type="button"
+                    className={`view-mode-btn ${displayLayout === 'cards' ? 'active' : ''}`}
+                    onClick={() => setDisplayLayout('cards')}
+                    title="Visualização em Cards Operacionais"
+                  >
+                    <LayoutGrid size={15} />
+                    <span>Cards</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`view-mode-btn ${displayLayout === 'table' ? 'active' : ''}`}
+                    onClick={() => setDisplayLayout('table')}
+                    title="Visualização em Tabela Executiva"
+                  >
+                    <List size={15} />
+                    <span>Tabela</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="table-responsive-wrapper">
-              <table className="operational-table" id="drivers-table">
-                <thead>
-                  <tr>
-                    <th>Condutor & Contato</th>
-                    <th>CNH & Categoria</th>
-                    <th>Curso MOPP</th>
-                    <th>Exame Toxicológico</th>
-                    <th>Cursos NR-20 / NR-35</th>
-                    <th>Veículo</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDrivers.length === 0 ? (
+            {filteredDrivers.length === 0 ? (
+              <div className="empty-table-state" style={{ padding: '3.5rem 1rem' }}>
+                <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem', fontSize: '1.05rem' }}>
+                  Nenhum motorista encontrado no filtro selecionado.
+                </p>
+                <span style={{ fontSize: '0.85rem', display: 'block', marginBottom: '1.25rem', color: 'var(--text-muted)' }}>
+                  Cadastre novos condutores ou altere os termos de busca para visualizar os registros.
+                </span>
+                <button
+                  type="button"
+                  className="btn-primary btn-icon-text"
+                  onClick={handleOpenCreateForm}
+                  style={{ margin: '0 auto' }}
+                >
+                  <Plus size={16} />
+                  <span>Cadastrar Novo Motorista</span>
+                </button>
+              </div>
+            ) : displayLayout === 'cards' ? (
+              /* ============================================================== */
+              /* VISUALIZAÇÃO 1: CARDS OPERACIONAIS VIP (DOSSIÊ DO CONDUTOR)    */
+              /* ============================================================== */
+              <div className="driver-cards-grid">
+                {filteredDrivers.map((d) => {
+                  const cnhCount = getCountdown(d.validade_cnh);
+                  const moppCount = getCountdown(d.validade_mopp);
+                  const toxCount = getCountdown(d.validade_toxicologico);
+                  const nr20Count = getCountdown(d.validade_nr20);
+                  const nr35Count = getCountdown(d.validade_nr35);
+                  const nr33Count = getCountdown(d.validade_nr33);
+                  const dirDefCount = getCountdown(d.validade_direcao_defensiva);
+                  const cargasEspCount = getCountdown(d.validade_cargas_especiais);
+                  const hazmatCount = getCountdown(d.validade_hazmat_pae);
+                  const waLink = getWhatsAppLink(d.telefone);
+
+                  return (
+                    <div 
+                      key={d.id} 
+                      className={`driver-dossier-card animate-fade-in ${hasComplianceAlert(d) ? 'has-alert' : ''}`}
+                    >
+                      {/* Topo: Avatar, Nome, Categoria e Status */}
+                      <div className="driver-card-header">
+                        <div className="driver-avatar-info">
+                          <div className="driver-avatar-circle">
+                            {getInitials(d.nome)}
+                          </div>
+                          <div className="driver-title-meta">
+                            <h4 className="driver-name-title" title={d.nome}>{d.nome}</h4>
+                            <div className="driver-pills-subline">
+                              <span className="driver-category-badge">Cat. {d.categoria_cnh || 'E'}</span>
+                              {d.cpf && <span className="driver-cpf-text">CPF: {formatCPF(d.cpf)}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={`driver-card-status-badge ${d.status === 'Bloqueado' ? 'bloqueado' : 'disponivel'}`}>
+                          <span className="status-dot"></span>
+                          <span>{d.status || 'Disponível'}</span>
+                        </div>
+                      </div>
+
+                      {/* Veículo Alocado */}
+                      <div className="driver-vehicle-strip">
+                        <span className="strip-label">Veículo Alocado:</span>
+                        {d.veiculo_vinculado ? (
+                          <div className="mercosul-plate-badge-mini" title="Placa do Veículo Vinculado">
+                            <span className="flag">🇧🇷</span>
+                            <span className="plate-txt">{d.veiculo_vinculado}</span>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.76rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                            Nenhum veículo fixo vinculado
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Faixa de Contato & WhatsApp Direto */}
+                      <div className="driver-contact-strip">
+                        <div className="driver-phones-column">
+                          <div className="main-phone-row">
+                            <Phone size={14} className="text-emerald" />
+                            <span>{formatPhone(d.telefone) || 'Sem telefone'}</span>
+                          </div>
+                          {d.telefone_emergencia && (
+                            <span className="emergency-phone-sub">
+                              Recado: {formatPhone(d.telefone_emergencia)}
+                            </span>
+                          )}
+                        </div>
+
+                        {waLink && (
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-whatsapp-executive"
+                            title="Abrir conversa no WhatsApp com o motorista"
+                          >
+                            <MessageCircle size={15} />
+                            <span>Chamar no Zap</span>
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Dossiê de Validades & Certificações (Grid 2x2 Limpo) */}
+                      <div className="driver-compliance-matrix">
+                        {/* 1. CNH */}
+                        <div className="compliance-matrix-cell">
+                          <div className="cell-title">
+                            <span>CNH</span>
+                            <span className={`cell-badge ${cnhCount.badgeClass}`}>{cnhCount.compactText}</span>
+                          </div>
+                          <div className="cell-data">Reg: {d.cnh || '—'}</div>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                            Val: {cnhCount.formattedDate || 'Não informada'}
+                          </span>
+                        </div>
+
+                        {/* 2. MOPP */}
+                        <div className="compliance-matrix-cell">
+                          <div className="cell-title">
+                            <span>Curso MOPP</span>
+                            <span className={`cell-badge ${moppCount.badgeClass}`}>{moppCount.compactText}</span>
+                          </div>
+                          <div className="cell-data">{d.mopp_numero || 'MOPP Homologado'}</div>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                            Val: {moppCount.formattedDate || 'Não informada'}
+                          </span>
+                        </div>
+
+                        {/* 3. Toxicológico */}
+                        <div className="compliance-matrix-cell">
+                          <div className="cell-title">
+                            <span>Toxicológico</span>
+                            <span className={`cell-badge ${toxCount.badgeClass}`}>{toxCount.compactText}</span>
+                          </div>
+                          <div className="cell-data">Laboratorial</div>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                            Val: {toxCount.formattedDate || 'Não informada'}
+                          </span>
+                        </div>
+
+                        {/* 4. Cursos NR & Especiais */}
+                        <div className="compliance-matrix-cell">
+                          <div className="cell-title">
+                            <span>Normas & Cursos</span>
+                          </div>
+                          <div className="driver-courses-chips-row" style={{ marginTop: '2px' }}>
+                            <span className={`course-chip-mini ${nr20Count.status}`}>
+                              NR-20: {nr20Count.compactText}
+                            </span>
+                            <span className={`course-chip-mini ${nr35Count.status}`}>
+                              NR-35: {nr35Count.compactText}
+                            </span>
+                            {d.validade_hazmat_pae && (
+                              <span className={`course-chip-mini ${hazmatCount.status}`}>
+                                PAE: {hazmatCount.compactText}
+                              </span>
+                            )}
+                            {d.validade_nr33 && (
+                              <span className={`course-chip-mini ${nr33Count.status}`}>
+                                NR-33: {nr33Count.compactText}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rodapé: Seletor Rápido de Status e Ações */}
+                      <div className="driver-card-footer">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Status CCO:</span>
+                          <PremiumSelect
+                            value={d.status}
+                            onChange={(val) => handleChangeStatus(d.id, val)}
+                            options={STATUS_OPTIONS}
+                            size="inline"
+                            id={`card-status-${d.id}`}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            className="topbar-icon-btn"
+                            style={{ width: '32px', height: '32px' }}
+                            onClick={() => handleOpenEditForm(d)}
+                            title="Editar cadastro e validades"
+                          >
+                            <Edit3 size={15} />
+                          </button>
+
+                          <button
+                            type="button"
+                            className="btn-danger-icon"
+                            style={{ width: '32px', height: '32px' }}
+                            onClick={() => handleDeleteDriver(d.id, d.nome)}
+                            title="Remover motorista da frota"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* ============================================================== */
+              /* VISUALIZAÇÃO 2: TABELA EXECUTIVA DE ALTA PERFORMANCE           */
+              /* ============================================================== */
+              <div className="table-responsive-wrapper">
+                <table className="drivers-executive-table" id="drivers-table">
+                  <thead>
                     <tr>
-                      <td colSpan="8" className="empty-table-state">
-                        <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-                          Nenhum motorista cadastrado ainda.
-                        </p>
-                        <span style={{ fontSize: '0.85rem', display: 'block', marginBottom: '1rem' }}>
-                          Utilize o botão abaixo para abrir a tela de cadastro e registrar seu primeiro condutor com controle automático de validades.
-                        </span>
-                        <button
-                          type="button"
-                          className="btn-primary btn-icon-text"
-                          onClick={handleOpenCreateForm}
-                          style={{ margin: '0 auto' }}
-                        >
-                          <Plus size={16} />
-                          <span>Cadastrar Primeiro Motorista</span>
-                        </button>
-                      </td>
+                      <th style={{ minWidth: '250px' }}>Condutor Homologado</th>
+                      <th style={{ minWidth: '180px' }}>Contato & WhatsApp</th>
+                      <th style={{ minWidth: '160px' }}>CNH & Validade</th>
+                      <th style={{ minWidth: '150px' }}>Curso MOPP</th>
+                      <th style={{ minWidth: '140px' }}>Toxicológico</th>
+                      <th style={{ minWidth: '160px' }}>Cursos NRs</th>
+                      <th style={{ minWidth: '120px' }}>Veículo</th>
+                      <th style={{ minWidth: '150px' }}>Status Operacional</th>
+                      <th style={{ minWidth: '80px', textAlign: 'center' }}>Ações</th>
                     </tr>
-                  ) : (
-                    filteredDrivers.map((d) => {
+                  </thead>
+                  <tbody>
+                    {filteredDrivers.map((d) => {
                       const cnhCount = getCountdown(d.validade_cnh);
                       const moppCount = getCountdown(d.validade_mopp);
                       const toxCount = getCountdown(d.validade_toxicologico);
                       const nr20Count = getCountdown(d.validade_nr20);
                       const nr35Count = getCountdown(d.validade_nr35);
-                      const nr33Count = getCountdown(d.validade_nr33);
-                      const dirDefCount = getCountdown(d.validade_direcao_defensiva);
-                      const cargasEspCount = getCountdown(d.validade_cargas_especiais);
-                      const hazmatCount = getCountdown(d.validade_hazmat_pae);
                       const waLink = getWhatsAppLink(d.telefone);
 
                       return (
                         <tr key={d.id} className={hasComplianceAlert(d) ? 'row-alert-warning' : ''}>
-                          {/* Coluna 1: Nome & Contato WhatsApp */}
+                          {/* Condutor */}
                           <td>
-                            <div className="driver-identity-cell">
-                              <strong>{d.nome}</strong>
-                              {d.cpf && <small style={{ color: 'var(--text-dim)' }}>CPF: {d.cpf}</small>}
-                              
-                              {d.telefone ? (
-                                <div className="whatsapp-action-pill">
-                                  <Phone size={12} className="text-muted" />
-                                  <span>{d.telefone}</span>
-                                  {waLink && (
-                                    <a
-                                      href={waLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="btn-wa-direct"
-                                      title="Abrir WhatsApp com o motorista"
-                                    >
-                                      <MessageCircle size={13} />
-                                      <span>Chamar no Zap</span>
-                                    </a>
-                                  )}
-                                </div>
-                              ) : (
-                                <small style={{ color: 'var(--text-dim)' }}>Sem telefone</small>
+                            <div className="driver-table-user-cell">
+                              <div className="table-driver-avatar">
+                                {getInitials(d.nome)}
+                              </div>
+                              <div className="table-driver-meta">
+                                <strong title={d.nome}>{d.nome}</strong>
+                                <small>CPF: {formatCPF(d.cpf)} · Cat. {d.categoria_cnh || 'E'}</small>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Contato & WhatsApp */}
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <span style={{ fontSize: '0.84rem', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap' }}>
+                                {formatPhone(d.telefone) || '—'}
+                              </span>
+                              {waLink && (
+                                <a
+                                  href={waLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="table-wa-direct-btn"
+                                  title="Chamar no WhatsApp"
+                                >
+                                  <MessageCircle size={12} />
+                                  <span>Chamar no Zap</span>
+                                </a>
                               )}
                             </div>
                           </td>
 
-                          {/* Coluna 2: CNH com Contador Automático */}
+                          {/* CNH */}
                           <td>
-                            <div className="cnh-cell">
-                              <span className="cnh-number">Reg: {d.cnh} (Cat. {d.categoria_cnh || 'E'})</span>
-                              <span className={`doc-countdown-chip ${cnhCount.badgeClass}`}>
-                                <Calendar size={12} />
-                                <span>{cnhCount.text}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.82rem', color: '#f8fafc', whiteSpace: 'nowrap' }}>
+                                Reg: {d.cnh || '—'}
+                              </span>
+                              <span className={`table-compact-doc-chip ${cnhCount.status}`}>
+                                <span className={`table-doc-dot ${cnhCount.status}`}></span>
+                                <span>{cnhCount.formattedDate || '—'} · {cnhCount.compactText}</span>
                               </span>
                             </div>
                           </td>
 
-                          {/* Coluna 3: MOPP com Contador Automático */}
+                          {/* MOPP */}
                           <td>
-                            <div className="mopp-cell">
-                              <strong>{d.mopp_numero || 'MOPP Homologado'}</strong>
-                              <span className={`doc-countdown-chip ${moppCount.badgeClass}`}>
-                                <Calendar size={12} />
-                                <span>{moppCount.text}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.82rem', color: '#f8fafc', whiteSpace: 'nowrap' }}>
+                                {d.mopp_numero || 'MOPP Homologado'}
+                              </span>
+                              <span className={`table-compact-doc-chip ${moppCount.status}`}>
+                                <span className={`table-doc-dot ${moppCount.status}`}></span>
+                                <span>{moppCount.formattedDate || '—'} · {moppCount.compactText}</span>
                               </span>
                             </div>
                           </td>
 
-                          {/* Coluna 4: Toxicológico com Contador Automático */}
+                          {/* Toxicológico */}
                           <td>
-                            <div className="cnh-cell">
-                              <span className={`doc-countdown-chip ${toxCount.badgeClass}`}>
-                                <Calendar size={12} />
-                                <span>{toxCount.text}</span>
-                              </span>
-                            </div>
+                            <span className={`table-compact-doc-chip ${toxCount.status}`}>
+                              <span className={`table-doc-dot ${toxCount.status}`}></span>
+                              <span>{toxCount.formattedDate || '—'} · {toxCount.compactText}</span>
+                            </span>
                           </td>
 
-                          {/* Coluna 5: NRs & Cursos com Contadores */}
+                          {/* Cursos NRs */}
                           <td>
-                            <div className="nrs-stacked-cell">
-                              <div className="nr-line">
-                                <span className="nr-label">NR-20:</span>
-                                <span className={`doc-countdown-chip ${nr20Count.badgeClass}`}>
-                                  {nr20Count.text}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 600 }}>NR-20:</span>
+                                <span className={`table-compact-doc-chip ${nr20Count.status}`}>
+                                  <span className={`table-doc-dot ${nr20Count.status}`}></span>
+                                  <span>{nr20Count.compactText}</span>
                                 </span>
                               </div>
-                              <div className="nr-line">
-                                <span className="nr-label">NR-35:</span>
-                                <span className={`doc-countdown-chip ${nr35Count.badgeClass}`}>
-                                  {nr35Count.text}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 600 }}>NR-35:</span>
+                                <span className={`table-compact-doc-chip ${nr35Count.status}`}>
+                                  <span className={`table-doc-dot ${nr35Count.status}`}></span>
+                                  <span>{nr35Count.compactText}</span>
                                 </span>
                               </div>
-                              {d.validade_nr33 && (
-                                <div className="nr-line">
-                                  <span className="nr-label">NR-33:</span>
-                                  <span className={`doc-countdown-chip ${nr33Count.badgeClass}`}>
-                                    {nr33Count.text}
-                                  </span>
-                                </div>
-                              )}
-                              {d.validade_hazmat_pae && (
-                                <div className="nr-line">
-                                  <span className="nr-label">Hazmat:</span>
-                                  <span className={`doc-countdown-chip ${hazmatCount.badgeClass}`}>
-                                    {hazmatCount.text}
-                                  </span>
-                                </div>
-                              )}
-                              {d.validade_direcao_defensiva && (
-                                <div className="nr-line">
-                                  <span className="nr-label">Dir.Def:</span>
-                                  <span className={`doc-countdown-chip ${dirDefCount.badgeClass}`}>
-                                    {dirDefCount.text}
-                                  </span>
-                                </div>
-                              )}
-                              {d.validade_cargas_especiais && (
-                                <div className="nr-line">
-                                  <span className="nr-label">Carg.Esp:</span>
-                                  <span className={`doc-countdown-chip ${cargasEspCount.badgeClass}`}>
-                                    {cargasEspCount.text}
-                                  </span>
-                                </div>
-                              )}
                             </div>
                           </td>
 
-                          {/* Coluna 6: Veículo Vinculado */}
+                          {/* Veículo */}
                           <td>
                             {d.veiculo_vinculado ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                <span className="plate-badge">{d.veiculo_vinculado}</span>
+                              <div className="mercosul-plate-badge-mini" title="Veículo vinculado">
+                                <span className="flag">🇧🇷</span>
+                                <span className="plate-txt">{d.veiculo_vinculado}</span>
                               </div>
                             ) : (
-                              <small style={{ color: 'var(--text-dim)' }}>Não vinculado</small>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>—</span>
                             )}
                           </td>
 
-                          {/* Coluna 7: Status Operacional */}
+                          {/* Status */}
                           <td>
                             <PremiumSelect
                               value={d.status}
                               onChange={(val) => handleChangeStatus(d.id, val)}
                               options={STATUS_OPTIONS}
                               size="inline"
-                              id={`status-select-${d.id}`}
+                              id={`status-table-${d.id}`}
                             />
                           </td>
 
-                          {/* Coluna 8: Ações */}
-                          <td>
-                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          {/* Ações */}
+                          <td style={{ textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
                               <button
                                 type="button"
                                 className="topbar-icon-btn"
                                 style={{ width: '30px', height: '30px' }}
                                 onClick={() => handleOpenEditForm(d)}
-                                title="Editar dados e renovar validades"
+                                title="Editar dados"
                               >
                                 <Edit3 size={14} />
                               </button>
@@ -1204,6 +1442,7 @@ export default function DriversModule({ user }) {
                               <button
                                 type="button"
                                 className="btn-danger-icon"
+                                style={{ width: '30px', height: '30px' }}
                                 onClick={() => handleDeleteDriver(d.id, d.nome)}
                                 title="Excluir motorista"
                               >
@@ -1213,11 +1452,11 @@ export default function DriversModule({ user }) {
                           </td>
                         </tr>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}
