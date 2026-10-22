@@ -251,59 +251,7 @@
   gap: 1rem;
   flex-wrap: wrap;
   justify-content: center;
-  margin-bottom: 2rem;
-}
-
-.empty-state-routes-preview {
-  width: 100%;
-  max-width: 900px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: var(--radius-md);
-  padding: 1.15rem 1.35rem;
-  text-align: left;
-}
-
-.routes-preview-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #38bdf8;
-  margin-bottom: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.routes-preview-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.route-pill-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  background: rgba(13, 21, 35, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 5px 11px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-.route-pill-item strong {
-  color: #34d399;
-}
-
-.dot-pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 6px #10b981;
+  margin-bottom: 0;
 }
 
 /* Grid de Cards Dossiê de Clientes */

@@ -34,64 +34,9 @@ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
 import './ClientsModule.css';
 
-// Catálogo de Corredores Rodoviários Homologados da Ambipar
-export const PRESET_ROUTES = [
-  {
-    id: 'ROTA-BA-SP-01',
-    nome: 'Corredor Camaçari (BA) ⇄ Paulínia (SP)',
-    origem: 'Camaçari / BA (Polo Petroquímico)',
-    destino: 'Paulínia / SP (Base de Tratamento Ambipar)',
-    distanciaKm: 1940,
-    tempoHoras: 34,
-    tipoCarga: 'Químicos Perigosos (Hazmat) & Resíduos Classe I',
-    veiculoRecomendado: 'Carreta Tanque Inox Químico (316L)',
-    pegadaEstimadaCo2: 2450 // kg CO2e
-  },
-  {
-    id: 'ROTA-SP-RJ-02',
-    nome: 'Eixo Cubatão (SP) ⇄ Duque de Caxias (RJ)',
-    origem: 'Cubatão / SP (Polo Industrial)',
-    destino: 'Duque de Caxias / RJ (REDUC & Base Ambipar)',
-    distanciaKm: 460,
-    tempoHoras: 8,
-    tipoCarga: 'Derivados de Petróleo & Efluentes Industriais',
-    veiculoRecomendado: 'Auto-Vácuo Sucção Líquidos (Actros)',
-    pegadaEstimadaCo2: 580
-  },
-  {
-    id: 'ROTA-PR-RS-03',
-    nome: 'Corredor Araucária (PR) ⇄ Canoas (RS)',
-    origem: 'Araucária / PR (REPAR)',
-    destino: 'Canoas / RS (REFAP & Destinação Final)',
-    distanciaKm: 720,
-    tempoHoras: 13,
-    tipoCarga: 'Granel Líquido & Resíduos Industriais Classe IIA',
-    veiculoRecomendado: 'Bitrem Tanque Químico',
-    pegadaEstimadaCo2: 910
-  },
-  {
-    id: 'ROTA-MG-ES-04',
-    nome: 'Corredor Betim (MG) ⇄ Tubarão (ES)',
-    origem: 'Betim / MG (Polo Automotivo / Petroquímica)',
-    destino: 'Vitória / Tubarão / ES (Porto & Pátio Industrial)',
-    distanciaKm: 530,
-    tempoHoras: 10,
-    tipoCarga: 'Cargas Pesadas, Minérios & Big Bags',
-    veiculoRecomendado: 'Carreta Sider (Carga Geral / Tambores)',
-    pegadaEstimadaCo2: 670
-  },
-  {
-    id: 'ROTA-SP-INT-05',
-    nome: 'Anel Paulínia ⇄ Campinas ⇄ Sorocaba (SP)',
-    origem: 'Paulínia / SP (Hub Logístico Ambipar)',
-    destino: 'Complexo Industrial de Sorocaba / SP',
-    distanciaKm: 180,
-    tempoHoras: 4,
-    tipoCarga: 'Coletas Dedicadas & Fracionadas em IBCs',
-    veiculoRecomendado: 'Caminhão Truck PBT 23t (Baú/Sider)',
-    pegadaEstimadaCo2: 230
-  }
-];
+// Catálogo de Corredores Rodoviários Homologados da Ambipar (Inicia 100% Limpo)
+export const PRESET_ROUTES = [];
+
 
 export const CLIENT_STATUS_OPTIONS = [
   { 
@@ -206,7 +151,6 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
     }
   });
 
-  const [routesList, setRoutesList] = useState(PRESET_ROUTES);
   const [loading, setLoading] = useState(false);
   const [searchingCep, setSearchingCep] = useState(false);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table' | 'form'
@@ -219,8 +163,14 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   // Modais
   const [selectedClientDossier, setSelectedClientDossier] = useState(null);
   const [clientToRedirect, setClientToRedirect] = useState(null);
-  const [newSelectedRouteId, setNewSelectedRouteId] = useState('');
-  const [newSelectedFrequency, setNewSelectedFrequency] = useState('');
+  const [redirectForm, setRedirectForm] = useState({
+    rota_nome: '',
+    origem: '',
+    destino: '',
+    distancia_km: '',
+    tempo_ciclo_horas: '',
+    frequencia: '3x por Semana'
+  });
 
   // Formulário de Cadastro / Edição
   const [editingId, setEditingId] = useState(null);
@@ -241,16 +191,18 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
     uf: 'SP',
     polo_logistico: '',
     
-    rota_id: 'ROTA-BA-SP-01',
+    rota_nome: '',
+    origem: '',
+    destino: '',
     tipo_operacao: 'Coleta na Origem & Transbordo Químico',
     frequencia: '3x por Semana',
     janela_atendimento: '07:00 às 18:00 (Seg a Sex)',
-    veiculo_preferencial: 'Carreta Tanque Inox Químico (316L)',
+    veiculo_preferencial: '',
     veiculo_alocado_placa: '',
     motorista_preferencial: '',
-    distancia_km: 1940,
-    tempo_ciclo_horas: 34,
-    volume_mensal_ton: 0,
+    distancia_km: '',
+    tempo_ciclo_horas: '',
+    volume_mensal_ton: '',
     
     classes_residuos: '',
     codigo_ibama: '',
@@ -349,16 +301,18 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
       uf: 'SP',
       polo_logistico: '',
       
-      rota_id: 'ROTA-BA-SP-01',
+      rota_nome: '',
+      origem: '',
+      destino: '',
       tipo_operacao: 'Coleta na Origem & Transbordo Químico',
       frequencia: '3x por Semana',
       janela_atendimento: '07:00 às 18:00 (Seg a Sex)',
-      veiculo_preferencial: 'Carreta Tanque Inox Químico (316L)',
+      veiculo_preferencial: '',
       veiculo_alocado_placa: '',
       motorista_preferencial: '',
-      distancia_km: 1940,
-      tempo_ciclo_horas: 34,
-      volume_mensal_ton: 0,
+      distancia_km: '',
+      tempo_ciclo_horas: '',
+      volume_mensal_ton: '',
       
       classes_residuos: '',
       codigo_ibama: '',
@@ -390,13 +344,14 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
       return;
     }
 
-    const selectedRouteObj = routesList.find(r => r.id === formData.rota_id) || routesList[0];
+    const routeName = formData.rota_nome?.trim() || 
+      (formData.origem && formData.destino ? `${formData.origem} ⇄ ${formData.destino}` : '');
 
     const payload = {
       ...formData,
-      rota_nome: selectedRouteObj.nome,
-      distancia_km: Number(formData.distancia_km) || selectedRouteObj.distanciaKm,
-      tempo_ciclo_horas: Number(formData.tempo_ciclo_horas) || selectedRouteObj.tempoHoras,
+      rota_nome: routeName,
+      distancia_km: Number(formData.distancia_km) || 0,
+      tempo_ciclo_horas: Number(formData.tempo_ciclo_horas) || 0,
       volume_mensal_ton: Number(formData.volume_mensal_ton) || 0,
       updated_at: new Date().toISOString()
     };
@@ -440,25 +395,30 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   // Abrir Modal de Redirecionar Rota
   const handleOpenRedirectModal = (client) => {
     setClientToRedirect(client);
-    setNewSelectedRouteId(client.rota_id || routesList[0].id);
-    setNewSelectedFrequency(client.frequencia || '3x por Semana');
+    setRedirectForm({
+      rota_nome: client.rota_nome || '',
+      origem: client.origem || client.cidade || '',
+      destino: client.destino || '',
+      distancia_km: client.distancia_km || '',
+      tempo_ciclo_horas: client.tempo_ciclo_horas || '',
+      frequencia: client.frequencia || '3x por Semana'
+    });
   };
 
   // Confirmar Mudança Rápida de Rota
   const handleConfirmRedirectRoute = () => {
     if (!clientToRedirect) return;
-    const targetRoute = routesList.find(r => r.id === newSelectedRouteId) || routesList[0];
 
     const updated = clients.map(c => {
       if (c.id === clientToRedirect.id) {
         return {
           ...c,
-          rota_id: targetRoute.id,
-          rota_nome: targetRoute.nome,
-          distancia_km: targetRoute.distanciaKm,
-          tempo_ciclo_horas: targetRoute.tempoHoras,
-          veiculo_preferencial: targetRoute.veiculoRecomendado,
-          frequencia: newSelectedFrequency,
+          rota_nome: redirectForm.rota_nome,
+          origem: redirectForm.origem,
+          destino: redirectForm.destino,
+          distancia_km: Number(redirectForm.distancia_km) || 0,
+          tempo_ciclo_horas: Number(redirectForm.tempo_ciclo_horas) || 0,
+          frequencia: redirectForm.frequencia,
           status: 'Em Operação'
         };
       }
@@ -468,18 +428,19 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
     setClients(updated);
     if (isSupabaseConfigured && supabase) {
       supabase.from('clientes').update({
-        rota_id: targetRoute.id,
-        rota_nome: targetRoute.nome,
-        distancia_km: targetRoute.distanciaKm,
-        tempo_ciclo_horas: targetRoute.tempoHoras,
-        frequencia: newSelectedFrequency,
+        rota_nome: redirectForm.rota_nome,
+        origem: redirectForm.origem,
+        destino: redirectForm.destino,
+        distancia_km: Number(redirectForm.distancia_km) || 0,
+        tempo_ciclo_horas: Number(redirectForm.tempo_ciclo_horas) || 0,
+        frequencia: redirectForm.frequencia,
         status: 'Em Operação'
       }).eq('id', clientToRedirect.id).then();
     }
 
     setFeedback({
       type: 'success',
-      text: `Cliente "${clientToRedirect.nome_fantasia || clientToRedirect.razao_social}" foi direcionado com sucesso para a rota: ${targetRoute.nome}!`
+      text: `Cliente "${clientToRedirect.nome_fantasia || clientToRedirect.razao_social}" foi direcionado com sucesso para a rota: ${redirectForm.rota_nome || 'Rota Atualizada'}!`
     });
 
     setClientToRedirect(null);
@@ -496,6 +457,20 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
     return `https://wa.me/${fullNumber}?text=${text}`;
   };
 
+  // Rotas cadastradas a partir dos clientes reais
+  const registeredRoutes = Array.from(
+    new Set(clients.map(c => c.rota_nome).filter(Boolean))
+  ).map(nome => {
+    const match = clients.find(c => c.rota_nome === nome);
+    return {
+      nome,
+      origem: match?.origem || `${match?.cidade || ''}/${match?.uf || ''}`,
+      destino: match?.destino || 'Base Ambipar',
+      distanciaKm: match?.distancia_km || 0,
+      tempoHoras: match?.tempo_ciclo_horas || 0
+    };
+  });
+
   // KPIs Reais (baseados estritamente nos dados cadastrados)
   const totalClients = clients.length;
   const inTripCount = clients.filter(c => c.status === 'Em Operação').length;
@@ -503,7 +478,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   const platinumCount = clients.filter(c => c.tier_sla?.includes('Platinum')).length;
   const blockedCount = clients.filter(c => c.status === 'Bloqueado').length;
   const totalVolumeMonthly = clients.reduce((acc, c) => acc + (Number(c.volume_mensal_ton) || 0), 0);
-  const totalRoutesUsed = new Set(clients.map(c => c.rota_id).filter(Boolean)).size;
+  const totalRoutesUsed = registeredRoutes.length;
 
   // Filtragem
   const filteredClients = clients.filter(c => {
@@ -520,7 +495,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
       (c.polo_logistico && c.polo_logistico.toLowerCase().includes(s));
 
     const matchesStatus = statusFilter === 'Todos' || c.status === statusFilter;
-    const matchesRoute = routeFilter === 'Todas' || c.rota_id === routeFilter;
+    const matchesRoute = routeFilter === 'Todas' || c.rota_nome === routeFilter;
 
     if (activeTab === 'em_operacao') {
       return matchesSearch && matchesStatus && matchesRoute && c.status === 'Em Operação';
@@ -841,62 +816,58 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <Route size={20} className="icon-emerald" />
                   <div>
                     <h4>3. Roteirização Dedicada, Parâmetros Operacionais & Frota</h4>
-                    <p>Selecione o corredor rodoviário homologado e defina os parâmetros de coleta</p>
+                    <p>Defina o corredor logístico, pontos de coleta/entrega e frota alocada para este cliente</p>
                   </div>
                 </div>
               </div>
 
-              <div className="highlight-route-selection-box" style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.65rem', fontWeight: 700, color: '#ffffff', fontSize: '0.85rem' }}>
-                  Selecione o Corredor Rodoviário Homologado para Atendimento *
-                </label>
-                <div className="route-cards-picker">
-                  {routesList.map(route => {
-                    const isSelected = formData.rota_id === route.id;
-                    return (
-                      <div
-                        key={route.id}
-                        className={`route-picker-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => {
-                          setFormData({
-                            ...formData,
-                            rota_id: route.id,
-                            distancia_km: route.distanciaKm,
-                            tempo_ciclo_horas: route.tempoHoras,
-                            veiculo_preferencial: route.veiculoRecomendado
-                          });
-                        }}
-                      >
-                        <div className="picker-card-top">
-                          <span className="route-badge-code">{route.id}</span>
-                          {isSelected && <span className="selected-indicator"><Check size={14} /> Selecionada</span>}
-                        </div>
-                        <h4 className="picker-route-title">{route.nome}</h4>
-                        <div className="picker-route-details">
-                          <div className="picker-point">
-                            <span className="point-dot origin"></span>
-                            <span>{route.origem}</span>
-                          </div>
-                          <div className="picker-arrow-down">
-                            <ArrowRight size={14} />
-                          </div>
-                          <div className="picker-point">
-                            <span className="point-dot dest"></span>
-                            <span>{route.destino}</span>
-                          </div>
-                        </div>
-                        <div className="picker-metrics-chips">
-                          <span>{route.distanciaKm} km</span>
-                          <span>~{route.tempoHoras}h ciclo</span>
-                          <span className="co2-tag">🌱 {route.pegadaEstimadaCo2} kg CO2e</span>
-                        </div>
-                      </div>
-                    );
-                  })}
+              {/* Se houver rotas previamente cadastradas por outros clientes, permite reaproveitar opcionalmente */}
+              {registeredRoutes.length > 0 && (
+                <div style={{ marginBottom: '1.25rem', background: 'rgba(0, 0, 0, 0.25)', padding: '0.9rem 1.15rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                    Reaproveitar Rota Existente na Carteira CCO (Opcional)
+                  </label>
+                  <select
+                    className="styled-native-select"
+                    value={formData.rota_nome}
+                    onChange={e => {
+                      const selected = registeredRoutes.find(r => r.nome === e.target.value);
+                      if (selected) {
+                        setFormData({
+                          ...formData,
+                          rota_nome: selected.nome,
+                          origem: selected.origem,
+                          destino: selected.destino,
+                          distancia_km: selected.distanciaKm,
+                          tempo_ciclo_horas: selected.tempoHoras
+                        });
+                      } else {
+                        setFormData({ ...formData, rota_nome: e.target.value });
+                      }
+                    }}
+                  >
+                    <option value="">-- Cadastrar Nova Rota para Este Cliente --</option>
+                    {registeredRoutes.map(r => (
+                      <option key={r.nome} value={r.nome}>
+                        {r.nome} ({r.distanciaKm} km | {r.origem} ➔ {r.destino})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
+              )}
 
               <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
+                  <label>Nome / Identificação da Rota Logística *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Corredor Paulínia ⇄ Cubatão ou Rota Coleta Química"
+                    value={formData.rota_nome}
+                    onChange={e => setFormData({ ...formData, rota_nome: e.target.value })}
+                  />
+                </div>
+
                 <div className="input-group-custom">
                   <label>Tipo de Operação</label>
                   <select
@@ -912,57 +883,28 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     <option value="Entrega de Insumos & Logística Reversa">Entrega de Insumos & Logística Reversa</option>
                   </select>
                 </div>
-
-                <div className="input-group-custom">
-                  <label>Frequência de Atendimento</label>
-                  <PremiumSelect
-                    value={formData.frequencia}
-                    onChange={val => setFormData({ ...formData, frequencia: val })}
-                    options={FREQUENCY_OPTIONS}
-                  />
-                </div>
               </div>
 
               <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
                 <div className="input-group-custom">
-                  <label>Janela de Atendimento / Horário</label>
+                  <label>Ponto de Origem da Carga (Cidade / Planta) *</label>
                   <input
                     type="text"
-                    placeholder="Ex: 07:00 às 18:00 (Seg a Sex)"
-                    value={formData.janela_atendimento}
-                    onChange={e => setFormData({ ...formData, janela_atendimento: e.target.value })}
+                    required
+                    placeholder="Ex: Paulínia / SP (Planta do Cliente)"
+                    value={formData.origem}
+                    onChange={e => setFormData({ ...formData, origem: e.target.value })}
                   />
                 </div>
 
                 <div className="input-group-custom">
-                  <label>Veículo Preferencial / Homologado</label>
+                  <label>Ponto de Destino (Base de Destinação / Planta) *</label>
                   <input
                     type="text"
-                    placeholder="Ex: Carreta Tanque Inox Químico (316L)"
-                    value={formData.veiculo_preferencial}
-                    onChange={e => setFormData({ ...formData, veiculo_preferencial: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
-                <div className="input-group-custom">
-                  <label>Placa do Veículo Alocado (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: AMB-4K89"
-                    value={formData.veiculo_alocado_placa}
-                    onChange={e => setFormData({ ...formData, veiculo_alocado_placa: e.target.value.toUpperCase() })}
-                  />
-                </div>
-
-                <div className="input-group-custom">
-                  <label>Motorista Homologado CCO (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Nome do motorista com MOPP"
-                    value={formData.motorista_preferencial}
-                    onChange={e => setFormData({ ...formData, motorista_preferencial: e.target.value })}
+                    required
+                    placeholder="Ex: Base Ambipar CCO / Central de Tratamento"
+                    value={formData.destino}
+                    onChange={e => setFormData({ ...formData, destino: e.target.value })}
                   />
                 </div>
               </div>
@@ -972,6 +914,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Distância da Rota (km)</label>
                   <input
                     type="number"
+                    placeholder="Ex: 180"
                     value={formData.distancia_km}
                     onChange={e => setFormData({ ...formData, distancia_km: e.target.value })}
                   />
@@ -981,6 +924,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <label>Tempo Estimado de Ciclo (horas)</label>
                   <input
                     type="number"
+                    placeholder="Ex: 4"
                     value={formData.tempo_ciclo_horas}
                     onChange={e => setFormData({ ...formData, tempo_ciclo_horas: e.target.value })}
                   />
@@ -995,6 +939,59 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                     onChange={e => setFormData({ ...formData, volume_mensal_ton: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
+                  <label>Frequência de Atendimento</label>
+                  <PremiumSelect
+                    value={formData.frequencia}
+                    onChange={val => setFormData({ ...formData, frequencia: val })}
+                    options={FREQUENCY_OPTIONS}
+                  />
+                </div>
+
+                <div className="input-group-custom">
+                  <label>Janela de Atendimento / Horário</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 07:00 às 18:00 (Seg a Sex)"
+                    value={formData.janela_atendimento}
+                    onChange={e => setFormData({ ...formData, janela_atendimento: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
+                <div className="input-group-custom">
+                  <label>Veículo Preferencial / Tipo</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Carreta Tanque Inox Químico (316L)"
+                    value={formData.veiculo_preferencial}
+                    onChange={e => setFormData({ ...formData, veiculo_preferencial: e.target.value })}
+                  />
+                </div>
+
+                <div className="input-group-custom">
+                  <label>Placa do Veículo Alocado (Opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: AMB-4K89"
+                    value={formData.veiculo_alocado_placa}
+                    onChange={e => setFormData({ ...formData, veiculo_alocado_placa: e.target.value.toUpperCase() })}
+                  />
+                </div>
+              </div>
+
+              <div className="input-group-custom">
+                <label>Motorista Homologado CCO (Opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Nome do motorista com certificado MOPP"
+                  value={formData.motorista_preferencial}
+                  onChange={e => setFormData({ ...formData, motorista_preferencial: e.target.value })}
+                />
               </div>
             </div>
 
@@ -1222,7 +1219,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 <span className="unit-suffix">eixos logísticos</span>
               </div>
               <div className="kpi-footer-status">
-                {routesList.length} corredores homologados
+                {totalRoutesUsed === 0 ? 'Nenhuma rota cadastrada' : `${totalRoutesUsed} rotas ativas`}
               </div>
             </div>
 
@@ -1330,7 +1327,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   onChange={setRouteFilter}
                   options={[
                     { value: 'Todas', label: 'Todas as Rotas' },
-                    ...routesList.map(r => ({ value: r.id, label: r.nome, sublabel: `${r.distanciaKm} km - ${r.origem}` }))
+                    ...registeredRoutes.map(r => ({ value: r.nome, label: r.nome, sublabel: `${r.distanciaKm} km` }))
                   ]}
                   placeholder="Filtrar por Rota..."
                   size="sm"
@@ -1380,7 +1377,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
               <p className="empty-state-desc">
                 {searchTerm || statusFilter !== 'Todos' || routeFilter !== 'Todas'
                   ? 'Tente remover os filtros de pesquisa para visualizar os contratos industriais cadastrados.'
-                  : 'Cadastre a primeira empresa contratante, configure os requisitos de carga e direcione-a imediatamente a um dos corredores logísticos da Ambipar.'}
+                  : 'Cadastre a primeira empresa contratante, configure os requisitos de carga e defina a rota operacional de atendimento.'}
               </p>
 
               <div className="empty-state-actions">
@@ -1416,24 +1413,6 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                   <span>+ Cadastrar Novo Cliente & Atribuir Rota</span>
                 </button>
               </div>
-
-              {/* Pré-visualização dos 5 Corredores Rodoviários Disponíveis */}
-              {clients.length === 0 && (
-                <div className="empty-state-routes-preview">
-                  <div className="routes-preview-header">
-                    <Route size={16} color="#06b6d4" />
-                    <span>5 Corredores Rodoviários Homologados Prontos para Vinculação:</span>
-                  </div>
-                  <div className="routes-preview-pills">
-                    {routesList.map(r => (
-                      <span key={r.id} className="route-pill-item" title={`${r.origem} ➔ ${r.destino}`}>
-                        <span className="dot-pulse"></span>
-                        <strong>{r.id}:</strong> {r.nome} ({r.distanciaKm} km)
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           ) : viewMode === 'cards' ? (
             /* ============================================================== */
@@ -1442,7 +1421,6 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
             <div className="clients-dossier-grid">
               {filteredClients.map(client => {
                 const statusMeta = CLIENT_STATUS_OPTIONS.find(s => s.value === client.status) || CLIENT_STATUS_OPTIONS[0];
-                const routeMeta = routesList.find(r => r.id === client.rota_id) || routesList[0];
                 const whatsappUrl = getWhatsAppLink(client.telefone, client.nome_fantasia || client.razao_social);
 
                 return (
@@ -1511,7 +1489,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                       <div className="route-cockpit-top">
                         <div className="route-cockpit-title">
                           <Route size={15} color="#10b981" />
-                          <span className="route-main-name">{client.rota_nome || routeMeta.nome}</span>
+                          <span className="route-main-name">{client.rota_nome || 'Rota Operacional CCO'}</span>
                         </div>
                         <button
                           type="button"
@@ -1530,20 +1508,20 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                           <span className="node-marker origin"></span>
                           <div className="node-text">
                             <span className="node-label">Origem</span>
-                            <span className="node-loc">{client.cidade}/{client.uf} ({client.nome_fantasia || 'Planta'})</span>
+                            <span className="node-loc">{client.origem || `${client.cidade || 'Origem'}/${client.uf || ''}`}</span>
                           </div>
                         </div>
 
                         <div className="path-connector-line">
-                          <span className="connector-dist">{client.distancia_km || routeMeta.distanciaKm} km</span>
-                          <span className="connector-eta">~{client.tempo_ciclo_horas || routeMeta.tempoHoras}h ciclo</span>
+                          <span className="connector-dist">{client.distancia_km ? `${client.distancia_km} km` : '—'}</span>
+                          {client.tempo_ciclo_horas ? <span className="connector-eta">~{client.tempo_ciclo_horas}h ciclo</span> : null}
                         </div>
 
                         <div className="path-node">
                           <span className="node-marker dest"></span>
                           <div className="node-text">
                             <span className="node-label">Destino</span>
-                            <span className="node-loc">{routeMeta.destino?.split('(')[0] || 'Base Ambipar'}</span>
+                            <span className="node-loc">{client.destino || 'Base Ambipar'}</span>
                           </div>
                         </div>
                       </div>
@@ -1790,55 +1768,109 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
 
             <div className="modal-body-content" style={{ padding: '1.25rem' }}>
               <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '1.1rem' }}>
-                Selecione a nova rota logística para direcionar o escoamento ou coleta deste cliente industrial. O CCO atualizará os tempos de trânsito e o despacho imediatamente:
+                Informe a nova rota de atendimento ou altere a frequência para este cliente:
               </p>
 
-              <div style={{ marginBottom: '1.2rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
-                  Nova Rota Logística *
-                </label>
-                <select
-                  className="styled-native-select"
-                  value={newSelectedRouteId}
-                  onChange={e => setNewSelectedRouteId(e.target.value)}
-                  style={{ width: '100%', padding: '0.65rem' }}
-                >
-                  {routesList.map(r => (
-                    <option key={r.id} value={r.id}>
-                      {r.nome} ({r.distanciaKm} km | ~{r.tempoHoras}h ciclo | {r.origem})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {registeredRoutes.length > 0 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
+                    Selecionar Rota Existente (Opcional)
+                  </label>
+                  <select
+                    className="styled-native-select"
+                    value={redirectForm.rota_nome}
+                    onChange={e => {
+                      const match = registeredRoutes.find(r => r.nome === e.target.value);
+                      if (match) {
+                        setRedirectForm({
+                          ...redirectForm,
+                          rota_nome: match.nome,
+                          origem: match.origem,
+                          destino: match.destino,
+                          distancia_km: match.distanciaKm,
+                          tempo_ciclo_horas: match.tempoHoras
+                        });
+                      } else {
+                        setRedirectForm({ ...redirectForm, rota_nome: e.target.value });
+                      }
+                    }}
+                  >
+                    <option value="">-- Ou Digite uma Nova Rota Abaixo --</option>
+                    {registeredRoutes.map(r => (
+                      <option key={r.nome} value={r.nome}>
+                        {r.nome} ({r.distanciaKm} km | {r.origem} ➔ {r.destino})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              <div style={{ marginBottom: '1.2rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
-                  Frequência de Atendimento *
+                  Nome / Identificação da Rota *
                 </label>
-                <PremiumSelect
-                  value={newSelectedFrequency}
-                  onChange={setNewSelectedFrequency}
-                  options={FREQUENCY_OPTIONS}
+                <input
+                  type="text"
+                  required
+                  className="styled-native-select"
+                  placeholder="Ex: Corredor Paulínia ⇄ Cubatão"
+                  value={redirectForm.rota_nome}
+                  onChange={e => setRedirectForm({ ...redirectForm, rota_nome: e.target.value })}
                 />
               </div>
 
-              {/* Rota Selecionada Preview */}
-              {(() => {
-                const previewRoute = routesList.find(r => r.id === newSelectedRouteId) || routesList[0];
-                return (
-                  <div className="route-preview-badge-card" style={{ background: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.25)', padding: '0.9rem', borderRadius: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                      <strong style={{ color: '#38bdf8', fontSize: '0.88rem' }}>{previewRoute.nome}</strong>
-                      <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 700 }}>{previewRoute.distanciaKm} km</span>
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      <div><strong>Origem:</strong> {previewRoute.origem}</div>
-                      <div><strong>Destino:</strong> {previewRoute.destino}</div>
-                      <div><strong>Veículo Padrão:</strong> {previewRoute.veiculoRecomendado}</div>
-                    </div>
-                  </div>
-                );
-              })()}
+              <div className="grid-2-cols" style={{ marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
+                    Origem da Carga
+                  </label>
+                  <input
+                    type="text"
+                    className="styled-native-select"
+                    placeholder="Cidade / Planta"
+                    value={redirectForm.origem}
+                    onChange={e => setRedirectForm({ ...redirectForm, origem: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
+                    Destino da Carga
+                  </label>
+                  <input
+                    type="text"
+                    className="styled-native-select"
+                    placeholder="Base Ambipar / Destinação"
+                    value={redirectForm.destino}
+                    onChange={e => setRedirectForm({ ...redirectForm, destino: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid-2-cols" style={{ marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
+                    Distância (km)
+                  </label>
+                  <input
+                    type="number"
+                    className="styled-native-select"
+                    placeholder="Ex: 180"
+                    value={redirectForm.distancia_km}
+                    onChange={e => setRedirectForm({ ...redirectForm, distancia_km: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
+                    Frequência de Atendimento
+                  </label>
+                  <PremiumSelect
+                    value={redirectForm.frequencia}
+                    onChange={val => setRedirectForm({ ...redirectForm, frequencia: val })}
+                    options={FREQUENCY_OPTIONS}
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="modal-footer-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
@@ -1856,7 +1888,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 style={{ background: 'linear-gradient(135deg, #06b6d4, #0284c7)' }}
               >
                 <Compass size={16} />
-                <span>Confirmar e Direcionar para Rota</span>
+                <span>Confirmar e Direcionar</span>
               </button>
             </div>
           </div>
