@@ -3,6 +3,7 @@ import {
   LayoutDashboard, 
   Truck, 
   FileText, 
+  UserCheck,
   Calculator, 
   ShieldAlert, 
   AlertTriangle, 
@@ -45,6 +46,11 @@ export default function Sidebar({
           id: 'mtr',
           label: 'MTR & Destinação Resíduos',
           icon: FileText
+        },
+        {
+          id: 'motoristas',
+          label: 'Gestão de Motoristas (MOPP)',
+          icon: UserCheck
         }
       ]
     },

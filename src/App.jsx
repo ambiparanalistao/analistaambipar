@@ -12,6 +12,7 @@ import Sidebar from './components/Sidebar';
 import LogisticsDashboard from './components/LogisticsDashboard';
 import TripsModule from './components/TripsModule';
 import MtrModule from './components/MtrModule';
+import DriversModule from './components/DriversModule';
 import FreightCarbonCalculator from './components/FreightCarbonCalculator';
 import AnttFormulasModule from './components/AnttFormulasModule';
 import OcorrenciasModule from './components/OcorrenciasModule';
@@ -86,6 +87,10 @@ export default function App() {
     mtr: { 
       title: 'Manifestos de Transporte de Resíduos (MTR)', 
       subtitle: 'Controle de resíduos industriais perigosos (Classe I/II) e conformidade com o SINIR' 
+    },
+    motoristas: { 
+      title: 'Quadro de Motoristas & Certificações MOPP', 
+      subtitle: 'Habilitação, exames toxicológicos, cursos regulamentares e conformidade de condutores' 
     },
     calculadora_frete: { 
       title: 'Calculadora Avançada de Frete & Carbono', 
@@ -211,6 +216,7 @@ export default function App() {
               )}
               {currentModule === 'viagens' && <TripsModule user={session.user} />}
               {currentModule === 'mtr' && <MtrModule user={session.user} />}
+              {currentModule === 'motoristas' && <DriversModule user={session.user} />}
               {currentModule === 'calculadora_frete' && <FreightCarbonCalculator onNavigateMtr={() => setCurrentModule('mtr')} />}
               {currentModule === 'antt_formulas' && <AnttFormulasModule />}
               {currentModule === 'ocorrencias' && <OcorrenciasModule />}

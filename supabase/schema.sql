@@ -164,3 +164,55 @@ CREATE INDEX IF NOT EXISTS idx_laudos_status ON public.laudos_ambientais(status)
 CREATE INDEX IF NOT EXISTS idx_laudos_user ON public.laudos_ambientais(user_id);
 CREATE INDEX IF NOT EXISTS idx_residuos_data ON public.registros_residuos(data_descarte);
 CREATE INDEX IF NOT EXISTS idx_esg_ano_mes ON public.indicadores_esg(ano, mes);
+
+-- ==============================================================================
+-- 8. TABELA DE MOTORISTAS & CERTIFICAÇÃO MOPP
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.motoristas (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    nome TEXT NOT NULL,
+    cpf TEXT,
+    cnh TEXT NOT NULL,
+    categoria_cnh TEXT DEFAULT 'E',
+    validade_cnh DATE NOT NULL,
+    mopp_numero TEXT,
+    validade_mopp DATE,
+    validade_toxicologico DATE,
+    nr20 BOOLEAN DEFAULT true,
+    nr35 BOOLEAN DEFAULT true,
+    telefone TEXT,
+    status TEXT DEFAULT 'Disponível' CHECK (status IN ('Disponível', 'Em Viagem', 'Folga', 'Bloqueado')),
+    veiculo_vinculado TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::TEXT, NOW()) NOT NULL
+);
+
+ALTER TABLE public.motoristas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Usuários autenticados podem visualizar motoristas" ON public.motoristas;
+CREATE POLICY "Usuários autenticados podem visualizar motoristas"
+    ON public.motoristas FOR SELECT
+    TO authenticated
+    USING (true);
+
+DROP POLICY IF EXISTS "Usuários autenticados podem inserir motoristas" ON public.motoristas;
+CREATE POLICY "Usuários autenticados podem inserir motoristas"
+    ON public.motoristas FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Usuários autenticados podem atualizar motoristas" ON public.motoristas;
+CREATE POLICY "Usuários autenticados podem atualizar motoristas"
+    ON public.motoristas FOR UPDATE
+    TO authenticated
+    USING (true);
+
+DROP POLICY IF EXISTS "Usuários autenticados podem deletar motoristas" ON public.motoristas;
+CREATE POLICY "Usuários autenticados podem deletar motoristas"
+    ON public.motoristas FOR DELETE
+    TO authenticated
+    USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_motoristas_status ON public.motoristas(status);
+CREATE INDEX IF NOT EXISTS idx_motoristas_cnh ON public.motoristas(cnh);
+
