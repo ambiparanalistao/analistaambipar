@@ -29,31 +29,26 @@ export const STATUS_OPTIONS = [
   { 
     value: 'Disponível', 
     label: 'Disponível no Pátio / CCO', 
-    sublabel: 'Pronto para alocação e escala imediata', 
+    sublabel: 'Pronto para escala e alocação imediata', 
     color: '#10b981',
     badge: 'Liberado'
-  },
-  { 
-    value: 'Em Viagem', 
-    label: 'Em Viagem / Rota Ativa', 
-    sublabel: 'Operando em trânsito com carga perigosa', 
-    color: '#06b6d4',
-    badge: 'Em Rota'
-  },
-  { 
-    value: 'Folga', 
-    label: 'Folga Regulamentar', 
-    sublabel: 'Descanso obrigatório em conformidade (Lei 13.103)', 
-    color: '#f59e0b',
-    badge: 'Repouso'
   },
   { 
     value: 'Bloqueado', 
     label: 'Bloqueado (Documentação / CCO)', 
     sublabel: 'Pendência em CNH, MOPP, Toxicológico ou NR', 
     color: '#f43f5e',
-    badge: 'Impedido'
+    badge: 'Bloqueado'
   }
+];
+
+export const DEFAULT_FLEET = [
+  { placa: 'AMB-4K89', modelo: 'Carreta Tanque Inox Químico (Volvo FH 540)' },
+  { placa: 'AMB-9T21', modelo: 'Carreta Sider Resíduos Classe I (Scania R450)' },
+  { placa: 'AMB-2M33', modelo: 'Auto-Vácuo Sucção Líquidos (Actros 2651)' },
+  { placa: 'AMB-7X10', modelo: 'Roll-on / Caçamba Estanque (Volvo VM 330)' },
+  { placa: 'AMB-5P44', modelo: 'Bitrem Graneleiro / Big Bags (DAF XF 530)' },
+  { placa: 'AMB-8L19', modelo: 'Baú Carga Perigosa Fracionada (Constellation)' }
 ];
 
 export const CNH_CATEGORIES = [
@@ -154,7 +149,26 @@ export default function DriversModule({ user }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [feedback, setFeedback] = useState(null);
 
-  // Estado do Formulário
+  // Frotas Integradas (pré-programado para alimentar o futuro Módulo de Frotas)
+  const [fleetVehicles, setFleetVehicles] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ambipar_fleet_vehicles');
+      return saved ? JSON.parse(saved) : DEFAULT_FLEET;
+    } catch {
+      return DEFAULT_FLEET;
+    }
+  });
+
+  // Salva veículos da frota no localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('ambipar_fleet_vehicles', JSON.stringify(fleetVehicles));
+    } catch (e) {
+      console.warn('Erro ao salvar veículos da frota:', e);
+    }
+  }, [fleetVehicles]);
+
+  // Estado do Formulário Completo com Todos os Cursos
   const initialForm = {
     nome: '',
     cpf: '',
@@ -168,6 +182,10 @@ export default function DriversModule({ user }) {
     validade_toxicologico: '',
     validade_nr20: '',
     validade_nr35: '',
+    validade_nr33: '',
+    validade_direcao_defensiva: '',
+    validade_cargas_especiais: '',
+    validade_hazmat_pae: '',
     veiculo_vinculado: '',
     status: 'Disponível',
     observacoes: ''
@@ -232,8 +250,12 @@ export default function DriversModule({ user }) {
       validade_toxicologico: driver.validade_toxicologico || '',
       validade_nr20: driver.validade_nr20 || '',
       validade_nr35: driver.validade_nr35 || '',
+      validade_nr33: driver.validade_nr33 || '',
+      validade_direcao_defensiva: driver.validade_direcao_defensiva || '',
+      validade_cargas_especiais: driver.validade_cargas_especiais || '',
+      validade_hazmat_pae: driver.validade_hazmat_pae || '',
       veiculo_vinculado: driver.veiculo_vinculado || '',
-      status: driver.status || 'Disponível',
+      status: driver.status === 'Bloqueado' ? 'Bloqueado' : 'Disponível',
       observacoes: driver.observacoes || ''
     });
     setViewMode('form');
@@ -243,6 +265,24 @@ export default function DriversModule({ user }) {
   // Submissão do formulário
   const handleSubmitForm = async (e) => {
     e.preventDefault();
+
+    // Se tiver informado uma placa, salva automaticamente na frota para o módulo de frotas
+    if (formData.veiculo_vinculado) {
+      const cleanPlate = formData.veiculo_vinculado.toUpperCase().trim();
+      const exists = fleetVehicles.some(v => v.placa === cleanPlate);
+      if (!exists && cleanPlate.length >= 7) {
+        const updatedFleet = [
+          ...fleetVehicles,
+          { placa: cleanPlate, modelo: `Equipamento Vinculado (${formData.nome})`, tipo: 'Frota Operacional' }
+        ];
+        setFleetVehicles(updatedFleet);
+        try {
+          localStorage.setItem('ambipar_fleet_vehicles', JSON.stringify(updatedFleet));
+        } catch (err) {
+          console.warn('Erro ao salvar na frota:', err);
+        }
+      }
+    }
 
     if (editingId) {
       // Edição
@@ -311,21 +351,31 @@ export default function DriversModule({ user }) {
     }
   };
 
-  // Verifica se o motorista tem alerta de conformidade
+  // Verifica se o motorista tem alerta de conformidade em qualquer documento ou curso
   const hasComplianceAlert = (driver) => {
-    const cnh = getCountdown(driver.validade_cnh);
-    const mopp = getCountdown(driver.validade_mopp);
-    const tox = getCountdown(driver.validade_toxicologico);
-    const nr20 = getCountdown(driver.validade_nr20);
-    const nr35 = getCountdown(driver.validade_nr35);
+    const dates = [
+      driver.validade_cnh,
+      driver.validade_mopp,
+      driver.validade_toxicologico,
+      driver.validade_nr20,
+      driver.validade_nr35,
+      driver.validade_nr33,
+      driver.validade_direcao_defensiva,
+      driver.validade_cargas_especiais,
+      driver.validade_hazmat_pae
+    ];
 
-    return [cnh, mopp, tox, nr20, nr35].some(c => c.status === 'expired' || c.status === 'today' || c.status === 'critical');
+    return dates.some(d => {
+      if (!d) return false;
+      const c = getCountdown(d);
+      return c.status === 'expired' || c.status === 'today' || c.status === 'critical';
+    });
   };
 
-  // Contadores Globais
+  // Contadores Globais (apenas Disponível e Bloqueado)
   const totalDrivers = drivers.length;
   const availableDrivers = drivers.filter(d => d.status === 'Disponível').length;
-  const onTripDrivers = drivers.filter(d => d.status === 'Em Viagem').length;
+  const blockedDrivers = drivers.filter(d => d.status === 'Bloqueado').length;
   const alertDrivers = drivers.filter(hasComplianceAlert).length;
 
   // Filtragem da lista
@@ -342,7 +392,7 @@ export default function DriversModule({ user }) {
 
     if (statusFilter === 'all') return true;
     if (statusFilter === 'disponivel') return d.status === 'Disponível';
-    if (statusFilter === 'viagem') return d.status === 'Em Viagem';
+    if (statusFilter === 'bloqueado') return d.status === 'Bloqueado';
     if (statusFilter === 'alerta_doc') return hasComplianceAlert(d);
     return true;
   });
@@ -555,27 +605,28 @@ export default function DriversModule({ user }) {
                 </div>
               </div>
 
-              <div className="grid-2-cols" style={{ marginBottom: '1rem' }}>
-                <div className="input-group-custom">
-                  <label>Número de Registro CNH *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: 04981726354"
-                    value={formData.cnh}
-                    onChange={(e) => setFormData({ ...formData, cnh: e.target.value })}
-                  />
-                </div>
+              {/* Número de Registro CNH com espaço amplo e legível */}
+              <div className="input-group-custom" style={{ marginBottom: '1.2rem' }}>
+                <label>Número de Registro CNH (11 dígitos) *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: 04981726354"
+                  value={formData.cnh}
+                  onChange={(e) => setFormData({ ...formData, cnh: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                  style={{ fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.06em' }}
+                />
+              </div>
 
-                <div className="input-group-custom">
-                  <label>Categoria CNH</label>
-                  <PremiumSelect
-                    value={formData.categoria_cnh}
-                    onChange={(val) => setFormData({ ...formData, categoria_cnh: val })}
-                    options={CNH_CATEGORIES}
-                    id="driver-cnh-category-select"
-                  />
-                </div>
+              {/* Categoria CNH em linha própria com espaço total para ícones e textos */}
+              <div className="input-group-custom" style={{ marginBottom: '1.25rem' }}>
+                <label>Categoria da Carteira Nacional de Habilitação</label>
+                <PremiumSelect
+                  value={formData.categoria_cnh}
+                  onChange={(val) => setFormData({ ...formData, categoria_cnh: val })}
+                  options={CNH_CATEGORIES}
+                  id="driver-cnh-category-select"
+                />
               </div>
 
               {/* Data Validade CNH com Contador Automático */}
@@ -620,114 +671,215 @@ export default function DriversModule({ user }) {
               </div>
             </div>
 
-            {/* Bloco 3: Curso MOPP & Treinamentos de Segurança (NRs) com Contadores */}
+            {/* Bloco 3: Curso MOPP & Treinamentos de Segurança (NRs e Especializações Ambipar) */}
             <div className="card-panel card-z-mid" style={{ position: 'relative', zIndex: 10 }}>
               <div className="panel-header">
                 <div className="header-icon-label">
                   <Award size={20} className="icon-emerald" />
                   <div>
-                    <h4>3. Curso MOPP & Treinamentos NRs</h4>
-                    <p>Certificados obrigatórios para transporte de cargas perigosas</p>
+                    <h4>3. Cursos Obrigatórios & Certificações Técnicas</h4>
+                    <p>MOPP, NRs, Produtos Perigosos e Treinamentos Especializados</p>
                   </div>
                 </div>
               </div>
 
-              <div className="input-group-custom" style={{ marginBottom: '1rem' }}>
-                <label>Número do Certificado MOPP (Resolução ANTT)</label>
-                <input
-                  type="text"
-                  placeholder="Ex: MOPP-SP-89412"
-                  value={formData.mopp_numero}
-                  onChange={(e) => setFormData({ ...formData, mopp_numero: e.target.value })}
-                />
-              </div>
+              {/* MOPP Principal */}
+              <div className="date-field-with-countdown-card" style={{ marginBottom: '1.2rem', background: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+                <div className="grid-2-cols">
+                  <div className="input-group-custom">
+                    <label>Nº do Certificado MOPP (Resolução ANTT)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: MOPP-SP-89412"
+                      value={formData.mopp_numero}
+                      onChange={(e) => setFormData({ ...formData, mopp_numero: e.target.value })}
+                    />
+                  </div>
 
-              {/* Data Validade MOPP */}
-              <div className="date-field-with-countdown-card" style={{ marginBottom: '1.25rem' }}>
-                <div className="input-group-custom">
-                  <label>Data de Validade do Curso MOPP *</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.validade_mopp}
-                    onChange={(e) => setFormData({ ...formData, validade_mopp: e.target.value })}
-                  />
+                  <div className="input-group-custom">
+                    <label>Data de Validade do Curso MOPP *</label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.validade_mopp}
+                      onChange={(e) => setFormData({ ...formData, validade_mopp: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 {formData.validade_mopp && (
                   <div className={`countdown-live-banner ${getCountdown(formData.validade_mopp).badgeClass}`}>
                     <Calendar size={15} />
-                    <strong>MOPP:</strong>
+                    <strong>Curso MOPP ANTT:</strong>
                     <span>{getCountdown(formData.validade_mopp).text}</span>
                   </div>
                 )}
               </div>
 
-              {/* Data Validade NR-20 */}
-              <div className="date-field-with-countdown-card" style={{ marginBottom: '1.25rem' }}>
-                <div className="input-group-custom">
-                  <label>Validade NR-20 (Segurança com Inflamáveis e Combustíveis)</label>
-                  <input
-                    type="date"
-                    value={formData.validade_nr20}
-                    onChange={(e) => setFormData({ ...formData, validade_nr20: e.target.value })}
-                  />
+              {/* Grid com Cursos e NRs Especializadas do Setor */}
+              <div className="courses-two-cols-grid">
+                {/* 1. NR-20 (Inflamáveis e Combustíveis) */}
+                <div className="date-field-with-countdown-card">
+                  <div className="input-group-custom">
+                    <label>NR-20 (Inflamáveis & Combustíveis)</label>
+                    <input
+                      type="date"
+                      value={formData.validade_nr20}
+                      onChange={(e) => setFormData({ ...formData, validade_nr20: e.target.value })}
+                    />
+                  </div>
+                  {formData.validade_nr20 && (
+                    <div className={`countdown-live-banner ${getCountdown(formData.validade_nr20).badgeClass}`}>
+                      <span>{getCountdown(formData.validade_nr20).text}</span>
+                    </div>
+                  )}
                 </div>
 
-                {formData.validade_nr20 && (
-                  <div className={`countdown-live-banner ${getCountdown(formData.validade_nr20).badgeClass}`}>
-                    <Calendar size={15} />
-                    <strong>NR-20:</strong>
-                    <span>{getCountdown(formData.validade_nr20).text}</span>
+                {/* 2. NR-35 (Trabalho em Altura - Bocais de Tanque) */}
+                <div className="date-field-with-countdown-card">
+                  <div className="input-group-custom">
+                    <label>NR-35 (Trabalho em Altura - Tanques)</label>
+                    <input
+                      type="date"
+                      value={formData.validade_nr35}
+                      onChange={(e) => setFormData({ ...formData, validade_nr35: e.target.value })}
+                    />
                   </div>
-                )}
-              </div>
-
-              {/* Data Validade NR-35 */}
-              <div className="date-field-with-countdown-card">
-                <div className="input-group-custom">
-                  <label>Validade NR-35 (Trabalho em Altura - Bocais de Tanque)</label>
-                  <input
-                    type="date"
-                    value={formData.validade_nr35}
-                    onChange={(e) => setFormData({ ...formData, validade_nr35: e.target.value })}
-                  />
+                  {formData.validade_nr35 && (
+                    <div className={`countdown-live-banner ${getCountdown(formData.validade_nr35).badgeClass}`}>
+                      <span>{getCountdown(formData.validade_nr35).text}</span>
+                    </div>
+                  )}
                 </div>
 
-                {formData.validade_nr35 && (
-                  <div className={`countdown-live-banner ${getCountdown(formData.validade_nr35).badgeClass}`}>
-                    <Calendar size={15} />
-                    <strong>NR-35:</strong>
-                    <span>{getCountdown(formData.validade_nr35).text}</span>
+                {/* 3. NR-33 (Espaço Confinado - Inspeção e Limpeza de Tanques) */}
+                <div className="date-field-with-countdown-card">
+                  <div className="input-group-custom">
+                    <label>NR-33 (Espaço Confinado / Tanques)</label>
+                    <input
+                      type="date"
+                      value={formData.validade_nr33}
+                      onChange={(e) => setFormData({ ...formData, validade_nr33: e.target.value })}
+                    />
                   </div>
-                )}
+                  {formData.validade_nr33 && (
+                    <div className={`countdown-live-banner ${getCountdown(formData.validade_nr33).badgeClass}`}>
+                      <span>{getCountdown(formData.validade_nr33).text}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Direção Defensiva & Condução Segura */}
+                <div className="date-field-with-countdown-card">
+                  <div className="input-group-custom">
+                    <label>Direção Defensiva (CONTRAN)</label>
+                    <input
+                      type="date"
+                      value={formData.validade_direcao_defensiva}
+                      onChange={(e) => setFormData({ ...formData, validade_direcao_defensiva: e.target.value })}
+                    />
+                  </div>
+                  {formData.validade_direcao_defensiva && (
+                    <div className={`countdown-live-banner ${getCountdown(formData.validade_direcao_defensiva).badgeClass}`}>
+                      <span>{getCountdown(formData.validade_direcao_defensiva).text}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Cargas Indivisíveis e Especiais */}
+                <div className="date-field-with-countdown-card">
+                  <div className="input-group-custom">
+                    <label>Cargas Indivisíveis & Especiais</label>
+                    <input
+                      type="date"
+                      value={formData.validade_cargas_especiais}
+                      onChange={(e) => setFormData({ ...formData, validade_cargas_especiais: e.target.value })}
+                    />
+                  </div>
+                  {formData.validade_cargas_especiais && (
+                    <div className={`countdown-live-banner ${getCountdown(formData.validade_cargas_especiais).badgeClass}`}>
+                      <span>{getCountdown(formData.validade_cargas_especiais).text}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. PAE / Hazmat (Plano de Atendimento a Emergências com Produtos Perigosos) */}
+                <div className="date-field-with-countdown-card">
+                  <div className="input-group-custom">
+                    <label>PAE / Hazmat (Emergência Química)</label>
+                    <input
+                      type="date"
+                      value={formData.validade_hazmat_pae}
+                      onChange={(e) => setFormData({ ...formData, validade_hazmat_pae: e.target.value })}
+                    />
+                  </div>
+                  {formData.validade_hazmat_pae && (
+                    <div className={`countdown-live-banner ${getCountdown(formData.validade_hazmat_pae).badgeClass}`}>
+                      <span>{getCountdown(formData.validade_hazmat_pae).text}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Bloco 4: Veículo Vinculado & Observações */}
+            {/* Bloco 4: Alocação de Frota & Histórico (Pré-programado para o Módulo de Frotas) */}
             <div className="card-panel card-z-low" style={{ position: 'relative', zIndex: 5 }}>
               <div className="panel-header">
                 <div className="header-icon-label">
                   <Truck size={20} className="icon-cyan" />
                   <div>
                     <h4>4. Alocação de Frota & Histórico</h4>
-                    <p>Veículo habitual e observações técnicas</p>
+                    <p>Veículo habitual vinculado e integração direta com o módulo de frotas</p>
                   </div>
                 </div>
               </div>
 
-              <div className="input-group-custom" style={{ marginBottom: '1rem' }}>
-                <label>Placa do Veículo / Cavalo Mecânico Vinculado</label>
-                <input
-                  type="text"
-                  placeholder="Ex: AMB-4K89 (Carreta Tanque Inox)"
-                  value={formData.veiculo_vinculado}
-                  onChange={(e) => setFormData({ ...formData, veiculo_vinculado: e.target.value.toUpperCase() })}
-                />
+              {/* Seletor de Frota Pré-Programado */}
+              <div className="fleet-plate-picker-box" style={{ marginBottom: '1.25rem' }}>
+                <div className="input-group-custom">
+                  <label>Placa do Veículo / Cavalo Mecânico Vinculado</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: AMB-4K89 ou clique na frota abaixo"
+                    value={formData.veiculo_vinculado}
+                    onChange={(e) => setFormData({ ...formData, veiculo_vinculado: e.target.value.toUpperCase() })}
+                    style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.05em' }}
+                  />
+                </div>
+
+                <div style={{ marginTop: '0.75rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                    ⚡ Selecionar Placa da Frota Ambipar Cadastrada:
+                  </span>
+                  <div className="fleet-plate-pills-row">
+                    {fleetVehicles.map((v) => {
+                      const isSelected = formData.veiculo_vinculado === v.placa;
+                      return (
+                        <button
+                          key={v.placa}
+                          type="button"
+                          className={`fleet-pill-btn ${isSelected ? 'is-active' : ''}`}
+                          onClick={() => setFormData({ ...formData, veiculo_vinculado: v.placa })}
+                          title={v.modelo}
+                        >
+                          <Truck size={13} />
+                          <span>{v.placa}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="fleet-sync-badge">
+                  <Check size={14} style={{ color: '#10b981' }} />
+                  <span>
+                    <strong>Pré-integrado com Módulo de Frotas:</strong> As placas selecionadas ou digitadas aqui são sincronizadas automaticamente com a frota geral e viagens.
+                  </span>
+                </div>
               </div>
 
               <div className="input-group-custom">
-                <label>Observações do Analista / Restrições Médicas</label>
+                <label>Observações do Analista / Restrições Médicas / CCO</label>
                 <textarea
                   rows={4}
                   className="select-custom"
@@ -779,17 +931,17 @@ export default function DriversModule({ user }) {
               <span className="stat-sub">Prontos para escala imediata</span>
             </div>
 
-            <div className="summary-stat-box cyan">
-              <span className="stat-label">Em Viagem / Rota Ativa</span>
-              <span className="stat-number">{onTripDrivers}</span>
-              <span className="stat-sub">Operando em trânsito</span>
+            <div className="summary-stat-box danger">
+              <span className="stat-label">Bloqueados pelo CCO</span>
+              <span className="stat-number">{blockedDrivers}</span>
+              <span className="stat-sub">Pendência documental ou administrativa</span>
             </div>
 
-            <div className={`summary-stat-box ${alertDrivers > 0 ? 'danger' : 'forest'}`}>
+            <div className={`summary-stat-box ${alertDrivers > 0 ? 'warning' : 'forest'}`}>
               <span className="stat-label">Alertas de Vencimento</span>
               <span className="stat-number">{alertDrivers}</span>
               <span className="stat-sub">
-                {alertDrivers > 0 ? 'CNH, MOPP ou Toxicológico expirando' : '100% dos documentos em dia'}
+                {alertDrivers > 0 ? 'CNH, MOPP ou Cursos a vencer/vencidos' : '100% dos certificados em dia'}
               </span>
             </div>
           </div>
@@ -832,10 +984,10 @@ export default function DriversModule({ user }) {
                   </button>
                   <button
                     type="button"
-                    className={`filter-btn ${statusFilter === 'viagem' ? 'active' : ''}`}
-                    onClick={() => setStatusFilter('viagem')}
+                    className={`filter-btn ${statusFilter === 'bloqueado' ? 'active' : ''}`}
+                    onClick={() => setStatusFilter('bloqueado')}
                   >
-                    Em Viagem ({onTripDrivers})
+                    Bloqueados ({blockedDrivers})
                   </button>
                   <button
                     type="button"
@@ -890,6 +1042,10 @@ export default function DriversModule({ user }) {
                       const toxCount = getCountdown(d.validade_toxicologico);
                       const nr20Count = getCountdown(d.validade_nr20);
                       const nr35Count = getCountdown(d.validade_nr35);
+                      const nr33Count = getCountdown(d.validade_nr33);
+                      const dirDefCount = getCountdown(d.validade_direcao_defensiva);
+                      const cargasEspCount = getCountdown(d.validade_cargas_especiais);
+                      const hazmatCount = getCountdown(d.validade_hazmat_pae);
                       const waLink = getWhatsAppLink(d.telefone);
 
                       return (
@@ -955,7 +1111,7 @@ export default function DriversModule({ user }) {
                             </div>
                           </td>
 
-                          {/* Coluna 5: NRs com Contadores */}
+                          {/* Coluna 5: NRs & Cursos com Contadores */}
                           <td>
                             <div className="nrs-stacked-cell">
                               <div className="nr-line">
@@ -970,13 +1126,47 @@ export default function DriversModule({ user }) {
                                   {nr35Count.text}
                                 </span>
                               </div>
+                              {d.validade_nr33 && (
+                                <div className="nr-line">
+                                  <span className="nr-label">NR-33:</span>
+                                  <span className={`doc-countdown-chip ${nr33Count.badgeClass}`}>
+                                    {nr33Count.text}
+                                  </span>
+                                </div>
+                              )}
+                              {d.validade_hazmat_pae && (
+                                <div className="nr-line">
+                                  <span className="nr-label">Hazmat:</span>
+                                  <span className={`doc-countdown-chip ${hazmatCount.badgeClass}`}>
+                                    {hazmatCount.text}
+                                  </span>
+                                </div>
+                              )}
+                              {d.validade_direcao_defensiva && (
+                                <div className="nr-line">
+                                  <span className="nr-label">Dir.Def:</span>
+                                  <span className={`doc-countdown-chip ${dirDefCount.badgeClass}`}>
+                                    {dirDefCount.text}
+                                  </span>
+                                </div>
+                              )}
+                              {d.validade_cargas_especiais && (
+                                <div className="nr-line">
+                                  <span className="nr-label">Carg.Esp:</span>
+                                  <span className={`doc-countdown-chip ${cargasEspCount.badgeClass}`}>
+                                    {cargasEspCount.text}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </td>
 
-                          {/* Coluna 6: Veículo */}
+                          {/* Coluna 6: Veículo Vinculado */}
                           <td>
                             {d.veiculo_vinculado ? (
-                              <span className="plate-badge">{d.veiculo_vinculado}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span className="plate-badge">{d.veiculo_vinculado}</span>
+                              </div>
                             ) : (
                               <small style={{ color: 'var(--text-dim)' }}>Não vinculado</small>
                             )}
