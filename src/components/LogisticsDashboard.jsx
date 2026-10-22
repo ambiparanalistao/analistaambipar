@@ -1,42 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  TrendingUp, 
-  TrendingDown, 
   DollarSign, 
   Fuel, 
   Leaf, 
   Clock, 
-  Truck, 
   FileCheck2, 
-  AlertCircle, 
   Calculator, 
   Sparkles, 
   Layers, 
   CheckCircle2, 
-  Info, 
-  Filter, 
   Search, 
   ArrowRight, 
-  ShieldAlert,
   Flame,
-  Gauge
+  RefreshCw,
+  PlusCircle
 } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 export default function LogisticsDashboard({ user }) {
-  const [period, setPeriod] = useState('mes');
   const [activeFormulaTab, setActiveFormulaTab] = useState('cpk');
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Estado da Calculadora Rápida do Analista
-  const [calcDistance, setCalcDistance] = useState(480);
-  const [calcWeight, setCalcWeight] = useState(26.5);
+  // Estado da Calculadora Operacional do Analista (Ferramenta de cálculo de rota)
+  const [calcDistance, setCalcDistance] = useState(450);
+  const [calcWeight, setCalcWeight] = useState(25.0);
   const [calcVehicleType, setCalcVehicleType] = useState('carreta_tanque');
   const [calcDieselPrice, setCalcDieselPrice] = useState(6.19);
-
-  // Filtro da tabela de viagens
-  const [tripFilter, setTripFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Coeficientes dos veículos para cálculos
+  // Busca dados reais gravados no Supabase
+  const loadRealData = async () => {
+    setLoading(true);
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase
+          .from('registros_residuos')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          setRecords(data);
+        } else {
+          setRecords([]);
+        }
+      } else {
+        setRecords([]);
+      }
+    } catch {
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRealData();
+  }, []);
+
+  // Coeficientes dos veículos para cálculos operacionais
   const vehicleSpecs = {
     carreta_tanque: { label: 'Carreta Tanque Químico (Resíduos Perigosos)', avgKmL: 2.3, costMultiplier: 1.35 },
     bitrem: { label: 'Bitrem Articulado 9 Eixos', avgKmL: 2.1, costMultiplier: 1.45 },
@@ -44,7 +66,7 @@ export default function LogisticsDashboard({ user }) {
     vuc: { label: 'VUC Urbano (Coleta Fracionada)', avgKmL: 5.5, costMultiplier: 0.85 }
   };
 
-  // Cálculos dinâmicos da calculadora rápida
+  // Cálculos dinâmicos da calculadora
   const selectedVehicle = vehicleSpecs[calcVehicleType];
   const estimatedLiters = calcDistance > 0 && selectedVehicle.avgKmL > 0 
     ? (calcDistance / selectedVehicle.avgKmL).toFixed(1) 
@@ -52,94 +74,31 @@ export default function LogisticsDashboard({ user }) {
   const estimatedFuelCost = (estimatedLiters * calcDieselPrice).toFixed(2);
   const estimatedFreightCost = (calcDistance * (calcDieselPrice / selectedVehicle.avgKmL) * selectedVehicle.costMultiplier).toFixed(2);
   const costPerKm = calcDistance > 0 ? (estimatedFreightCost / calcDistance).toFixed(2) : 0;
-  // Fator oficial GHG Protocol para Diesel Comercial: ~2.671 kg CO2e / Litro
   const carbonEmissionsKg = (estimatedLiters * 2.671).toFixed(1);
   const carbonTons = (carbonEmissionsKg / 1000).toFixed(3);
-  // Estimativa de mudas da Mata Atlântica para neutralizar (~7 mudas por ton CO2)
   const treesNeeded = Math.ceil(carbonTons * 7);
 
-  // Lista mockada representativa de viagens para a Torre de Controle da Ambipar
-  const tripsData = [
-    {
-      id: 'AMB-TRIP-9041',
-      mtrNumber: 'MTR-2026/0491-SP',
-      vehiclePlate: 'AMB-4K89',
-      vehicleType: 'Carreta Tanque Químico',
-      driver: 'Carlos Eduardo Mendes',
-      wasteType: 'Borra Oleosa (Classe I - Perigoso)',
-      onuCode: 'ONU 3082',
-      origin: 'Refinaria Paulínia - SP',
-      destination: 'Unidade Ambipar Nova Odessa - SP',
-      distanceKm: 145,
-      weightTon: 28.4,
-      status: 'transito',
-      statusLabel: 'Em Trânsito',
-      slaEta: '14:30 (No Horário)'
-    },
-    {
-      id: 'AMB-TRIP-9038',
-      mtrNumber: 'MTR-2026/0488-RJ',
-      vehiclePlate: 'AMB-7L20',
-      vehicleType: 'Truck Sider 6x2',
-      driver: 'Marcos Vinicius Silva',
-      wasteType: 'Lodos de ETE Tratados (Classe II A)',
-      onuCode: 'Não Perigoso',
-      origin: 'Complexo Químico Duque de Caxias - RJ',
-      destination: 'Aterro Industrial Resende - RJ',
-      distanceKm: 180,
-      weightTon: 18.2,
-      status: 'descarga',
-      statusLabel: 'Descarregando',
-      slaEta: '11:15 (Finalizando)'
-    },
-    {
-      id: 'AMB-TRIP-9035',
-      mtrNumber: 'MTR-2026/0484-MG',
-      vehiclePlate: 'AMB-9T54',
-      vehicleType: 'Bitrem Articulado',
-      driver: 'Roberto Almeida Jr',
-      wasteType: 'Cinzas e Escória de Caldeira (Classe II B)',
-      onuCode: 'Não Perigoso',
-      origin: 'Siderúrgica Betim - MG',
-      destination: 'Cimenteira Pedro Leopoldo - MG',
-      distanceKm: 92,
-      weightTon: 34.0,
-      status: 'concluido',
-      statusLabel: 'Concluído & CDF Emitido',
-      slaEta: 'Concluído às 09:40'
-    },
-    {
-      id: 'AMB-TRIP-9031',
-      mtrNumber: 'MTR-2026/0479-PR',
-      vehiclePlate: 'AMB-2X11',
-      vehicleType: 'Carreta Vácuo Químico',
-      driver: 'Juliano Ferreira',
-      wasteType: 'Solventes Residuais Clorados (Classe I)',
-      onuCode: 'ONU 1993',
-      origin: 'Polo Industrial Curitiba - PR',
-      destination: 'Incinerador Especializado Araucária - PR',
-      distanceKm: 65,
-      weightTon: 22.0,
-      status: 'alerta',
-      statusLabel: 'Parada Preventiva',
-      slaEta: 'Atraso de 40 min (Inspeção)'
-    }
-  ];
+  // Métricas apuradas a partir dos dados reais do banco
+  const totalKgReal = records.reduce((acc, curr) => acc + (Number(curr.quantidade_kg) || 0), 0);
+  const totalTonReal = (totalKgReal / 1000).toFixed(2);
+  const totalMtrsReal = records.length;
+  const totalClasseI = records.filter(r => r.classe?.includes('Classe I')).length;
+  const totalClasseII = records.filter(r => !r.classe?.includes('Classe I')).length;
 
-  const filteredTrips = tripsData.filter(trip => {
-    const matchesFilter = tripFilter === 'all' || trip.status === tripFilter;
-    const matchesSearch = 
-      trip.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      trip.vehiclePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      trip.wasteType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      trip.driver.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      trip.mtrNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+  // Filtragem da tabela com dados reais
+  const filteredRecords = records.filter(r => {
+    const s = searchTerm.toLowerCase();
+    return (
+      (r.empresa_origem && r.empresa_origem.toLowerCase().includes(s)) ||
+      (r.tipo_residuo && r.tipo_residuo.toLowerCase().includes(s)) ||
+      (r.classe && r.classe.toLowerCase().includes(s)) ||
+      (r.destinacao_final && r.destinacao_final.toLowerCase().includes(s))
+    );
   });
 
   return (
     <div className="logistics-dashboard animate-fade-in" id="logistics-dashboard-container">
-      {/* Top Banner de Boas-Vindas e Indicadores Globais */}
+      {/* Top Banner de Boas-Vindas */}
       <div className="control-tower-banner">
         <div className="tower-header-text">
           <div className="tower-badge-live">
@@ -148,136 +107,115 @@ export default function LogisticsDashboard({ user }) {
           </div>
           <h2>Painel Geral de Operações Ambipar</h2>
           <p>
-            Monitoramento de frotas, movimentação de resíduos industriais perigosos (Classe I e II), controle de MTR e eficiência energética.
+            Métricas reais apuradas a partir do banco de dados PostgreSQL do Supabase e simuladores de rotas e custos.
           </p>
         </div>
 
-        <div className="period-selector-group">
-          <span className="period-label">Período de Análise:</span>
-          <div className="period-buttons">
-            <button 
-              type="button" 
-              className={`period-btn ${period === 'hoje' ? 'active' : ''}`}
-              onClick={() => setPeriod('hoje')}
-            >
-              Hoje
-            </button>
-            <button 
-              type="button" 
-              className={`period-btn ${period === 'semana' ? 'active' : ''}`}
-              onClick={() => setPeriod('semana')}
-            >
-              Últimos 7d
-            </button>
-            <button 
-              type="button" 
-              className={`period-btn ${period === 'mes' ? 'active' : ''}`}
-              onClick={() => setPeriod('mes')}
-            >
-              Mês Vigente
-            </button>
-          </div>
-        </div>
+        <button 
+          type="button" 
+          className="btn-secondary btn-icon-text"
+          onClick={loadRealData}
+          disabled={loading}
+          title="Recarregar dados do banco"
+        >
+          <RefreshCw size={16} className={loading ? 'spin-icon' : ''} />
+          <span>Sincronizar Banco</span>
+        </button>
       </div>
 
-      {/* Grid Principal de KPIs Estratégicos com Fórmulas Integradas */}
+      {/* Grid Principal de KPIs com dados REAIS do Banco */}
       <div className="kpi-metrics-grid">
-        {/* KPI 1: Custo por KM */}
-        <div className="kpi-card" id="kpi-card-cpk">
+        {/* KPI 1: Volume Real */}
+        <div className="kpi-card" id="kpi-card-volume">
           <div className="kpi-top">
-            <span className="kpi-title">Custo Médio Operacional</span>
+            <span className="kpi-title">Volume Total Movimentado</span>
             <div className="kpi-icon-wrap emerald">
-              <DollarSign size={20} />
+              <Layers size={20} />
             </div>
           </div>
           <div className="kpi-main-val">
-            <span className="currency-prefix">R$</span>
-            <span className="val-number">6,85</span>
-            <span className="unit-suffix">/ km</span>
+            <span className="val-number">{totalTonReal}</span>
+            <span className="unit-suffix">toneladas</span>
           </div>
           <div className="kpi-formula-tag">
-            <code>Fórmula: Custo Total (R$) ÷ KM Rodados</code>
+            <code>Fonte: Soma real da tabela registros_residuos</code>
           </div>
           <div className="kpi-footer-status positive">
-            <TrendingDown size={15} />
-            <span>-3.4% vs meta prevista (R$ 7,10/km)</span>
+            <span>{totalKgReal.toLocaleString('pt-BR')} kg apurados no Supabase</span>
           </div>
         </div>
 
-        {/* KPI 2: Consumo Médio da Frota */}
-        <div className="kpi-card" id="kpi-card-fuel">
+        {/* KPI 2: Total de MTRs */}
+        <div className="kpi-card" id="kpi-card-mtrs">
           <div className="kpi-top">
-            <span className="kpi-title">Eficiência de Combustível</span>
+            <span className="kpi-title">Manifestos Registrados</span>
             <div className="kpi-icon-wrap cyan">
-              <Fuel size={20} />
+              <FileCheck2 size={20} />
             </div>
           </div>
           <div className="kpi-main-val">
-            <span className="val-number">2,84</span>
-            <span className="unit-suffix">km / Litro</span>
+            <span className="val-number">{totalMtrsReal}</span>
+            <span className="unit-suffix">MTRs</span>
           </div>
           <div className="kpi-formula-tag">
-            <code>Fórmula: KM Total ÷ Litros Diesel Consumidos</code>
+            <code>Fonte: Total de registros_residuos cadastrados</code>
           </div>
-          <div className="kpi-footer-status positive">
-            <TrendingUp size={15} />
-            <span>+4.8% melhor que a média histórica</span>
+          <div className="kpi-footer-status neutral">
+            <span>{totalMtrsReal > 0 ? 'Conformidade ativa com SINIR' : 'Aguardando cadastro no banco'}</span>
           </div>
         </div>
 
-        {/* KPI 3: Emissões de Carbono */}
-        <div className="kpi-card" id="kpi-card-co2">
+        {/* KPI 3: Resíduos Classe I Perigosos */}
+        <div className="kpi-card" id="kpi-card-classe1">
           <div className="kpi-top">
-            <span className="kpi-title">Intensidade de Emissão GEE</span>
+            <span className="kpi-title">Resíduos Classe I (Perigosos)</span>
             <div className="kpi-icon-wrap forest">
+              <Flame size={20} />
+            </div>
+          </div>
+          <div className="kpi-main-val">
+            <span className="val-number">{totalClasseI}</span>
+            <span className="unit-suffix">cargas</span>
+          </div>
+          <div className="kpi-formula-tag">
+            <code>Filtro: classe = 'Classe I - Perigosos'</code>
+          </div>
+          <div className="kpi-footer-status neutral">
+            <span>Tratamento e transporte prioritário homologado</span>
+          </div>
+        </div>
+
+        {/* KPI 4: Resíduos Classe II */}
+        <div className="kpi-card" id="kpi-card-classe2">
+          <div className="kpi-top">
+            <span className="kpi-title">Resíduos Classe II (Não Perigosos)</span>
+            <div className="kpi-icon-wrap purple">
               <Leaf size={20} />
             </div>
           </div>
           <div className="kpi-main-val">
-            <span className="val-number">48,2</span>
-            <span className="unit-suffix">tCO₂e</span>
+            <span className="val-number">{totalClasseII}</span>
+            <span className="unit-suffix">cargas</span>
           </div>
           <div className="kpi-formula-tag">
-            <code>Fórmula: (L Diesel × 2,671 kg CO₂) ÷ 1.000</code>
-          </div>
-          <div className="kpi-footer-status neutral">
-            <Sparkles size={15} />
-            <span>34% neutralizado com créditos Ambipar</span>
-          </div>
-        </div>
-
-        {/* KPI 4: Pontualidade OTIF */}
-        <div className="kpi-card" id="kpi-card-otif">
-          <div className="kpi-top">
-            <span className="kpi-title">Pontualidade nas Entregas (OTIF)</span>
-            <div className="kpi-icon-wrap purple">
-              <Clock size={20} />
-            </div>
-          </div>
-          <div className="kpi-main-val">
-            <span className="val-number">96,8%</span>
-            <span className="unit-suffix">SLA</span>
-          </div>
-          <div className="kpi-formula-tag">
-            <code>Fórmula: (Coletas no Prazo ÷ Total) × 100</code>
+            <code>Filtro: classe = 'Classe II A / II B'</code>
           </div>
           <div className="kpi-footer-status positive">
-            <CheckCircle2 size={15} />
-            <span>Meta corporativa batida (&gt; 95,0%)</span>
+            <span>Reaproveitamento & Coprocessamento</span>
           </div>
         </div>
       </div>
 
-      {/* Seção Dupla: Calculadora Rápida do Analista & Fórmulas Explicadas */}
+      {/* Seção Dupla: Calculadora Operacional & Fórmulas Explicadas */}
       <div className="analytics-dual-section">
-        {/* Lado Esquerdo: Simulador de Rotas & Fórmulas Operacionais */}
+        {/* Calculadora Operacional */}
         <div className="card-panel quick-calculator-panel">
           <div className="panel-header">
             <div className="header-icon-label">
               <Calculator size={20} className="icon-emerald" />
               <div>
                 <h3>Calculadora Operacional de Frete & Carbono</h3>
-                <p>Simulação instantânea para cotação, consumo de diesel e pegada ambiental da rota</p>
+                <p>Simulação técnica por rota: calcule consumo de diesel, custo sugerido e emissões de CO₂</p>
               </div>
             </div>
           </div>
@@ -298,7 +236,7 @@ export default function LogisticsDashboard({ user }) {
             </div>
 
             <div className="input-group-custom">
-              <label htmlFor="calc-weight">Carga Transportada (Toneladas)</label>
+              <label htmlFor="calc-weight">Carga a Transportar (Toneladas)</label>
               <div className="input-with-unit">
                 <input
                   type="number"
@@ -329,7 +267,7 @@ export default function LogisticsDashboard({ user }) {
             </div>
 
             <div className="input-group-custom">
-              <label htmlFor="calc-diesel">Preço Médio Diesel S10 (R$/L)</label>
+              <label htmlFor="calc-diesel">Preço Diesel S10 (R$/L)</label>
               <div className="input-with-unit">
                 <input
                   type="number"
@@ -344,41 +282,41 @@ export default function LogisticsDashboard({ user }) {
             </div>
           </div>
 
-          {/* Resultados Calculados em Tempo Real */}
+          {/* Resultados Calculados */}
           <div className="calculator-results-box">
             <div className="result-stat-item">
-              <span className="stat-label">Combustível Estimado:</span>
-              <span className="stat-val highlight">{estimatedLiters} Litros</span>
-              <small className="stat-sub">R$ {estimatedFuelCost} em Diesel</small>
+              <span className="stat-label">Diesel Estimado:</span>
+              <span className="stat-val highlight">{estimatedLiters} L</span>
+              <small className="stat-sub">R$ {estimatedFuelCost}</small>
             </div>
 
             <div className="result-stat-item">
               <span className="stat-label">Custo Base Sugerido:</span>
               <span className="stat-val emerald">R$ {estimatedFreightCost}</span>
-              <small className="stat-sub">Média R$ {costPerKm} por KM</small>
+              <small className="stat-sub">R$ {costPerKm}/km</small>
             </div>
 
             <div className="result-stat-item">
-              <span className="stat-label">Emissões de CO₂:</span>
+              <span className="stat-label">Emissão CO₂:</span>
               <span className="stat-val cyan">{carbonTons} tCO₂e</span>
-              <small className="stat-sub">({carbonEmissionsKg} kg CO₂ emitidos)</small>
+              <small className="stat-sub">{carbonEmissionsKg} kg CO₂</small>
             </div>
 
             <div className="result-stat-item">
-              <span className="stat-label">Neutralização ESG:</span>
+              <span className="stat-label">Compensação:</span>
               <span className="stat-val forest">{treesNeeded} mudas</span>
-              <small className="stat-sub">para neutralizar a rota</small>
+              <small className="stat-sub">para neutralizar</small>
             </div>
           </div>
         </div>
 
-        {/* Lado Direito: Glossário das Fórmulas de Transporte Utilizadas */}
+        {/* Fórmulas Explicadas */}
         <div className="card-panel formulas-guide-panel">
           <div className="panel-header">
             <div className="header-icon-label">
               <Layers size={20} className="icon-cyan" />
               <div>
-                <h3>Fórmulas & Métricas do Analista</h3>
+                <h3>Fórmulas do Analista de Logística</h3>
                 <p>Metodologias aplicadas na gestão de transporte e resíduos perigosos</p>
               </div>
             </div>
@@ -425,10 +363,6 @@ export default function LogisticsDashboard({ user }) {
                 <p className="formula-explanation">
                   O CPK avalia o impacto real da rota considerando combustível, pedágio, pneus, manutenção, seguro de carga perigosa e remuneração do motorista.
                 </p>
-                <div className="formula-variables-list">
-                  <div className="variable-pill"><strong>Custo Fixo:</strong> IPVA, Salários, Seguro de Frota</div>
-                  <div className="variable-pill"><strong>Custo Variável:</strong> Diesel S10, Pedágio, Desgaste de Pneus</div>
-                </div>
               </div>
             )}
 
@@ -439,7 +373,7 @@ export default function LogisticsDashboard({ user }) {
                   <code>tCO₂e = (Litros Diesel × 2,671 kg CO₂/L) ÷ 1.000</code>
                 </div>
                 <p className="formula-explanation">
-                  Fator referencial do Programa Brasileiro GHG Protocol para óleo diesel comercial com adição obrigatória de biodiesel. Permite a emissão do selo verde e certificação de destinação sustentável para o cliente da Ambipar.
+                  Fator oficial do Programa Brasileiro GHG Protocol para óleo diesel comercial com adição obrigatória de biodiesel.
                 </p>
               </div>
             )}
@@ -451,7 +385,7 @@ export default function LogisticsDashboard({ user }) {
                   <code>TKU = Peso da Carga Líquida (t) × Distância Percorrida (km)</code>
                 </div>
                 <p className="formula-explanation">
-                  Mede a produtividade real do transporte de resíduos industriais. Evita caminhões rodando com peso ocioso ou voltando vazios (otimização de rotas e logística reversa).
+                  Mede a produtividade real do transporte de resíduos industriais. Evita caminhões rodando com peso ocioso ou voltando vazios.
                 </p>
               </div>
             )}
@@ -463,7 +397,7 @@ export default function LogisticsDashboard({ user }) {
                   <code>OTIF (%) = (Viagens 100% no Prazo e Sem Avarias / Total) × 100</code>
                 </div>
                 <p className="formula-explanation">
-                  Garante a conformidade de coleta para que os clientes industriais não acumulem resíduos além da capacidade de armazenamento licenciada em seus pátios.
+                  Garante a conformidade de coleta para que os clientes industriais não acumulem resíduos além da capacidade permitida em suas licenças ambientais.
                 </p>
               </div>
             )}
@@ -471,140 +405,85 @@ export default function LogisticsDashboard({ user }) {
         </div>
       </div>
 
-      {/* Live Board: Tabela de Viagens & Monitoramento Operacional */}
+      {/* Tabela de Dados Reais do Banco de Dados */}
       <div className="card-panel live-board-panel">
         <div className="live-board-header">
           <div>
-            <h3>Monitoramento Operacional de Cargas e Viagens</h3>
-            <p>Acompanhamento de veículos em rota, status de MTRs e SLA de entrega</p>
+            <h3>Registros Reais de Resíduos e Transportes</h3>
+            <p>Consultados em tempo real na tabela <code>registros_residuos</code> do Supabase</p>
           </div>
 
           <div className="table-controls-bar">
-            {/* Campo de Busca Rápida */}
             <div className="search-input-wrap">
               <Search size={16} className="search-icon" />
               <input
                 type="text"
-                placeholder="Buscar por placa, MTR, resíduo, motorista..."
+                placeholder="Filtrar por gerador, resíduo, destinação..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-
-            {/* Filtros de Status */}
-            <div className="filter-pill-buttons">
-              <button
-                type="button"
-                className={`filter-btn ${tripFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setTripFilter('all')}
-              >
-                Todas ({tripsData.length})
-              </button>
-              <button
-                type="button"
-                className={`filter-btn ${tripFilter === 'transito' ? 'active' : ''}`}
-                onClick={() => setTripFilter('transito')}
-              >
-                Em Trânsito
-              </button>
-              <button
-                type="button"
-                className={`filter-btn ${tripFilter === 'descarga' ? 'active' : ''}`}
-                onClick={() => setTripFilter('descarga')}
-              >
-                Descarregando
-              </button>
-              <button
-                type="button"
-                className={`filter-btn ${tripFilter === 'concluido' ? 'active' : ''}`}
-                onClick={() => setTripFilter('concluido')}
-              >
-                Concluídas
-              </button>
-              <button
-                type="button"
-                className={`filter-btn ${tripFilter === 'alerta' ? 'active' : ''}`}
-                onClick={() => setTripFilter('alerta')}
-              >
-                Alertas
-              </button>
-            </div>
           </div>
         </div>
 
-        {/* Tabela de Viagens */}
         <div className="table-responsive-wrapper">
           <table className="operational-table" id="trips-monitoring-table">
             <thead>
               <tr>
-                <th>Viagem / MTR</th>
-                <th>Veículo & Placa</th>
-                <th>Resíduo / Classe</th>
-                <th>Origem & Destino</th>
-                <th>Carga / KM</th>
-                <th>Status Operacional</th>
-                <th>SLA / Previsão</th>
+                <th>Data</th>
+                <th>Gerador (Origem)</th>
+                <th>Tipo de Resíduo</th>
+                <th>Classificação</th>
+                <th>Quantidade (KG / Ton)</th>
+                <th>Destinação Final</th>
+                <th>Transportador</th>
               </tr>
             </thead>
             <tbody>
-              {filteredTrips.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
+                    <span className="spinner"></span>
+                    <p style={{ marginTop: '0.5rem', color: 'var(--text-muted)' }}>Consultando banco PostgreSQL...</p>
+                  </td>
+                </tr>
+              ) : filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="empty-table-state">
-                    Nenhuma viagem encontrada com os critérios informados.
+                    <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
+                      Nenhum registro de resíduo cadastrado no banco de dados.
+                    </p>
+                    <span style={{ fontSize: '0.85rem' }}>
+                      Acesse a aba <strong>"MTR & Destinação Resíduos"</strong> no menu lateral para registrar os primeiros dados reais da sua operação.
+                    </span>
                   </td>
                 </tr>
               ) : (
-                filteredTrips.map((trip) => (
-                  <tr key={trip.id} className={`trip-row status-${trip.status}`}>
+                filteredRecords.map((r) => (
+                  <tr key={r.id}>
                     <td>
-                      <div className="trip-id-block">
-                        <strong>{trip.id}</strong>
-                        <span className="mtr-tag">{trip.mtrNumber}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="vehicle-cell">
-                        <span className="plate-badge">{trip.vehiclePlate}</span>
-                        <span className="vehicle-type-label">{trip.vehicleType}</span>
-                        <small className="driver-name">{trip.driver}</small>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="waste-cell">
-                        <span className="waste-name">{trip.wasteType}</span>
-                        {trip.onuCode.includes('ONU') ? (
-                          <span className="badge-onu">
-                            <Flame size={12} /> {trip.onuCode}
-                          </span>
-                        ) : (
-                          <span className="badge-non-hazard">Não Perigoso</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="route-cell">
-                        <span className="route-point origin">{trip.origin}</span>
-                        <ArrowRight size={14} className="route-arrow" />
-                        <span className="route-point destination">{trip.destination}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="weight-km-cell">
-                        <strong>{trip.weightTon} ton</strong>
-                        <span className="km-text">{trip.distanceKm} km</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`status-badge-chip ${trip.status}`}>
-                        {trip.status === 'transito' && <Truck size={14} />}
-                        {trip.status === 'descarga' && <Layers size={14} />}
-                        {trip.status === 'concluido' && <CheckCircle2 size={14} />}
-                        {trip.status === 'alerta' && <AlertCircle size={14} />}
-                        <span>{trip.statusLabel}</span>
+                      <span className="date-tag">
+                        {r.data_descarte ? new Date(r.data_descarte).toLocaleDateString('pt-BR') : 'Hoje'}
                       </span>
                     </td>
                     <td>
-                      <span className="sla-time-label">{trip.slaEta}</span>
+                      <strong>{r.empresa_origem}</strong>
+                    </td>
+                    <td>{r.tipo_residuo}</td>
+                    <td>
+                      <span className={`badge-class ${r.classe?.includes('Classe I') ? 'hazard' : 'inert'}`}>
+                        {r.classe}
+                      </span>
+                    </td>
+                    <td>
+                      <strong>{(Number(r.quantidade_kg) || 0).toLocaleString('pt-BR')} kg</strong>
+                      <small style={{ display: 'block', color: 'var(--text-muted)' }}>
+                        {((Number(r.quantidade_kg) || 0) / 1000).toFixed(2)} t
+                      </small>
+                    </td>
+                    <td>{r.destinacao_final}</td>
+                    <td>
+                      <small>{r.transportador || 'Ambipar'}</small>
                     </td>
                   </tr>
                 ))

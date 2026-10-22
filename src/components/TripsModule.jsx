@@ -1,70 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Truck, 
   Plus, 
-  Search, 
   MapPin, 
-  Calendar, 
-  ShieldCheck, 
-  Flame, 
   CheckCircle2, 
   Clock, 
   ArrowRight,
-  Filter,
-  UserCheck
+  Filter
 } from 'lucide-react';
 
 export default function TripsModule({ user }) {
-  const [trips, setTrips] = useState([
-    {
-      id: 'AMB-TRIP-9041',
-      vehiclePlate: 'AMB-4K89',
-      vehicleType: 'Carreta Tanque Químico',
-      driver: 'Carlos Eduardo Mendes',
-      wasteType: 'Borra Oleosa (Classe I - Perigoso)',
-      onuCode: 'ONU 3082',
-      origin: 'Refinaria Paulínia - SP',
-      destination: 'Unidade Ambipar Nova Odessa - SP',
-      distanceKm: 145,
-      weightTon: 28.4,
-      status: 'transito',
-      statusLabel: 'Em Trânsito',
-      departureTime: '2026-10-21 08:30',
-      slaEta: '14:30'
-    },
-    {
-      id: 'AMB-TRIP-9038',
-      vehiclePlate: 'AMB-7L20',
-      vehicleType: 'Truck Sider 6x2',
-      driver: 'Marcos Vinicius Silva',
-      wasteType: 'Lodos de ETE Tratados (Classe II A)',
-      onuCode: 'Não Perigoso',
-      origin: 'Complexo Químico Duque de Caxias - RJ',
-      destination: 'Aterro Industrial Resende - RJ',
-      distanceKm: 180,
-      weightTon: 18.2,
-      status: 'descarga',
-      statusLabel: 'Descarregando',
-      departureTime: '2026-10-21 06:15',
-      slaEta: '11:15'
-    },
-    {
-      id: 'AMB-TRIP-9035',
-      vehiclePlate: 'AMB-9T54',
-      vehicleType: 'Bitrem Articulado',
-      driver: 'Roberto Almeida Jr',
-      wasteType: 'Cinzas e Escória de Caldeira (Classe II B)',
-      onuCode: 'Não Perigoso',
-      origin: 'Siderúrgica Betim - MG',
-      destination: 'Cimenteira Pedro Leopoldo - MG',
-      distanceKm: 92,
-      weightTon: 34.0,
-      status: 'concluido',
-      statusLabel: 'Concluído',
-      departureTime: '2026-10-21 05:00',
-      slaEta: '09:40'
+  // Inicializa a partir de dados salvos localmente ou vazio (sem dados fictícios)
+  const [trips, setTrips] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ambipar_real_trips');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
-  ]);
+  });
 
   const [showModal, setShowModal] = useState(false);
   const [newTrip, setNewTrip] = useState({
@@ -79,6 +33,14 @@ export default function TripsModule({ user }) {
     weightTon: '',
     slaEta: ''
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ambipar_real_trips', JSON.stringify(trips));
+    } catch (err) {
+      console.warn('Erro ao salvar viagens localmente:', err);
+    }
+  }, [trips]);
 
   const handleCreateTrip = (e) => {
     e.preventDefault();
@@ -121,7 +83,7 @@ export default function TripsModule({ user }) {
           </div>
           <h2>Monitoramento de Frotas & Viagens</h2>
           <p>
-            Rastreamento de veículos em trânsito, controle de tempo de ciclo de carga/descarga e gestão de motoristas.
+            Rastreamento de veículos em trânsito, controle de tempo de ciclo e gestão de motoristas.
           </p>
         </div>
 
@@ -138,86 +100,105 @@ export default function TripsModule({ user }) {
         </div>
       </div>
 
-      <div className="trips-cards-grid">
-        {trips.map((trip) => (
-          <div key={trip.id} className={`trip-card-box status-${trip.status}`}>
-            <div className="trip-card-header">
-              <div>
-                <span className="trip-code">{trip.id}</span>
-                <span className="plate-badge">{trip.vehiclePlate}</span>
+      {trips.length === 0 ? (
+        <div className="card-panel" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
+          <Truck size={42} style={{ color: 'var(--text-dim)', margin: '0 auto 1rem' }} />
+          <h3 style={{ color: 'var(--text-main)', marginBottom: '0.5rem' }}>Nenhuma viagem despachada no momento</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', maxWidth: '500px', margin: '0 auto 1.5rem' }}>
+            Cadastre as viagens reais da sua operação clicando no botão abaixo para iniciar o acompanhamento operacional da frota.
+          </p>
+          <button 
+            type="button" 
+            className="btn-primary btn-icon-text" 
+            style={{ margin: '0 auto' }}
+            onClick={() => setShowModal(true)}
+          >
+            <Plus size={18} />
+            <span>Despachar Primeira Viagem</span>
+          </button>
+        </div>
+      ) : (
+        <div className="trips-cards-grid">
+          {trips.map((trip) => (
+            <div key={trip.id} className={`trip-card-box status-${trip.status}`}>
+              <div className="trip-card-header">
+                <div>
+                  <span className="trip-code">{trip.id}</span>
+                  <span className="plate-badge">{trip.vehiclePlate}</span>
+                </div>
+                <span className={`status-badge-chip ${trip.status}`}>
+                  {trip.statusLabel}
+                </span>
               </div>
-              <span className={`status-badge-chip ${trip.status}`}>
-                {trip.statusLabel}
-              </span>
-            </div>
 
-            <div className="trip-card-body">
-              <div className="route-flow">
-                <div className="route-node">
-                  <MapPin size={15} className="node-icon origin" />
-                  <div>
-                    <small>Origem</small>
-                    <p>{trip.origin}</p>
+              <div className="trip-card-body">
+                <div className="route-flow">
+                  <div className="route-node">
+                    <MapPin size={15} className="node-icon origin" />
+                    <div>
+                      <small>Origem</small>
+                      <p>{trip.origin}</p>
+                    </div>
+                  </div>
+                  <div className="route-node">
+                    <MapPin size={15} className="node-icon destination" />
+                    <div>
+                      <small>Destino Licenciado</small>
+                      <p>{trip.destination}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="route-node">
-                  <MapPin size={15} className="node-icon destination" />
+
+                <div className="trip-meta-grid">
                   <div>
-                    <small>Destino Licenciado</small>
-                    <p>{trip.destination}</p>
+                    <small>Carga Transportada</small>
+                    <strong>{trip.wasteType}</strong>
+                  </div>
+                  <div>
+                    <small>Peso / Distância</small>
+                    <strong>{trip.weightTon} ton • {trip.distanceKm} km</strong>
+                  </div>
+                  <div>
+                    <small>Motorista</small>
+                    <strong>{trip.driver}</strong>
+                  </div>
+                  <div>
+                    <small>Previsão SLA</small>
+                    <strong className="text-emerald">{trip.slaEta}</strong>
                   </div>
                 </div>
               </div>
 
-              <div className="trip-meta-grid">
-                <div>
-                  <small>Carga Transportada</small>
-                  <strong>{trip.wasteType}</strong>
-                </div>
-                <div>
-                  <small>Peso / Distância</small>
-                  <strong>{trip.weightTon} ton • {trip.distanceKm} km</strong>
-                </div>
-                <div>
-                  <small>Motorista</small>
-                  <strong>{trip.driver}</strong>
-                </div>
-                <div>
-                  <small>Previsão SLA</small>
-                  <strong className="text-emerald">{trip.slaEta}</strong>
+              <div className="trip-card-footer">
+                <span className="status-label-small">Alterar Status:</span>
+                <div className="quick-status-buttons">
+                  <button
+                    type="button"
+                    className={`quick-st-btn ${trip.status === 'transito' ? 'active' : ''}`}
+                    onClick={() => handleUpdateStatus(trip.id, 'transito', 'Em Trânsito')}
+                  >
+                    Trânsito
+                  </button>
+                  <button
+                    type="button"
+                    className={`quick-st-btn ${trip.status === 'descarga' ? 'active' : ''}`}
+                    onClick={() => handleUpdateStatus(trip.id, 'descarga', 'Descarregando')}
+                  >
+                    Descarga
+                  </button>
+                  <button
+                    type="button"
+                    className={`quick-st-btn ${trip.status === 'concluido' ? 'active' : ''}`}
+                    onClick={() => handleUpdateStatus(trip.id, 'concluido', 'Concluído')}
+                  >
+                    Concluir
+                  </button>
                 </div>
               </div>
             </div>
-
-            <div className="trip-card-footer">
-              <span className="status-label-small">Alterar Status:</span>
-              <div className="quick-status-buttons">
-                <button
-                  type="button"
-                  className={`quick-st-btn ${trip.status === 'transito' ? 'active' : ''}`}
-                  onClick={() => handleUpdateStatus(trip.id, 'transito', 'Em Trânsito')}
-                >
-                  Trânsito
-                </button>
-                <button
-                  type="button"
-                  className={`quick-st-btn ${trip.status === 'descarga' ? 'active' : ''}`}
-                  onClick={() => handleUpdateStatus(trip.id, 'descarga', 'Descarregando')}
-                >
-                  Descarga
-                </button>
-                <button
-                  type="button"
-                  className={`quick-st-btn ${trip.status === 'concluido' ? 'active' : ''}`}
-                  onClick={() => handleUpdateStatus(trip.id, 'concluido', 'Concluído')}
-                >
-                  Concluir
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {showModal && (
         <div className="modal-backdrop animate-fade-in">

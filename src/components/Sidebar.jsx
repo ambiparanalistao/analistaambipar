@@ -10,10 +10,7 @@ import {
   LogOut, 
   ChevronLeft, 
   ChevronRight,
-  ShieldCheck,
-  Leaf,
-  Layers,
-  Radio
+  Leaf
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -36,21 +33,17 @@ export default function Sidebar({
         {
           id: 'dashboard',
           label: 'Torre de Controle (KPIs)',
-          icon: LayoutDashboard,
-          badge: 'Live',
-          badgeColor: 'emerald'
+          icon: LayoutDashboard
         },
         {
           id: 'viagens',
           label: 'Monitoramento de Viagens',
-          icon: Truck,
-          count: '14 ativas'
+          icon: Truck
         },
         {
           id: 'mtr',
           label: 'MTR & Destinação Resíduos',
-          icon: FileText,
-          badge: 'SINIR'
+          icon: FileText
         }
       ]
     },
@@ -60,15 +53,12 @@ export default function Sidebar({
         {
           id: 'calculadoras',
           label: 'Calculadoras & Métricas',
-          icon: Calculator,
-          highlight: true
+          icon: Calculator
         },
         {
           id: 'ocorrencias',
           label: 'Ocorrências & Emergências',
-          icon: AlertTriangle,
-          count: '2 pendentes',
-          badgeColor: 'amber'
+          icon: AlertTriangle
         },
         {
           id: 'esg',
@@ -117,7 +107,7 @@ export default function Sidebar({
         </div>
         {!isCollapsed && (
           <div className="user-details-compact">
-            <span className="user-name-label">{userName}</span>
+            <span className="user-name-label" title={userName}>{userName}</span>
             <span className="user-role-tag">Analista de Logística / CCO</span>
           </div>
         )}
@@ -127,7 +117,11 @@ export default function Sidebar({
       <nav className="sidebar-nav">
         {menuSections.map((section, sIdx) => (
           <div key={sIdx} className="nav-group">
-            {!isCollapsed && <span className="nav-group-title">{section.title}</span>}
+            {!isCollapsed && (
+              <span className="nav-group-title" title={section.title}>
+                {section.title}
+              </span>
+            )}
             <ul className="nav-items-list">
               {section.items.map((item) => {
                 const Icon = item.icon;
@@ -142,21 +136,11 @@ export default function Sidebar({
                       id={`sidebar-nav-${item.id}`}
                     >
                       <div className="nav-icon-box">
-                        <Icon size={19} />
+                        <Icon size={18} />
                       </div>
                       {!isCollapsed && (
                         <div className="nav-label-box">
                           <span className="nav-label-text">{item.label}</span>
-                          {item.badge && (
-                            <span className={`nav-badge ${item.badgeColor || 'default'}`}>
-                              {item.badge}
-                            </span>
-                          )}
-                          {item.count && (
-                            <span className="nav-count-badge">
-                              {item.count}
-                            </span>
-                          )}
                         </div>
                       )}
                     </button>
@@ -188,7 +172,7 @@ export default function Sidebar({
             title="Configurar Chaves Supabase (.env)"
             id="sidebar-config-keys-btn"
           >
-            <Settings size={18} />
+            <Settings size={16} />
             {!isCollapsed && <span>Chaves API</span>}
           </button>
 
@@ -199,7 +183,7 @@ export default function Sidebar({
             title="Sair do sistema"
             id="sidebar-logout-btn"
           >
-            <LogOut size={18} />
+            <LogOut size={16} />
             {!isCollapsed && <span>Sair</span>}
           </button>
         </div>

@@ -4,15 +4,10 @@ import {
   Plus, 
   Search, 
   Filter, 
-  Download, 
-  Trash2, 
   CheckCircle, 
   AlertTriangle, 
-  Clock, 
   Building2, 
   Truck, 
-  Scale, 
-  ShieldCheck,
   RefreshCw
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
@@ -34,13 +29,12 @@ export default function MtrModule({ user }) {
     transportador: 'Ambipar Transportes Especializados S/A'
   });
 
-  // Carrega registros da tabela do Supabase criada na migration
+  // Carrega registros REAIS da tabela do Supabase
   const fetchRecords = async () => {
     setLoading(true);
     try {
       if (!isSupabaseConfigured || !supabase) {
-        // Fallback com dados demonstrativos caso ainda não haja dados no banco
-        setRecords(getSampleRecords());
+        setRecords([]);
         setLoading(false);
         return;
       }
@@ -52,15 +46,15 @@ export default function MtrModule({ user }) {
 
       if (error) {
         console.warn('Erro ao carregar registros do Supabase:', error);
-        setRecords(getSampleRecords());
-      } else if (data && data.length > 0) {
+        setRecords([]);
+      } else if (data) {
         setRecords(data);
       } else {
-        setRecords(getSampleRecords());
+        setRecords([]);
       }
     } catch (err) {
       console.error('Falha de conexão com a tabela de resíduos:', err);
-      setRecords(getSampleRecords());
+      setRecords([]);
     } finally {
       setLoading(false);
     }
@@ -69,39 +63,6 @@ export default function MtrModule({ user }) {
   useEffect(() => {
     fetchRecords();
   }, []);
-
-  const getSampleRecords = () => [
-    {
-      id: 'demo-1',
-      empresa_origem: 'Petroquímica União - Paulínia',
-      tipo_residuo: 'Borra de Fundo de Tanque e Oleosos',
-      classe: 'Classe I - Perigosos',
-      quantidade_kg: 24500,
-      destinacao_final: 'Coprocessamento e Recuperação Energética',
-      transportador: 'Ambipar Logística Integrada',
-      data_descarte: '2026-10-20'
-    },
-    {
-      id: 'demo-2',
-      empresa_origem: 'Indústria Farmacêutica Biosintética',
-      tipo_residuo: 'Solventes Não Halogenados',
-      classe: 'Classe I - Perigosos',
-      quantidade_kg: 8200,
-      destinacao_final: 'Incineração Térmica Controlada',
-      transportador: 'Ambipar Transportes Especiais',
-      data_descarte: '2026-10-19'
-    },
-    {
-      id: 'demo-3',
-      empresa_origem: 'Metalúrgica Alvorada',
-      tipo_residuo: 'Sucatas Metálicas Ferrosas Limpas',
-      classe: 'Classe II B - Inertes',
-      quantidade_kg: 18400,
-      destinacao_final: 'Reciclagem e Reintrodução na Cadeia',
-      transportador: 'Transportadora Parceira Ambipar',
-      data_descarte: '2026-10-18'
-    }
-  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -127,14 +88,15 @@ export default function MtrModule({ user }) {
           .select();
 
         if (error) throw error;
-        setRecords([data[0], ...records]);
+        if (data && data.length > 0) {
+          setRecords([data[0], ...records]);
+        }
       } else {
-        // Modo local
         const newRecord = { ...payload, id: `local-${Date.now()}` };
         setRecords([newRecord, ...records]);
       }
 
-      setFeedback({ type: 'success', message: 'MTR / Registro de resíduo gravado com sucesso no Supabase!' });
+      setFeedback({ type: 'success', message: 'MTR cadastrado com sucesso no Supabase!' });
       setShowModal(false);
       setFormData({
         empresa_origem: '',
@@ -151,6 +113,10 @@ export default function MtrModule({ user }) {
     }
   };
 
+  const totalKg = records.reduce((acc, curr) => acc + (Number(curr.quantidade_kg) || 0), 0);
+  const totalTon = (totalKg / 1000).toFixed(2);
+  const classeICount = records.filter(r => r.classe?.includes('Classe I')).length;
+
   return (
     <div className="module-view animate-fade-in" id="mtr-module-root">
       {/* Cabeçalho do Módulo */}
@@ -162,7 +128,7 @@ export default function MtrModule({ user }) {
           </div>
           <h2>Manifesto de Transporte de Resíduos (MTR) & CDF</h2>
           <p>
-            Rastreamento da destinação final, certificação de conformidade ambiental e emissão de Certificados de Destinação Final (CDF).
+            Rastreamento de destinação final e registros reais cadastrados no Supabase.
           </p>
         </div>
 
@@ -196,35 +162,31 @@ export default function MtrModule({ user }) {
         </div>
       )}
 
-      {/* Cards de Métricas de MTR */}
+      {/* Cards de Métricas Reais de MTR */}
       <div className="mtr-summary-cards">
         <div className="summary-stat-box">
-          <span className="stat-label">Total Registrado</span>
-          <span className="stat-number">
-            {(records.reduce((acc, curr) => acc + (Number(curr.quantidade_kg) || 0), 0) / 1000).toFixed(1)} ton
-          </span>
-          <span className="stat-sub">Massa total movimentada</span>
+          <span className="stat-label">Total Real Registrado</span>
+          <span className="stat-number">{totalTon} ton</span>
+          <span className="stat-sub">Massa total no banco de dados</span>
         </div>
 
         <div className="summary-stat-box danger">
           <span className="stat-label">Classe I (Perigosos)</span>
-          <span className="stat-number">
-            {records.filter(r => r.classe?.includes('Classe I')).length} cargas
-          </span>
-          <span className="stat-sub">Tratamento prioritário</span>
+          <span className="stat-number">{classeICount}</span>
+          <span className="stat-sub">Cargas perigosas cadastradas</span>
         </div>
 
         <div className="summary-stat-box success">
-          <span className="stat-label">Conformidade SINIR</span>
-          <span className="stat-number">100%</span>
-          <span className="stat-sub">Zero irregularidades</span>
+          <span className="stat-label">Total de Manifestos</span>
+          <span className="stat-number">{records.length}</span>
+          <span className="stat-sub">Registros ativos</span>
         </div>
       </div>
 
       {/* Tabela de Registros com Supabase */}
       <div className="card-panel">
         <div className="panel-header">
-          <h3>Registros no Banco de Dados (PostgreSQL)</h3>
+          <h3>Registros Reais no Banco de Dados (PostgreSQL)</h3>
           <span className="record-count-tag">{records.length} manifestos localizados</span>
         </div>
 
@@ -246,13 +208,18 @@ export default function MtrModule({ user }) {
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
                     <span className="spinner"></span>
-                    <p style={{ marginTop: '0.5rem', color: 'var(--text-muted)' }}>Consultando tabela registros_residuos...</p>
+                    <p style={{ marginTop: '0.5rem', color: 'var(--text-muted)' }}>Consultando tabela registros_residuos no Supabase...</p>
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="empty-table-state">
-                    Nenhum registro de resíduo cadastrado ainda. Clique em "Emitir Novo MTR" acima.
+                    <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+                      Nenhum registro de resíduo cadastrado ainda.
+                    </p>
+                    <span style={{ fontSize: '0.85rem' }}>
+                      Clique no botão "Emitir Novo MTR / Registro" acima para adicionar o primeiro registro real da sua operação.
+                    </span>
                   </td>
                 </tr>
               ) : (
@@ -314,7 +281,7 @@ export default function MtrModule({ user }) {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Petroquímica ABC - Polo Industrial"
+                  placeholder="Ex: Petroquímica Paulínia S/A"
                   value={formData.empresa_origem}
                   onChange={(e) => setFormData({ ...formData, empresa_origem: e.target.value })}
                 />
@@ -325,7 +292,7 @@ export default function MtrModule({ user }) {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Borra oleosa contaminada, Ácido sulfúrico residual..."
+                  placeholder="Ex: Borra oleosa de fundo de tanque, Água contaminada..."
                   value={formData.tipo_residuo}
                   onChange={(e) => setFormData({ ...formData, tipo_residuo: e.target.value })}
                 />
@@ -363,7 +330,7 @@ export default function MtrModule({ user }) {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Coprocessamento em Forno de Cimento, Incineração, Aterro..."
+                  placeholder="Ex: Coprocessamento em Forno de Clínquer, Incineração, Aterro Industrial..."
                   value={formData.destinacao_final}
                   onChange={(e) => setFormData({ ...formData, destinacao_final: e.target.value })}
                 />
@@ -392,7 +359,7 @@ export default function MtrModule({ user }) {
                   className="btn-primary"
                   disabled={submitting}
                 >
-                  {submitting ? 'Salvando no Supabase...' : 'Salvar e Gerar Registro'}
+                  {submitting ? 'Gravando no Supabase...' : 'Salvar no Banco de Dados'}
                 </button>
               </div>
             </form>

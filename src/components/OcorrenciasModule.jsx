@@ -1,42 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AlertTriangle, 
-  ShieldAlert, 
   PhoneCall, 
   CheckCircle2, 
-  Clock, 
   MapPin, 
   Truck,
-  Plus
+  Plus,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function OcorrenciasModule() {
-  const [incidents, setIncidents] = useState([
-    {
-      id: 'OC-2026-081',
-      type: 'Parada Preventiva / Superaquecimento de Freio',
-      severity: 'moderada',
-      vehiclePlate: 'AMB-2X11',
-      driver: 'Juliano Ferreira',
-      location: 'BR-376 km 612 - Tijucas do Sul / PR',
-      cargo: 'Solventes Residuais Clorados (ONU 1993)',
-      time: 'Há 45 min',
-      status: 'Em Atendimento',
-      notes: 'Equipe de apoio mecânico a caminho. Veículo isolado no acostamento com cones e sinalização regulamentar.'
-    },
-    {
-      id: 'OC-2026-079',
-      type: 'Vistoria Preventiva Concluída',
-      severity: 'leve',
-      vehiclePlate: 'AMB-4K89',
-      driver: 'Carlos Eduardo Mendes',
-      location: 'Posto Fiscal SP-330 km 110',
-      cargo: 'Borra Oleosa Classe I',
-      time: 'Há 3 horas',
-      status: 'Resolvido',
-      notes: 'Documentação MTR e licenças conferidas pelo fiscal da CETESB sem nenhuma ressalva.'
+  const [incidents, setIncidents] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ambipar_real_incidents');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
-  ]);
+  });
+
+  const [showModal, setShowModal] = useState(false);
+  const [newIncident, setNewIncident] = useState({
+    type: '',
+    severity: 'leve',
+    vehiclePlate: '',
+    driver: '',
+    location: '',
+    cargo: '',
+    notes: ''
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ambipar_real_incidents', JSON.stringify(incidents));
+    } catch (err) {
+      console.warn('Erro ao salvar ocorrências:', err);
+    }
+  }, [incidents]);
+
+  const handleCreateIncident = (e) => {
+    e.preventDefault();
+    const created = {
+      ...newIncident,
+      id: `OC-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+      time: 'Agora mesmo',
+      status: 'Em Atendimento'
+    };
+    setIncidents([created, ...incidents]);
+    setShowModal(false);
+    setNewIncident({
+      type: '',
+      severity: 'leve',
+      vehiclePlate: '',
+      driver: '',
+      location: '',
+      cargo: '',
+      notes: ''
+    });
+  };
 
   return (
     <div className="module-view animate-fade-in" id="ocorrencias-module-root">
@@ -48,60 +69,204 @@ export default function OcorrenciasModule() {
           </div>
           <h2>Gestão de Ocorrências & Ambipar Response</h2>
           <p>
-            Plano de Atendimento a Emergências (PAE), registro de paradas não programadas e monitoramento em tempo real de produtos perigosos.
+            Plano de Atendimento a Emergências (PAE) e registro de paradas ou ocorrências rodoviárias.
           </p>
         </div>
 
-        <div className="emergency-callbox">
-          <PhoneCall size={20} className="phone-beacon" />
-          <div>
-            <span className="emergency-title">Plantão de Emergência Ambipar Response</span>
-            <strong>0800 123 4567 • 24 Horas</strong>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn-primary btn-icon-text"
+            onClick={() => setShowModal(true)}
+          >
+            <Plus size={18} />
+            <span>Registrar Nova Ocorrência</span>
+          </button>
+
+          <div className="emergency-callbox">
+            <PhoneCall size={20} className="phone-beacon" />
+            <div>
+              <span className="emergency-title">Plantão de Emergência Ambipar Response</span>
+              <strong>0800 123 4567 • 24 Horas</strong>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="incidents-list-container">
-        {incidents.map((item) => (
-          <div key={item.id} className={`incident-card severity-${item.severity}`}>
-            <div className="incident-header">
-              <div className="incident-title-block">
-                <span className={`severity-badge ${item.severity}`}>
-                  {item.severity.toUpperCase()}
+      {incidents.length === 0 ? (
+        <div className="card-panel" style={{ textAlign: 'center', padding: '3.5rem 2rem' }}>
+          <ShieldCheck size={48} style={{ color: 'var(--accent-emerald-light)', margin: '0 auto 1rem' }} />
+          <h3 style={{ color: 'var(--text-main)', marginBottom: '0.5rem' }}>Nenhuma ocorrência registrada</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', maxWidth: '500px', margin: '0 auto' }}>
+            Todas as frotas e operações de transporte estão operando normalmente e sem incidentes pendentes de atendimento.
+          </p>
+        </div>
+      ) : (
+        <div className="incidents-list-container">
+          {incidents.map((item) => (
+            <div key={item.id} className={`incident-card severity-${item.severity}`}>
+              <div className="incident-header">
+                <div className="incident-title-block">
+                  <span className={`severity-badge ${item.severity}`}>
+                    {item.severity.toUpperCase()}
+                  </span>
+                  <h3>{item.type}</h3>
+                  <span className="incident-code">{item.id}</span>
+                </div>
+                <span className={`status-pill ${item.status === 'Resolvido' ? 'online' : 'checking'}`}>
+                  {item.status}
                 </span>
-                <h3>{item.type}</h3>
-                <span className="incident-code">{item.id}</span>
               </div>
-              <span className={`status-pill ${item.status === 'Resolvido' ? 'online' : 'checking'}`}>
-                {item.status}
-              </span>
+
+              <div className="incident-body-grid">
+                <div>
+                  <small>Veículo & Condutor</small>
+                  <strong>{item.vehiclePlate} • {item.driver}</strong>
+                </div>
+                <div>
+                  <small>Localização do Incidente</small>
+                  <strong>{item.location}</strong>
+                </div>
+                <div>
+                  <small>Carga Transportada</small>
+                  <strong>{item.cargo}</strong>
+                </div>
+                <div>
+                  <small>Registro</small>
+                  <strong>{item.time}</strong>
+                </div>
+              </div>
+
+              <div className="incident-notes-box">
+                <p><strong>Parecer Operacional do CCO:</strong> {item.notes}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <div className="modal-backdrop animate-fade-in">
+          <div className="modal-container">
+            <div className="modal-header">
+              <div className="header-icon-label">
+                <AlertTriangle size={20} className="icon-amber" />
+                <h3>Registrar Ocorrência Operacional</h3>
+              </div>
+              <button 
+                type="button" 
+                className="modal-close-btn"
+                onClick={() => setShowModal(false)}
+              >
+                &times;
+              </button>
             </div>
 
-            <div className="incident-body-grid">
-              <div>
-                <small>Veículo & Condutor</small>
-                <strong>{item.vehiclePlate} • {item.driver}</strong>
+            <form onSubmit={handleCreateIncident} className="modal-form">
+              <div className="input-group-custom">
+                <label>Tipo de Ocorrência</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Parada Preventiva de Freio, Vistoria Fiscal, Atraso..."
+                  value={newIncident.type}
+                  onChange={(e) => setNewIncident({ ...newIncident, type: e.target.value })}
+                />
               </div>
-              <div>
-                <small>Localização do Incidente</small>
-                <strong>{item.location}</strong>
-              </div>
-              <div>
-                <small>Carga Transportada</small>
-                <strong>{item.cargo}</strong>
-              </div>
-              <div>
-                <small>Registro</small>
-                <strong>{item.time}</strong>
-              </div>
-            </div>
 
-            <div className="incident-notes-box">
-              <p><strong>Parecer Operacional do CCO:</strong> {item.notes}</p>
-            </div>
+              <div className="grid-2-cols">
+                <div className="input-group-custom">
+                  <label>Severidade</label>
+                  <select
+                    value={newIncident.severity}
+                    onChange={(e) => setNewIncident({ ...newIncident, severity: e.target.value })}
+                    className="select-custom"
+                  >
+                    <option value="leve">Leve (Sem risco de vazamento)</option>
+                    <option value="moderada">Moderada (Parada não programada)</option>
+                    <option value="critica">Crítica (Emergência Ambipar Response)</option>
+                  </select>
+                </div>
+
+                <div className="input-group-custom">
+                  <label>Placa do Veículo</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: AMB-4K89"
+                    value={newIncident.vehiclePlate}
+                    onChange={(e) => setNewIncident({ ...newIncident, vehiclePlate: e.target.value.toUpperCase() })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid-2-cols">
+                <div className="input-group-custom">
+                  <label>Nome do Condutor</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Motorista responsável"
+                    value={newIncident.driver}
+                    onChange={(e) => setNewIncident({ ...newIncident, driver: e.target.value })}
+                  />
+                </div>
+
+                <div className="input-group-custom">
+                  <label>Localização / Rodovia</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Rod. Anhanguera km 120"
+                    value={newIncident.location}
+                    onChange={(e) => setNewIncident({ ...newIncident, location: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="input-group-custom">
+                <label>Carga Transportada</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Borra Oleosa Classe I"
+                  value={newIncident.cargo}
+                  onChange={(e) => setNewIncident({ ...newIncident, cargo: e.target.value })}
+                />
+              </div>
+
+              <div className="input-group-custom">
+                <label>Descrição e Ações Imediatas</label>
+                <textarea
+                  required
+                  rows={3}
+                  className="select-custom"
+                  style={{ resize: 'vertical' }}
+                  placeholder="Relato da situação e providências tomadas..."
+                  value={newIncident.notes}
+                  onChange={(e) => setNewIncident({ ...newIncident, notes: e.target.value })}
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  Registrar Ocorrência
+                </button>
+              </div>
+            </form>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
