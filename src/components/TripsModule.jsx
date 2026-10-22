@@ -220,7 +220,7 @@ export default function TripsModule({ user }) {
             <form onSubmit={handleCreateTrip} className="modal-form">
               <div className="grid-2-cols">
                 <div className="input-group-custom">
-                  <label>Placa do Veículo (Cavalo/Carreta)</label>
+                  <label>Placa do Veículo / Carreta</label>
                   <input
                     type="text"
                     required

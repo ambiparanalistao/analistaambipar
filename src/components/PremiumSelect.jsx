@@ -15,10 +15,31 @@ export default function PremiumSelect({
   size = 'default', // 'default' | 'sm' | 'inline'
   className = '',
   disabled = false,
-  id
+  id,
+  placement = 'auto' // 'auto' | 'top' | 'bottom'
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [actualDirection, setActualDirection] = useState(placement === 'top' ? 'top' : 'bottom');
   const containerRef = useRef(null);
+
+  // Calcula direção de abertura (para cima ou para baixo)
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      if (placement === 'top') {
+        setActualDirection('top');
+      } else if (placement === 'bottom') {
+        setActualDirection('bottom');
+      } else {
+        const rect = containerRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < 260 && rect.top > 200) {
+          setActualDirection('top');
+        } else {
+          setActualDirection('bottom');
+        }
+      }
+    }
+  }, [isOpen, placement]);
 
   // Fecha o dropdown se clicar fora
   useEffect(() => {
@@ -111,7 +132,7 @@ export default function PremiumSelect({
 
       {/* Menu Flutuante (Dropdown List) */}
       {isOpen && (
-        <div className="premium-select-dropdown animate-scale-dropdown" role="listbox">
+        <div className={`premium-select-dropdown animate-scale-dropdown ${actualDirection === 'top' ? 'placement-top' : ''}`} role="listbox">
           <div className="premium-select-options-list">
             {options.map((opt) => {
               const isSelected = opt.value === value;

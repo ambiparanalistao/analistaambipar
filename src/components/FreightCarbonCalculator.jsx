@@ -376,7 +376,7 @@ export default function FreightCarbonCalculator({ onNavigateMtr }) {
           </div>
 
           <div className="input-group-custom" style={{ marginTop: '0.85rem' }}>
-            <label>Consumo Base Homologado do Cavalo (km/L)</label>
+            <label>Consumo Médio Homologado do Veículo (km/L)</label>
             <div className="input-with-unit">
               <input
                 type="number"

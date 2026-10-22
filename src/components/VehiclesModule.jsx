@@ -78,8 +78,8 @@ export const VEHICLE_TYPES = [
   { value: 'Caminhão Truck PBT 23t (Tanque/Baú)', label: 'Caminhão Rígido Truck (3 Eixos - PBT 23t)', sublabel: 'Operações regionais e coletas dedicadas' },
   { value: 'Carreta Sider (Carga Seca / Tambores)', label: 'Carreta Sider (Enlonada / Carga Geral & IBCs)', sublabel: 'Carregamento lateral de tambores e contêineres' },
   { value: 'Veículo de Apoio PAE (Ambipar Response)', label: 'Veículo de Apoio Emergencial / PAE Response', sublabel: 'Equipado com kit de contenção e prontidão 24h' },
-  { value: 'Cavalo Mecânico (Tração 6x4)', label: 'Cavalo Mecânico (Tração 6x4 - Rodotrem / Bitrem)', sublabel: 'Unidade tratora pesada de alta capacidade' },
-  { value: 'Cavalo Mecânico (Tração 6x2)', label: 'Cavalo Mecânico (Tração 6x2 - Carreta Simples)', sublabel: 'Unidade tratora pesada convencional' },
+  { value: 'Caminhão Trator Pesado (Tração 6x4)', label: 'Caminhão Trator Pesado (Tração 6x4 - Rodotrem / Bitrem)', sublabel: 'Unidade de alta capacidade tratora' },
+  { value: 'Caminhão Trator (Tração 6x2)', label: 'Caminhão Trator (Tração 6x2 - Carreta Simples)', sublabel: 'Unidade tratora convencional de rota' },
   { value: 'Carreta Tanque Isotérmica', label: 'Carreta Tanque Isotérmica / Climatizada', sublabel: 'Cargas sensíveis a temperatura' },
   { value: 'Carreta Baú Fechado', label: 'Carreta Baú Alumínio Fechado', sublabel: 'Segurança máxima para cargas embaladas' },
   { value: 'Rodotrem Graneleiro / Caçamba', label: 'Rodotrem Caçamba / Basculante (9 Eixos)', sublabel: 'Granéis sólidos e resíduos industriais pesados' },
@@ -103,7 +103,7 @@ export const FUEL_TYPES = [
   { value: 'Elétrico / Híbrido', label: 'Veículo 100% Elétrico / Híbrido', sublabel: 'Zero emissão direta de CO2' }
 ];
 
-// Frota Flagship Ambipar pré-carregada para apresentação executiva de alto nível
+// Frota Flagship Ambipar homologada com dados operacionais reais e oficiais
 export const DEFAULT_AMBIPAR_FLEET = [
   {
     id: 'VEI-AMB001',
@@ -119,7 +119,6 @@ export const DEFAULT_AMBIPAR_FLEET = [
     capacidade_volume_m3: 38.0,
     tipo_carga: 'Produtos Químicos Perigosos (Hazmat)',
     combustivel: 'Diesel S10',
-    meta_consumo_kml: 2.45,
     km_atual: 118420,
     proxima_revisao_km: 125000,
     validade_crlv: '2027-10-31',
@@ -131,13 +130,6 @@ export const DEFAULT_AMBIPAR_FLEET = [
     motorista_vinculado: 'Carlos Eduardo Dos Santos Ferreira',
     motorista_telefone: '(21) 99240-5610',
     status: 'Em Viagem',
-    localizacao_atual: 'SP-330 Rod. Anhanguera, Km 128 (Paulínia/SP)',
-    velocidade_kmh: 76,
-    nivel_tanque_percent: 74,
-    pressao_tanque_bar: '1.8 bar',
-    temperatura_carga_c: '22°C (Estável)',
-    sensores_pneus_psi: '110 PSI (Normal)',
-    status_rastreamento: 'Omnilink Satelital Ativo',
     observacoes: 'Conjunto dedicado ao transporte de Ácido Sulfúrico a granel. Válvulas de alívio testadas e kit PAE 100% completo.'
   },
   {
@@ -154,7 +146,6 @@ export const DEFAULT_AMBIPAR_FLEET = [
     capacidade_volume_m3: 62.0,
     tipo_carga: 'Combustíveis & Derivados de Petróleo',
     combustivel: 'Diesel S10',
-    meta_consumo_kml: 1.98,
     km_atual: 94100,
     proxima_revisao_km: 100000,
     validade_crlv: '2027-09-30',
@@ -166,13 +157,6 @@ export const DEFAULT_AMBIPAR_FLEET = [
     motorista_vinculado: 'Marcelo Silveira Rocha',
     motorista_telefone: '(19) 98765-4321',
     status: 'Disponível',
-    localizacao_atual: 'Pátio Central CCO Ambipar Nova Odessa/SP',
-    velocidade_kmh: 0,
-    nivel_tanque_percent: 92,
-    pressao_tanque_bar: '0.0 bar (Vazio)',
-    temperatura_carga_c: 'Ambiente',
-    sensores_pneus_psi: '115 PSI (Normal)',
-    status_rastreamento: 'Sascar Satelital GPS Online',
     observacoes: 'Bitrem higienizado e vaporizado com laudo de desgasificação emitido. Pronto para carregamento imediato.'
   },
   {
@@ -189,7 +173,6 @@ export const DEFAULT_AMBIPAR_FLEET = [
     capacidade_volume_m3: 16.0,
     tipo_carga: 'Resíduos Industriais Classe I (Perigosos)',
     combustivel: 'Diesel S10',
-    meta_consumo_kml: 2.80,
     km_atual: 164200,
     proxima_revisao_km: 170000,
     validade_crlv: '2027-11-15',
@@ -201,13 +184,6 @@ export const DEFAULT_AMBIPAR_FLEET = [
     motorista_vinculado: 'Roberto Antunes de Lima',
     motorista_telefone: '(71) 99123-8877',
     status: 'Em Viagem',
-    localizacao_atual: 'BA-093 Polo Industrial Camaçari/BA (Km 14)',
-    velocidade_kmh: 48,
-    nivel_tanque_percent: 63,
-    pressao_tanque_bar: '-0.8 bar (Vácuo Ativo)',
-    temperatura_carga_c: '28°C',
-    sensores_pneus_psi: '108 PSI (Normal)',
-    status_rastreamento: 'Autotrac Celular/Satelital Ativo',
     observacoes: 'Bomba de anel líquido revisada e mangotes de sucção com teste hidrostático em dia.'
   },
   {
@@ -224,7 +200,6 @@ export const DEFAULT_AMBIPAR_FLEET = [
     capacidade_volume_m3: 90.0,
     tipo_carga: 'Carga Geral Seca & Embalada',
     combustivel: 'Biodiesel B100',
-    meta_consumo_kml: 2.65,
     km_atual: 82500,
     proxima_revisao_km: 85000,
     validade_crlv: '2027-08-20',
@@ -236,14 +211,7 @@ export const DEFAULT_AMBIPAR_FLEET = [
     motorista_vinculado: 'Não vinculado',
     motorista_telefone: '',
     status: 'Manutenção',
-    localizacao_atual: 'Oficina Central de Manutenção Ambipar (Box 04)',
-    velocidade_kmh: 0,
-    nivel_tanque_percent: 40,
-    pressao_tanque_bar: 'N/A',
-    temperatura_carga_c: 'Ambiente',
-    sensores_pneus_psi: '110 PSI',
-    status_rastreamento: 'Telemetria em Modo Oficina',
-    observacoes: 'Troca preventiva de pastilhas de freio e alinhamento a laser do cavalo mecânico.'
+    observacoes: 'Troca preventiva de pastilhas de freio e alinhamento a laser do conjunto.'
   },
   {
     id: 'VEI-AMB005',
@@ -259,7 +227,6 @@ export const DEFAULT_AMBIPAR_FLEET = [
     capacidade_volume_m3: 45.0,
     tipo_carga: 'Prontidão de Emergência Ambiental',
     combustivel: 'Diesel S10',
-    meta_consumo_kml: 3.10,
     km_atual: 45300,
     proxima_revisao_km: 60000,
     validade_crlv: '2027-12-31',
@@ -271,13 +238,6 @@ export const DEFAULT_AMBIPAR_FLEET = [
     motorista_vinculado: 'Anderson Silva Costa',
     motorista_telefone: '(13) 99789-0011',
     status: 'Disponível',
-    localizacao_atual: 'Base Operacional Ambipar Response - Porto de Santos/SP',
-    velocidade_kmh: 0,
-    nivel_tanque_percent: 100,
-    pressao_tanque_bar: 'N/A',
-    temperatura_carga_c: 'Ambiente',
-    sensores_pneus_psi: '112 PSI (Excelente)',
-    status_rastreamento: 'Prontidão Satelital 24h Operante',
     observacoes: 'Kit Hazmat Completo Nível A/B, Skimmer para óleo, 200m de barreira de contenção fluvial.'
   }
 ];
@@ -401,7 +361,6 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
     capacidade_volume_m3: '',
     tipo_carga: 'Produtos Químicos Perigosos (Hazmat)',
     combustivel: 'Diesel S10',
-    meta_consumo_kml: '2.40',
     km_atual: '',
     proxima_revisao_km: '',
     validade_crlv: '',
@@ -412,13 +371,6 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
     validade_seguro_ambiental: '',
     motorista_vinculado: '',
     status: 'Disponível',
-    localizacao_atual: 'Pátio Central CCO Ambipar',
-    velocidade_kmh: 0,
-    nivel_tanque_percent: 100,
-    pressao_tanque_bar: '0.0 bar',
-    temperatura_carga_c: 'Ambiente',
-    sensores_pneus_psi: '110 PSI',
-    status_rastreamento: 'Omnilink Satelital Ativo',
     observacoes: ''
   };
 
@@ -584,17 +536,17 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
           </div>
           <div>
             <div className="cockpit-meta-badges">
-              <span className="telemetry-live-chip">
-                <span className="pulse-satellite-dot"></span>
-                <span>Rastreamento Satelital Ativo (Omnilink / Sascar)</span>
+              <span className="esg-fleet-chip">
+                <ShieldCheck size={12} color="#10b981" />
+                <span>Conformidade ANTT & INMETRO</span>
               </span>
               <span className="esg-fleet-chip">
                 <Flame size={12} color="#10b981" />
                 <span>Frota Euro 6 & Descarbonização B100</span>
               </span>
             </div>
-            <h2>Gestão de Frotas & Torre de Telemetria de Ativos</h2>
-            <p>Monitoramento operacional de cavalos mecânicos, carretas tanques inox, telemetria ao vivo e compliance regulatório ANTT/INMETRO</p>
+            <h2>Gestão de Frotas & Veículos Homologados</h2>
+            <p>Controle operacional de veículos, carretas, vistorias CIPP/CIV, cronotacógrafo e conformidade regulatória ANTT/INMETRO</p>
           </div>
         </div>
 
@@ -608,7 +560,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 disabled={loading}
               >
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                <span>Atualizar Telemetria</span>
+                <span>Atualizar Lista</span>
               </button>
               <button
                 type="button"
@@ -626,7 +578,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
               onClick={() => setViewMode('list')}
             >
               <ArrowLeft size={16} />
-              <span>Voltar ao Cockpit de Frotas</span>
+              <span>Voltar à Lista de Frotas</span>
             </button>
           )}
         </div>
@@ -647,7 +599,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
           <div className="form-header-banner">
             <div>
               <h3>{editingId ? `Editar Veículo Placa ${formData.placa}` : 'Homologar Novo Veículo na Frota Ambipar'}</h3>
-              <p>Cadastre as especificações do conjunto, telemetria de bordo, vistorias CIPP/CIV e motorista titular</p>
+              <p>Cadastre as especificações do conjunto, vistorias regulatórias CIPP/CIV e motorista titular</p>
             </div>
             <div className="form-header-actions">
               <button
@@ -705,7 +657,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
               </div>
 
               <div className="input-group-custom" style={{ marginBottom: '1.1rem' }}>
-                <label>Marca & Modelo do Cavalo Mecânico / Veículo *</label>
+                <label>Marca & Modelo do Veículo *</label>
                 <input
                   type="text"
                   required
@@ -748,14 +700,14 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
               </div>
             </div>
 
-            {/* Bloco 2: Telemetria & Especificações Técnicas */}
+            {/* Bloco 2: Especificações Técnicas & Capacidades */}
             <div className="card-panel card-z-mid" style={{ position: 'relative', zIndex: 30 }}>
               <div className="panel-header">
                 <div className="header-icon-label">
                   <Gauge size={20} className="icon-cyan" />
                   <div>
-                    <h4>2. Telemetria & Capacidade de Carga</h4>
-                    <p>Pesagem, volume, odômetro e satélite</p>
+                    <h4>2. Especificações Técnicas & Capacidades</h4>
+                    <p>Pesagem, volume, odômetro e combustível</p>
                   </div>
                 </div>
               </div>
@@ -786,7 +738,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
 
               <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
                 <div className="input-group-custom">
-                  <label>Odômetro Atual (Km)</label>
+                  <label>Odômetro Registrado (Km)</label>
                   <input
                     type="number"
                     placeholder="Ex: 118420"
@@ -806,35 +758,16 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 </div>
               </div>
 
-              <div className="input-group-custom" style={{ marginBottom: '1.1rem' }}>
-                <label>Localização Atual / Rota em Andamento</label>
-                <input
-                  type="text"
-                  placeholder="Ex: SP-330 Rod. Anhanguera, Km 128 - Paulínia/SP"
-                  value={formData.localizacao_atual}
-                  onChange={(e) => setFormData({ ...formData, localizacao_atual: e.target.value })}
-                />
-              </div>
-
-              <div className="grid-2-cols">
-                <div className="input-group-custom">
-                  <label>Velocidade Atual Estimada (km/h)</label>
-                  <input
-                    type="number"
-                    placeholder="Ex: 76"
-                    value={formData.velocidade_kmh}
-                    onChange={(e) => setFormData({ ...formData, velocidade_kmh: e.target.value })}
-                  />
-                </div>
-                <div className="input-group-custom">
-                  <label>Nível do Tanque (%)</label>
-                  <input
-                    type="number"
-                    placeholder="Ex: 75"
-                    value={formData.nivel_tanque_percent}
-                    onChange={(e) => setFormData({ ...formData, nivel_tanque_percent: e.target.value })}
-                  />
-                </div>
+              <div className="input-group-custom">
+                <label>Tipo de Combustível Principal</label>
+                <select
+                  value={formData.combustivel}
+                  onChange={(e) => setFormData({ ...formData, combustivel: e.target.value })}
+                >
+                  {FUEL_TYPES.map(f => (
+                    <option key={f.value} value={f.value}>{f.label}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -998,7 +931,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 <span className="unit-suffix">veículos</span>
               </div>
               <div className="kpi-footer-status">
-                <span>Cavalos mecânicos & implementos ativos</span>
+                <span>Veículos & implementos ativos</span>
               </div>
             </div>
 
@@ -1030,7 +963,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 <span className="unit-suffix">em rota</span>
               </div>
               <div className="kpi-footer-status">
-                <span>Telemetria satelital em tempo real</span>
+                <span>Com manifesto de viagem ativo</span>
               </div>
             </div>
 
@@ -1189,107 +1122,40 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                       </div>
                     </div>
 
-                    {/* PAINEL DE TELEMETRIA DE BORDO AO VIVO */}
-                    <div className="vehicle-telemetry-panel">
-                      <div className="telemetry-panel-header">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <Radio size={14} className="icon-cyan animate-pulse" />
-                          <strong style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Telemetria Satelital de Bordo
-                          </strong>
-                        </div>
-                        <span className="telemetry-satellite-tag">
-                          {vehicle.status_rastreamento || 'GPS Satélite 24h'}
-                        </span>
+                    {/* ESPECIFICAÇÕES TÉCNICAS DO ATIVO (REORGANIZADO & LIMPO) */}
+                    <div className="vehicle-specs-clean-box">
+                      <div className="spec-clean-header">
+                        <Gauge size={14} className="icon-emerald" />
+                        <span>Especificações Técnicas & Capacidades</span>
                       </div>
-
-                      {/* Localização GPS Real */}
-                      <div className="telemetry-location-row">
-                        <MapPin size={15} className="text-emerald" style={{ flexShrink: 0 }} />
-                        <span className="location-text">
-                          {vehicle.localizacao_atual || 'Pátio Central CCO Ambipar Nova Odessa'}
-                        </span>
-                      </div>
-
-                      {/* Métricas de Velocidade, Tanque e Pneus */}
-                      <div className="telemetry-metrics-grid">
-                        <div className="telemetry-metric-item">
-                          <span className="metric-label">Velocidade</span>
-                          <strong className="metric-value">
-                            {vehicle.velocidade_kmh ? `${vehicle.velocidade_kmh} km/h` : '0 km/h (Parado)'}
+                      <div className="spec-clean-grid">
+                        <div className="spec-clean-item">
+                          <span className="spec-clean-label">Capacidade (PBTC)</span>
+                          <strong className="spec-clean-value">
+                            {vehicle.capacidade_peso_ton ? `${vehicle.capacidade_peso_ton} ton` : '—'}
                           </strong>
                         </div>
 
-                        <div className="telemetry-metric-item">
-                          <span className="metric-label">Consumo Médio</span>
-                          <strong className="metric-value">
-                            {vehicle.meta_consumo_kml || '2.45'} km/l
+                        <div className="spec-clean-item">
+                          <span className="spec-clean-label">Volume de Carga</span>
+                          <strong className="spec-clean-value">
+                            {vehicle.capacidade_volume_m3 ? `${vehicle.capacidade_volume_m3} m³` : '—'}
                           </strong>
                         </div>
 
-                        <div className="telemetry-metric-item">
-                          <span className="metric-label">Pressão Carga</span>
-                          <strong className="metric-value">
-                            {vehicle.pressao_tanque_bar || '1.8 bar'}
+                        <div className="spec-clean-item">
+                          <span className="spec-clean-label">Odômetro Registrado</span>
+                          <strong className="spec-clean-value">
+                            {vehicle.km_atual ? `${Number(vehicle.km_atual).toLocaleString('pt-BR')} km` : '—'}
                           </strong>
                         </div>
 
-                        <div className="telemetry-metric-item">
-                          <span className="metric-label">Pneus (TPMS)</span>
-                          <strong className="metric-value">
-                            {vehicle.sensores_pneus_psi || '110 PSI'}
+                        <div className="spec-clean-item">
+                          <span className="spec-clean-label">Próxima Revisão</span>
+                          <strong className="spec-clean-value">
+                            {vehicle.proxima_revisao_km ? `${Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR')} km` : '—'}
                           </strong>
                         </div>
-                      </div>
-
-                      {/* Barra Gráfica de Nível do Tanque */}
-                      <div className="telemetry-fuel-bar-wrap">
-                        <div className="fuel-bar-header">
-                          <span className="fuel-label">
-                            <Fuel size={12} /> Nível Combustível ({vehicle.combustivel || 'Diesel S10'})
-                          </span>
-                          <strong className="fuel-percent">{vehicle.nivel_tanque_percent || 75}%</strong>
-                        </div>
-                        <div className="fuel-progress-track">
-                          <div 
-                            className="fuel-progress-fill"
-                            style={{ 
-                              width: `${vehicle.nivel_tanque_percent || 75}%`,
-                              background: (vehicle.nivel_tanque_percent || 75) > 30 ? 'linear-gradient(90deg, #10b981, #06b6d4)' : 'linear-gradient(90deg, #f59e0b, #f43f5e)'
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Especificações de Capacidade e Odômetro */}
-                    <div className="vehicle-specs-cockpit-grid">
-                      <div className="spec-item">
-                        <span className="spec-label">Capacidade PBTC</span>
-                        <strong className="spec-val">
-                          {vehicle.capacidade_peso_ton ? `${vehicle.capacidade_peso_ton} ton` : '57.0 ton'}
-                        </strong>
-                      </div>
-
-                      <div className="spec-item">
-                        <span className="spec-label">Volume Carga</span>
-                        <strong className="spec-val">
-                          {vehicle.capacidade_volume_m3 ? `${vehicle.capacidade_volume_m3} m³` : '38.0 m³'}
-                        </strong>
-                      </div>
-
-                      <div className="spec-item">
-                        <span className="spec-label">Odômetro Atual</span>
-                        <strong className="spec-val">
-                          {vehicle.km_atual ? `${Number(vehicle.km_atual).toLocaleString('pt-BR')} km` : '118.420 km'}
-                        </strong>
-                      </div>
-
-                      <div className="spec-item">
-                        <span className="spec-label">Próxima Revisão</span>
-                        <strong className="spec-val">
-                          {vehicle.proxima_revisao_km ? `${Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR')} km` : '125.000 km'}
-                        </strong>
                       </div>
                     </div>
 
@@ -1377,6 +1243,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                           options={VEHICLE_STATUS_OPTIONS}
                           size="inline"
                           id={`quick-status-${vehicle.id}`}
+                          placement="top"
                         />
                       </div>
 
@@ -1386,7 +1253,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                           className="topbar-icon-btn"
                           style={{ width: '32px', height: '32px' }}
                           onClick={() => handleOpenEditForm(vehicle)}
-                          title="Editar cadastro e telemetria"
+                          title="Editar cadastro do veículo"
                         >
                           <Edit3 size={15} />
                         </button>
@@ -1414,9 +1281,10 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 <thead>
                   <tr>
                     <th style={{ minWidth: '160px' }}>Placa & Prefixo</th>
-                    <th style={{ minWidth: '220px' }}>Conjunto & Implemento</th>
-                    <th style={{ minWidth: '240px' }}>Telemetria & Rota GPS</th>
-                    <th style={{ minWidth: '160px' }}>Capacidades</th>
+                    <th style={{ minWidth: '220px' }}>Veículo & Implemento</th>
+                    <th style={{ minWidth: '200px' }}>Tipo de Carga & Combustível</th>
+                    <th style={{ minWidth: '150px' }}>Capacidades</th>
+                    <th style={{ minWidth: '160px' }}>Odômetro & Revisão</th>
                     <th style={{ minWidth: '180px' }}>Condutor Vinculado</th>
                     <th style={{ minWidth: '180px' }}>Vistorias (CIPP / CIV)</th>
                     <th style={{ minWidth: '150px' }}>Status CCO</th>
@@ -1446,7 +1314,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                           </div>
                         </td>
 
-                        {/* Conjunto */}
+                        {/* Veículo & Implemento */}
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <strong style={{ fontSize: '0.88rem', color: '#ffffff' }}>
@@ -1458,15 +1326,14 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                           </div>
                         </td>
 
-                        {/* Telemetria & Rota */}
+                        {/* Tipo de Carga */}
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <MapPin size={13} className="text-emerald" />
-                              {vehicle.localizacao_atual || 'Pátio Central CCO'}
+                            <span style={{ fontSize: '0.82rem', color: '#ffffff', fontWeight: 600 }}>
+                              {vehicle.tipo_carga || 'Carga Geral'}
                             </span>
                             <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
-                              Velocidade: <strong>{vehicle.velocidade_kmh || 0} km/h</strong> • Tanque: <strong>{vehicle.nivel_tanque_percent || 75}%</strong>
+                              Combustível: <strong>{vehicle.combustivel || 'Diesel S10'}</strong>
                             </span>
                           </div>
                         </td>
@@ -1474,8 +1341,16 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                         {/* Capacidades */}
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.76rem' }}>
-                            <span>PBTC: <strong>{vehicle.capacidade_peso_ton || 57} ton</strong></span>
-                            <span>Volume: <strong>{vehicle.capacidade_volume_m3 || 38} m³</strong></span>
+                            <span>PBTC: <strong>{vehicle.capacidade_peso_ton ? `${vehicle.capacidade_peso_ton} ton` : '—'}</strong></span>
+                            <span>Volume: <strong>{vehicle.capacidade_volume_m3 ? `${vehicle.capacidade_volume_m3} m³` : '—'}</strong></span>
+                          </div>
+                        </td>
+
+                        {/* Odômetro & Revisão */}
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.76rem' }}>
+                            <span>Km: <strong>{vehicle.km_atual ? `${Number(vehicle.km_atual).toLocaleString('pt-BR')} km` : '—'}</strong></span>
+                            <span style={{ color: 'var(--text-dim)' }}>Revisão: <strong>{vehicle.proxima_revisao_km ? `${Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR')} km` : '—'}</strong></span>
                           </div>
                         </td>
 
@@ -1523,6 +1398,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                             options={VEHICLE_STATUS_OPTIONS}
                             size="inline"
                             id={`table-status-${vehicle.id}`}
+                            placement="auto"
                           />
                         </td>
 

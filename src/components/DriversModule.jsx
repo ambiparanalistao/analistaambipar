@@ -893,7 +893,7 @@ export default function DriversModule({ user }) {
               {/* Seletor de Frota Pré-Programado */}
               <div className="fleet-plate-picker-box" style={{ marginBottom: '1.25rem' }}>
                 <div className="input-group-custom">
-                  <label>Placa do Veículo / Cavalo Mecânico Vinculado</label>
+                  <label>Placa do Veículo Vinculado</label>
                   <input
                     type="text"
                     placeholder="Ex: AMB-4K89 ou clique na frota abaixo"

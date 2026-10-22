@@ -129,7 +129,7 @@ export default function App() {
     },
     frotas: { 
       title: 'Gestão de Frotas & Veículos Homologados', 
-      subtitle: 'Controle de cavalos mecânicos, carretas tanques, vistorias CIPP/CIV, tacógrafo e telemetria' 
+      subtitle: 'Controle de veículos, carretas, vistorias CIPP/CIV, tacógrafo e conformidade regulatória' 
     },
     motoristas: { 
       title: 'Quadro de Motoristas & Certificações MOPP', 
