@@ -13,7 +13,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Leaf,
-  Route
+  Route,
+  Building2
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -52,6 +53,11 @@ export default function Sidebar({
           id: 'viagens',
           label: 'Monitoramento de Viagens',
           icon: Route
+        },
+        {
+          id: 'clientes',
+          label: 'Gestão de Clientes & Rotas',
+          icon: Building2
         },
         {
           id: 'mtr',

@@ -18,6 +18,7 @@ import FreightCarbonCalculator from './components/FreightCarbonCalculator';
 import AnttFormulasModule from './components/AnttFormulasModule';
 import OcorrenciasModule from './components/OcorrenciasModule';
 import EsgModule from './components/EsgModule';
+import ClientsModule from './components/ClientsModule';
 import AuthCard from './components/AuthCard';
 import SupabaseConfigModal from './components/SupabaseConfigModal';
 import './App.css';
@@ -28,6 +29,7 @@ export const MODULE_ROUTES = {
   frotas: '/frotas',
   motoristas: '/motoristas',
   viagens: '/viagens',
+  clientes: '/clientes',
   mtr: '/mtr',
   calculadora_frete: '/calculadora-frete',
   antt_formulas: '/antt-formulas',
@@ -46,6 +48,10 @@ export const PATH_TO_MODULE = {
   '/motorista': 'motoristas',
   '/viagens': 'viagens',
   '/viagem': 'viagens',
+  '/clientes': 'clientes',
+  '/cliente': 'clientes',
+  '/rotas-clientes': 'clientes',
+  '/contratos': 'clientes',
   '/mtr': 'mtr',
   '/sinir': 'mtr',
   '/calculadora': 'calculadora_frete',
@@ -138,6 +144,10 @@ export default function App() {
     viagens: { 
       title: 'Monitoramento de Viagens & Rotas', 
       subtitle: 'Rastreamento operacional de veículos, carga/descarga e gestão de motoristas' 
+    },
+    clientes: { 
+      title: 'Gestão de Clientes & Roteirização Dedicada', 
+      subtitle: 'Cadastro industrial homologado, SLA de atendimento e direcionamento dinâmico a rotas logísticas' 
     },
     mtr: { 
       title: 'Manifestos de Transporte de Resíduos (MTR)', 
@@ -331,6 +341,13 @@ export default function App() {
                 />
               )}
               {currentModule === 'viagens' && <TripsModule user={session.user} />}
+              {currentModule === 'clientes' && (
+                <ClientsModule 
+                  user={session.user} 
+                  onNavigateTrips={() => handleSelectModule('viagens')}
+                  onNavigateFleet={() => handleSelectModule('frotas')}
+                />
+              )}
               {currentModule === 'mtr' && <MtrModule user={session.user} />}
               {currentModule === 'calculadora_frete' && <FreightCarbonCalculator onNavigateMtr={() => handleSelectModule('mtr')} />}
               {currentModule === 'antt_formulas' && <AnttFormulasModule />}
