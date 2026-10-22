@@ -39,7 +39,12 @@ import {
   Download,
   Award,
   Zap,
-  Info
+  Info,
+  TrendingDown,
+  UserX,
+  PieChart,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import './FuelModule.css';
@@ -127,19 +132,19 @@ export const getConsumptionEfficiency = (kmPerL, fuelType) => {
   if (!val || val <= 0) return { label: 'Sem cálculo', status: 'indefinido', color: '#94a3b8' };
   
   if (val >= 2.6) {
-    return { label: 'Excelente Eficiência', status: 'excelente', color: '#10b981' };
+    return { label: 'Excelente (Eco-Drive)', status: 'excelente', color: '#10b981' };
   }
   if (val >= 2.1) {
     return { label: 'Na Meta CCO', status: 'normal', color: '#06b6d4' };
   }
-  if (val >= 1.7) {
+  if (val >= 1.75) {
     return { label: 'Atenção / Abaixo da Meta', status: 'alerta', color: '#f59e0b' };
   }
-  return { label: 'Consumo Excessivo (Investigar)', status: 'critico', color: '#f43f5e' };
+  return { label: 'Consumo Excessivo (Pé Pesado)', status: 'critico', color: '#f43f5e' };
 };
 
-export default function FuelModule({ user, initialView = 'table', onNavigateModule }) {
-  // Estado 100% Limpo inicial
+export default function FuelModule({ user, initialView = 'dashboard', onNavigateModule }) {
+  // Estado de abastecimentos persistente
   const [records, setRecords] = useState(() => {
     try {
       const saved = localStorage.getItem('ambipar_fuel_records_v1');
@@ -149,14 +154,13 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
     }
   });
 
-  // Carrega veículos, motoristas e rotas de clientes reais cadastrados
+  // Carrega veículos, motoristas e rotas de clientes
   const [availablePlates, setAvailablePlates] = useState([]);
   const [availableDrivers, setAvailableDrivers] = useState([]);
   const [clientRoutes, setClientRoutes] = useState([]);
 
   useEffect(() => {
     try {
-      // Veículos
       const savedVehicles = localStorage.getItem('ambipar_real_vehicles');
       const savedPlatesList = localStorage.getItem('ambipar_fleet_vehicles');
       let plates = [];
@@ -173,14 +177,12 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
       }
       setAvailablePlates(plates);
 
-      // Motoristas
       const savedDrivers = localStorage.getItem('ambipar_real_drivers');
       if (savedDrivers) {
         const parsed = JSON.parse(savedDrivers);
         setAvailableDrivers(parsed.map(d => d.nome));
       }
 
-      // Rotas de Clientes Reais
       const savedClients = localStorage.getItem('ambipar_real_clients_v2');
       if (savedClients) {
         const parsed = JSON.parse(savedClients);
@@ -211,8 +213,8 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
   }, [records]);
 
   // Controles de Visualização & Filtros
-  // viewMode: 'table' | 'cards' | 'ranking' | 'simulator' | 'form'
-  const [viewMode, setViewMode] = useState(initialView || 'table');
+  // viewMode: 'dashboard' | 'table' | 'cards' | 'simulator' | 'form'
+  const [viewMode, setViewMode] = useState(initialView || 'dashboard');
 
   useEffect(() => {
     if (initialView) {
@@ -220,10 +222,11 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
     }
   }, [initialView]);
 
-  const [activeTab, setActiveTab] = useState('todos'); // 'todos' | 'diesel' | 'arla' | 'hvo' | 'alertas'
+  const [activeTab, setActiveTab] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [fuelFilter, setFuelFilter] = useState('Todos');
   const [plateFilter, setPlateFilter] = useState('Todas');
+  const [driverSortBy, setDriverSortBy] = useState('pior_media'); // 'pior_media' | 'maior_litragem' | 'melhor_media'
   const [feedback, setFeedback] = useState(null);
 
   // Modais
@@ -257,15 +260,13 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
     observacoes: ''
   });
 
-  // =========================================================================
-  // ESTADO DO SIMULADOR DE AUTONOMIA & CONSUMO DE ROTA CCO
-  // =========================================================================
+  // Estado do Simulador de Autonomia CCO
   const [simulatorData, setSimulatorData] = useState({
     origem: 'Base Ambipar Paulínia / SP',
     destino: 'Polo Petroquímico de Camaçari / BA',
     distanciaKm: 1850,
-    sentido: 'ida_e_volta', // 'ida_carregado' | 'ida_e_volta' | 'volta_vazio' | 'carregado_ida_e_volta'
-    tipoRelevo: 'misto', // 'plano' (1.0) | 'misto' (1.08) | 'serra' (1.18)
+    sentido: 'ida_e_volta',
+    tipoRelevo: 'misto',
     veiculoTipo: 'Carreta Tanque Inox 316L (PBT 45t)',
     capacidadeTanque: 800,
     capacidadeArla: 80,
@@ -282,7 +283,6 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
 
   const [activePresetId, setActivePresetId] = useState('tanque_316l');
 
-  // Aplicar Preset de Veículo
   const handleApplyPreset = (preset) => {
     setActivePresetId(preset.id);
     setSimulatorData(prev => ({
@@ -296,7 +296,6 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
     }));
   };
 
-  // Puxar Rota Real de Cliente
   const handleSelectClientRoute = (routeId) => {
     const match = clientRoutes.find(r => r.id === routeId);
     if (match) {
@@ -306,12 +305,11 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
         destino: match.destino,
         distanciaKm: match.distanciaKm
       }));
-      setFeedback({ type: 'success', text: `Rota do cliente "${match.cliente}" aplicada ao simulador (${match.distanciaKm} km)!` });
+      setFeedback({ type: 'success', text: `Rota "${match.cliente}" aplicada (${match.distanciaKm} km)!` });
       setTimeout(() => setFeedback(null), 3000);
     }
   };
 
-  // Se o usuário seleciona uma placa no formulário de abastecimento
   const handleSelectPlate = (selectedPlate) => {
     const matchedVehicle = availablePlates.find(p => p.placa === selectedPlate);
     const lastRecordForPlate = records
@@ -361,7 +359,6 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
     return null;
   }, [formData.hodometro_atual, formData.hodometro_anterior, formData.valor_total]);
 
-  // Abertura de formulário
   const handleOpenCreateForm = () => {
     setEditingId(null);
     setFormData({
@@ -469,7 +466,7 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
     if (editingId) {
       const updated = records.map(r => r.id === editingId ? { ...payload, id: editingId } : r);
       setRecords(updated);
-      setFeedback({ type: 'success', text: `Abastecimento da placa ${payload.placa} atualizado com sucesso!` });
+      setFeedback({ type: 'success', text: `Abastecimento da placa ${payload.placa} atualizado!` });
     } else {
       const newRec = {
         ...payload,
@@ -477,10 +474,10 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
         created_at: new Date().toISOString()
       };
       setRecords([newRec, ...records]);
-      setFeedback({ type: 'success', text: `Abastecimento da placa ${payload.placa} lançado com sucesso no CCO!` });
+      setFeedback({ type: 'success', text: `Abastecimento da placa ${payload.placa} lançado no CCO!` });
     }
 
-    setViewMode('table');
+    setViewMode('dashboard');
     setTimeout(() => setFeedback(null), 4000);
   };
 
@@ -492,7 +489,7 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
     }
   };
 
-  // KPIs de Abastecimentos Consolidados
+  // KPIs Gerais
   const totalFuelCost = useMemo(() => records.reduce((acc, r) => acc + (Number(r.valor_total) || 0), 0), [records]);
   const totalFuelLiters = useMemo(() => records.filter(r => !r.tipo_combustivel?.includes('ARLA')).reduce((acc, r) => acc + (Number(r.litros) || 0), 0), [records]);
   const totalArlaLiters = useMemo(() => records.filter(r => r.tipo_combustivel?.includes('ARLA')).reduce((acc, r) => acc + (Number(r.litros) || 0), 0), [records]);
@@ -520,36 +517,176 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
 
   const uniquePlatesInRecords = useMemo(() => Array.from(new Set(records.map(r => r.placa).filter(Boolean))), [records]);
 
-  // Auditoria / Ranking de Eficiência por Placa
-  const fleetRanking = useMemo(() => {
+  // =========================================================================
+  // RELATÓRIOS ANALÍTICOS: MOTORISTAS & VEÍCULOS
+  // =========================================================================
+
+  // 1. Relatório Detalhado por Motorista
+  const driverAnalytics = useMemo(() => {
     const map = {};
     records.forEach(r => {
-      const p = r.placa || 'Sem Placa';
+      const d = r.motorista?.trim() || 'Escala CCO';
+      if (!map[d]) {
+        map[d] = {
+          nome: d,
+          totalLitros: 0,
+          totalValor: 0,
+          totalKm: 0,
+          viagensCount: 0,
+          veiculos: new Set()
+        };
+      }
+      map[d].totalLitros += Number(r.litros) || 0;
+      map[d].totalValor += Number(r.valor_total) || 0;
+      map[d].totalKm += Number(r.distancia_percorrida_km) || 0;
+      map[d].viagensCount += 1;
+      if (r.placa) map[d].veiculos.add(r.placa);
+    });
+
+    const list = Object.values(map).map(item => {
+      const mediaKmL = item.totalLitros > 0 && item.totalKm > 0
+        ? Number((item.totalKm / item.totalLitros).toFixed(2))
+        : 0;
+      const cpk = item.totalKm > 0 ? Number((item.totalValor / item.totalKm).toFixed(2)) : 0;
+      const status = getConsumptionEfficiency(mediaKmL, 'Diesel S10');
+      const targetKmL = 2.3;
+      const desvioPct = mediaKmL > 0 ? Number((((mediaKmL - targetKmL) / targetKmL) * 100).toFixed(1)) : 0;
+
+      return {
+        ...item,
+        mediaKmL,
+        cpk,
+        status,
+        desvioPct,
+        veiculosList: Array.from(item.veiculos)
+      };
+    });
+
+    // Ordenação
+    if (driverSortBy === 'pior_media') {
+      return list.sort((a, b) => {
+        if (a.mediaKmL === 0) return 1;
+        if (b.mediaKmL === 0) return -1;
+        return a.mediaKmL - b.mediaKmL; // Pior média primeiro (quem gasta mais)
+      });
+    }
+    if (driverSortBy === 'maior_litragem') {
+      return list.sort((a, b) => b.totalLitros - a.totalLitros);
+    }
+    return list.sort((a, b) => b.mediaKmL - a.mediaKmL); // Mais econômicos
+  }, [records, driverSortBy]);
+
+  // Motorista que mais consome (maior consumo / pior média) vs Eco-Leader
+  const driverHighlights = useMemo(() => {
+    const validWithKm = driverAnalytics.filter(d => d.mediaKmL > 0);
+    const highestConsumer = validWithKm.sort((a, b) => a.mediaKmL - b.mediaKmL)[0] || null;
+    const ecoLeader = validWithKm.sort((a, b) => b.mediaKmL - a.mediaKmL)[0] || null;
+
+    // Cálculo de Oportunidade de Economia
+    const target = 2.3;
+    let litrosExcedentes = 0;
+    validWithKm.forEach(d => {
+      if (d.mediaKmL < target && d.totalKm > 0) {
+        const litrosIdeais = d.totalKm / target;
+        if (d.totalLitros > litrosIdeais) {
+          litrosExcedentes += (d.totalLitros - litrosIdeais);
+        }
+      }
+    });
+
+    const precoMedioDiesel = totalFuelLiters > 0 ? totalFuelCost / totalFuelLiters : 6.15;
+    const economiaPossivelR$ = (litrosExcedentes * precoMedioDiesel).toFixed(2);
+
+    return {
+      highestConsumer,
+      ecoLeader,
+      litrosExcedentes: Math.round(litrosExcedentes),
+      economiaPossivelR$
+    };
+  }, [driverAnalytics, totalFuelLiters, totalFuelCost]);
+
+  // 2. Relatório de Consumo por Veículos / Carros
+  const vehicleAnalytics = useMemo(() => {
+    const map = {};
+    records.forEach(r => {
+      const p = r.placa?.trim() || 'Sem Placa';
       if (!map[p]) {
         map[p] = {
           placa: p,
-          modelo: r.modelo_veiculo || 'Frota CCO',
+          modelo: r.modelo_veiculo || 'Caminhão Frota',
           totalLitros: 0,
           totalValor: 0,
-          totalDistancia: 0,
-          contagem: 0
+          totalKm: 0,
+          abastecimentosCount: 0,
+          condutores: new Set()
         };
       }
       map[p].totalLitros += Number(r.litros) || 0;
       map[p].totalValor += Number(r.valor_total) || 0;
-      map[p].totalDistancia += Number(r.distancia_percorrida_km) || 0;
-      map[p].contagem += 1;
+      map[p].totalKm += Number(r.distancia_percorrida_km) || 0;
+      map[p].abastecimentosCount += 1;
+      if (r.motorista) map[p].condutores.add(r.motorista);
     });
 
     return Object.values(map).map(item => {
-      const kmPorLitro = item.totalLitros > 0 && item.totalDistancia > 0 ? Number((item.totalDistancia / item.totalLitros).toFixed(2)) : 0;
-      const cpk = item.totalDistancia > 0 ? Number((item.totalValor / item.totalDistancia).toFixed(2)) : 0;
-      const meta = getConsumptionEfficiency(kmPorLitro, 'Diesel S10');
-      return { ...item, kmPorLitro, cpk, meta };
-    }).sort((a, b) => b.kmPorLitro - a.kmPorLitro);
+      const mediaKmL = item.totalLitros > 0 && item.totalKm > 0
+        ? Number((item.totalKm / item.totalLitros).toFixed(2))
+        : 0;
+      const cpk = item.totalKm > 0 ? Number((item.totalValor / item.totalKm).toFixed(2)) : 0;
+      const status = getConsumptionEfficiency(mediaKmL, 'Diesel S10');
+      return {
+        ...item,
+        mediaKmL,
+        cpk,
+        status,
+        condutoresList: Array.from(item.condutores)
+      };
+    }).sort((a, b) => b.totalLitros - a.totalLitros);
   }, [records]);
 
-  // Filtragem
+  // 3. Mix de Combustíveis
+  const fuelMix = useMemo(() => {
+    const map = {};
+    let totalL = 0;
+    records.forEach(r => {
+      const f = r.tipo_combustivel || 'Diesel S10';
+      const l = Number(r.litros) || 0;
+      map[f] = (map[f] || 0) + l;
+      totalL += l;
+    });
+    return Object.entries(map).map(([fuel, liters]) => ({
+      fuel,
+      liters,
+      pct: totalL > 0 ? Number(((liters / totalL) * 100).toFixed(1)) : 0,
+      color: FUEL_TYPES.find(t => t.value === fuel)?.color || '#10b981'
+    })).sort((a, b) => b.liters - a.liters);
+  }, [records]);
+
+  // 4. Ranking de Postos Mais Utilizados
+  const stationAnalytics = useMemo(() => {
+    const map = {};
+    records.forEach(r => {
+      const s = r.posto_nome?.trim() || 'Posto Não Identificado';
+      if (!map[s]) {
+        map[s] = {
+          nome: s,
+          cidade: r.cidade ? `${r.cidade}/${r.uf || ''}` : 'Rodovia',
+          totalLitros: 0,
+          totalValor: 0,
+          count: 0
+        };
+      }
+      map[s].totalLitros += Number(r.litros) || 0;
+      map[s].totalValor += Number(r.valor_total) || 0;
+      map[s].count += 1;
+    });
+    return Object.values(map).map(item => ({
+      ...item,
+      precoMedio: item.totalLitros > 0 ? (item.totalValor / item.totalLitros).toFixed(2) : '0.00'
+    })).sort((a, b) => b.totalLitros - a.totalLitros).slice(0, 5);
+  }, [records]);
+
+  // Filtragem da Tabela
   const filteredRecords = useMemo(() => {
     return records.filter(r => {
       const q = searchTerm.toLowerCase();
@@ -573,7 +710,7 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
     });
   }, [records, searchTerm, fuelFilter, plateFilter, activeTab]);
 
-  // Exportação para Excel / CSV
+  // Exportar CSV
   const handleExportCSV = () => {
     if (filteredRecords.length === 0) {
       alert('Nenhum registro para exportar.');
@@ -618,7 +755,7 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
   };
 
   // =========================================================================
-  // CÁLCULO COMPLETO DO SIMULADOR DE AUTONOMIA & CONSUMO DE ROTA CCO
+  // SIMULADOR DE AUTONOMIA CCO CÁLCULOS
   // =========================================================================
   const simCalculations = useMemo(() => {
     const distTrecho = Number(simulatorData.distanciaKm) || 0;
@@ -687,7 +824,6 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
     const economiaR$ = Math.max(0, custoTotal100Posto - custoTotalMisto);
     const economiaPct = custoTotal100Posto > 0 ? ((economiaR$ / custoTotal100Posto) * 100).toFixed(1) : '0.0';
 
-    // Custo por tonelada transportada
     const cargaTon = Number(simulatorData.capacidadeCargaTon) || 30;
     const custoPorTon = cargaTon > 0 ? (custoTotalMisto / cargaTon).toFixed(2) : '0.00';
 
@@ -699,7 +835,6 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
     const velMedia = Number(simulatorData.velocidadeMediaKmH) || 70;
     const tempoViagemHoras = velMedia > 0 ? (distTotal / velMedia).toFixed(1) : '0';
 
-    // Waypoints dinâmicos da rota
     const waypoints = [];
     waypoints.push({
       tipo: 'start',
@@ -707,7 +842,6 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
       titulo: 'Origem: ' + (simulatorData.origem.split('/')[0] || 'Base'),
       subtitulo: 'Saída Tanque 100% Cheio na Base CCO',
       dieselNoTanque: capTanque + ' L',
-      arlaNoTanque: (Number(simulatorData.capacidadeArla) || 80) + ' L',
       status: 'Saída Autorizada'
     });
 
@@ -723,7 +857,6 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
           titulo: `Parada ${i} de Reabastecimento`,
           subtitulo: `Rede Credenciada de Rodovia (~km ${kmParada})`,
           dieselNoTanque: `+${Math.round(litrosParaCompletar)} L Diesel`,
-          arlaNoTanque: `+${litrosArlaParada} L ARLA`,
           status: 'Parada Obrigatória'
         });
       }
@@ -736,14 +869,12 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
       titulo: 'Destino: ' + (simulatorData.destino.split('/')[0] || 'Chegada'),
       subtitulo: isCircuitoCompleto ? 'Retorno à Base / Ciclo Concluído' : 'Chegada na Planta / Descarga',
       dieselNoTanque: `Nível Final ~${nivelFinalPct}%`,
-      arlaNoTanque: 'Tanque Conforme',
       status: 'Destino Alcançado'
     });
 
-    // Curva de telemetria SVG Points (X: 0 a 800, Y: 20 a 140)
-    // 100% tanque = Y=30, 15% reserva = Y=125, 0% = Y=145
+    // Curva de telemetria SVG
     const svgPoints = [];
-    svgPoints.push({ x: 30, y: 35, km: 0, pct: 100 }); // Início
+    svgPoints.push({ x: 30, y: 35, km: 0, pct: 100 });
 
     if (numParadas === 0) {
       const finalY = 35 + ((distTotal / autonomiaMaximaKm) * 100);
@@ -753,8 +884,8 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
       for (let i = 1; i <= numParadas; i++) {
         const xBefore = 30 + (i * stepX) - 10;
         const xAfter = 30 + (i * stepX);
-        svgPoints.push({ x: xBefore, y: 125, km: Math.round(i * autonomiaSeguraKm), pct: 15 }); // Caiu na reserva
-        svgPoints.push({ x: xAfter, y: 35, km: Math.round(i * autonomiaSeguraKm), pct: 100 }); // Reabasteceu 100%
+        svgPoints.push({ x: xBefore, y: 125, km: Math.round(i * autonomiaSeguraKm), pct: 15 });
+        svgPoints.push({ x: xAfter, y: 35, km: Math.round(i * autonomiaSeguraKm), pct: 100 });
       }
       svgPoints.push({ x: 770, y: 35 + (100 - nivelFinalPct), km: distTotal, pct: nivelFinalPct });
     }
@@ -771,52 +902,22 @@ export default function FuelModule({ user, initialView = 'table', onNavigateModu
       custoTotalMisto: custoTotalMisto.toFixed(2),
       custoDieselBase: custoDieselBase.toFixed(2),
       custoDieselRodovia: custoDieselRodovia.toFixed(2),
-      custoDieselMisto: custoDieselMisto.toFixed(2),
-      custoArlaTotal: custoArlaTotal.toFixed(2),
       cpkMisto,
       custoPorTon,
       custoTotal100Posto: custoTotal100Posto.toFixed(2),
       custoTotal100Base: custoTotal100Base.toFixed(2),
       economiaR$: economiaR$.toFixed(2),
       economiaPct,
-      autonomiaMaximaKm: autonomiaMaximaKm.toFixed(0),
       autonomiaSeguraKm: autonomiaSeguraKm.toFixed(0),
       numParadas,
       co2TotalTon,
       co2EvitadoTon,
       tempoViagemHoras,
-      mediaPonderada,
       waypoints,
       svgPoints,
       svgPathD
     };
   }, [simulatorData]);
-
-  // Copiar resumo
-  const handleCopySimulationSummary = () => {
-    const text = `🚛 PLANO DE ABASTECIMENTO & AUTONOMIA CCO AMBIPAR
-Origem: ${simulatorData.origem}
-Destino: ${simulatorData.destino}
-Distância Total: ${simCalculations.distTotal} km
-Conjunto: ${simulatorData.veiculoTipo}
-Combustível: ${simulatorData.tipoCombustivel}
-----------------------------------------
-Diesel Total Estimado: ${simCalculations.litrosDieselTotal} L
-ARLA 32 Estimado: ${simCalculations.litrosArlaTotal} L
-Custo Total Previsto: R$ ${Number(simCalculations.custoTotalMisto).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-Custo por Km (CPK): R$ ${simCalculations.cpkMisto} / km
-Custo por Tonelada: R$ ${simCalculations.custoPorTon} / t
-Autonomia Segura: ${simCalculations.autonomiaSeguraKm} km (com 15% reserva técnica)
-Paradas Recomendadas: ${simCalculations.numParadas} parada(s) na rodovia
-Emissões CO2: ${simCalculations.co2TotalTon} t CO2e
-Economia Gerada p/ Base: R$ ${Number(simCalculations.economiaR$).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${simCalculations.economiaPct}%)
-----------------------------------------
-CCO Ambipar Logistics & Emergency Response`;
-
-    navigator.clipboard.writeText(text);
-    setFeedback({ type: 'success', text: 'Plano de rota copiado para a área de transferência!' });
-    setTimeout(() => setFeedback(null), 3500);
-  };
 
   return (
     <div className="module-page-container animate-fade-in" id="fuel-module-root">
@@ -829,10 +930,10 @@ CCO Ambipar Logistics & Emergency Response`;
           <div className="fuel-header-text">
             <h2>
               Controle de Combustível & ARLA 32
-              <span className="fuel-header-tag">Auditoria CCO</span>
+              <span className="fuel-header-tag">Auditoria & Analytics CCO</span>
             </h2>
             <p>
-              Gestão rigorosa de abastecimentos da frota, controle de rendimento (km/l), custo por quilômetro (CPK), conformidade de notas fiscais e emissões de carbono.
+              Dashboard executiva de consumo por veículos, auditoria de motoristas que mais consomem, relatórios analíticos de rendimento (km/l), simulação preditiva de rotas e conformidade fiscal.
             </p>
           </div>
         </div>
@@ -866,22 +967,22 @@ CCO Ambipar Logistics & Emergency Response`;
       <div className="fuel-mode-switch-bar">
         <button
           type="button"
+          className={`fuel-mode-tab-btn ${viewMode === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setViewMode('dashboard')}
+          id="btn-tab-dashboard-analytics"
+        >
+          <BarChart3 size={17} />
+          <span>Dashboard & Relatórios de Consumo</span>
+        </button>
+
+        <button
+          type="button"
           className={`fuel-mode-tab-btn ${viewMode === 'table' || viewMode === 'cards' ? 'active' : ''}`}
           onClick={() => setViewMode('table')}
           id="btn-tab-extrato-abastecimentos"
         >
           <Fuel size={17} />
-          <span>Extrato & Lançamentos CCO ({records.length})</span>
-        </button>
-
-        <button
-          type="button"
-          className={`fuel-mode-tab-btn ${viewMode === 'ranking' ? 'active' : ''}`}
-          onClick={() => setViewMode('ranking')}
-          id="btn-tab-ranking-frota"
-        >
-          <Award size={17} />
-          <span>Auditoria por Placa ({uniquePlatesInRecords.length})</span>
+          <span>Extrato de Lançamentos ({records.length})</span>
         </button>
 
         <button
@@ -891,7 +992,7 @@ CCO Ambipar Logistics & Emergency Response`;
           id="btn-tab-simulador-autonomia-full"
         >
           <Compass size={17} />
-          <span>Simulador de Autonomia & Rota CCO (Área Completa)</span>
+          <span>Simulador de Autonomia & Rota CCO</span>
         </button>
       </div>
 
@@ -921,8 +1022,336 @@ CCO Ambipar Logistics & Emergency Response`;
       {/* SELETOR DE VIEW PRINCIPAL                                             */}
       {/* ===================================================================== */}
 
-      {/* VIEW 1: ÁREA COMPLETA DO SIMULADOR DE AUTONOMIA & CONSUMO DE ROTA */}
-      {viewMode === 'simulator' ? (
+      {/* VIEW 1: DASHBOARD COMPLETA DE CONSUMO, CARROS & MOTORISTAS */}
+      {viewMode === 'dashboard' ? (
+        <div className="fuel-analytics-dashboard animate-fade-in" id="fuel-analytics-dashboard-workspace">
+          {/* 3 Banners de Destaque no Topo: Quem Mais Consome, Eco-Leader e Potencial de Economia */}
+          <div className="dash-insights-summary-grid">
+            {/* Destaque 1: Motorista Consumindo Mais */}
+            <div className="dash-insight-card alert-excess">
+              <div className="dash-insight-icon-box">
+                <AlertTriangle size={24} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <span className="dash-insight-tag">Atenção CCO • Maior Consumo</span>
+                <div className="dash-insight-title">
+                  {driverHighlights.highestConsumer 
+                    ? driverHighlights.highestConsumer.nome 
+                    : 'Aguardando Lançamentos'}
+                </div>
+                <p className="dash-insight-desc">
+                  {driverHighlights.highestConsumer ? (
+                    <>
+                      Média apurada: <strong style={{ color: '#f43f5e' }}>{driverHighlights.highestConsumer.mediaKmL} km/l</strong> ({driverHighlights.highestConsumer.desvioPct}% abaixo da meta da frota). Total gasto: <strong>{driverHighlights.highestConsumer.totalLitros.toLocaleString('pt-BR')} L</strong>. Recomenda-se orientação de condução econômica.
+                    </>
+                  ) : (
+                    'Nenhum condutor com consumo excessivo apurado até o momento.'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Destaque 2: Motorista Mais Econômico (Eco-Driver) */}
+            <div className="dash-insight-card eco-leader">
+              <div className="dash-insight-icon-box">
+                <Award size={24} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <span className="dash-insight-tag">Líder Eco-Drive • Menor Consumo</span>
+                <div className="dash-insight-title">
+                  {driverHighlights.ecoLeader 
+                    ? driverHighlights.ecoLeader.nome 
+                    : 'Aguardando Lançamentos'}
+                </div>
+                <p className="dash-insight-desc">
+                  {driverHighlights.ecoLeader ? (
+                    <>
+                      Melhor rendimento: <strong style={{ color: '#34d399' }}>{driverHighlights.ecoLeader.mediaKmL} km/l</strong> (+{driverHighlights.ecoLeader.desvioPct}% de eficiência). Condução defensiva e economia contínua de combustível para a transportadora.
+                    </>
+                  ) : (
+                    'Aguardando registros para identificar o condutor destaque.'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Destaque 3: Oportunidade Financeira de Economia */}
+            <div className="dash-insight-card savings-opportunity">
+              <div className="dash-insight-icon-box">
+                <TrendingUp size={24} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <span className="dash-insight-tag">Oportunidade Financeira</span>
+                <div className="dash-insight-title">
+                  R$ {Number(driverHighlights.economiaPossivelR$).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="dash-insight-desc">
+                  Economia mensal projetada caso os condutores com consumo excessivo atinjam a meta operacional de <strong>2.3 km/l</strong> (~{driverHighlights.litrosExcedentes.toLocaleString('pt-BR')} L de diesel poupados).
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid de Painéis Analíticos em 2 Colunas */}
+          <div className="dash-two-cols-layout">
+            {/* PAINEL ESQUERDA: AUDITORIA DETALHADA POR MOTORISTA (QUEM CONSOME MAIS) */}
+            <div className="dash-panel-card">
+              <div className="dash-panel-header">
+                <div>
+                  <div className="dash-panel-title-text">
+                    <UserCheck size={18} color="#06b6d4" />
+                    <span>Auditoria de Condutores: Quem Está Consumindo Mais</span>
+                  </div>
+                  <div className="dash-panel-subtitle">
+                    Classificação por média de rendimento e litros consumidos sob gestão de cada motorista:
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <select
+                    className="styled-native-select"
+                    style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }}
+                    value={driverSortBy}
+                    onChange={e => setDriverSortBy(e.target.value)}
+                  >
+                    <option value="pior_media">Maior Consumo (Pior Média)</option>
+                    <option value="maior_litragem">Maior Litragem Total</option>
+                    <option value="melhor_media">Mais Econômicos (Eco-Drive)</option>
+                  </select>
+                </div>
+              </div>
+
+              {driverAnalytics.length === 0 ? (
+                <div style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                  <UserX size={36} color="#64748b" style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
+                  <p style={{ margin: 0, fontSize: '0.88rem' }}>Nenhum motorista registrado nos abastecimentos.</p>
+                </div>
+              ) : (
+                <div className="driver-consumption-list">
+                  {driverAnalytics.map((driver, index) => {
+                    const isWorst = driverHighlights.highestConsumer?.nome === driver.nome;
+                    const isBest = driverHighlights.ecoLeader?.nome === driver.nome;
+
+                    return (
+                      <div 
+                        key={driver.nome} 
+                        className={`driver-consumption-item ${isWorst ? 'highest-consumption' : isBest ? 'eco-driver' : ''}`}
+                      >
+                        <div className="driver-item-top">
+                          <div className="driver-info-identity">
+                            <div className="driver-avatar-circle" style={{ border: `2px solid ${driver.status.color}` }}>
+                              {driver.nome.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="driver-name-text">
+                                {driver.nome}
+                                {isWorst && <span style={{ marginLeft: '6px', fontSize: '0.68rem', background: '#f43f5e', color: '#ffffff', padding: '1px 5px', borderRadius: '4px' }}>Consumo Crítico</span>}
+                                {isBest && <span style={{ marginLeft: '6px', fontSize: '0.68rem', background: '#10b981', color: '#ffffff', padding: '1px 5px', borderRadius: '4px' }}>Top Eficiência</span>}
+                              </div>
+                              <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                                Veículos: {driver.veiculosList.join(', ') || 'Frota CCO'} • {driver.viagensCount} abastecimento(s)
+                              </span>
+                            </div>
+                          </div>
+
+                          <span 
+                            className={`fuel-efficiency-badge ${driver.status.status}`}
+                            style={{ fontSize: '0.78rem' }}
+                          >
+                            <Gauge size={13} />
+                            {driver.mediaKmL > 0 ? `${driver.mediaKmL} km/l` : 'Sem KM'}
+                          </span>
+                        </div>
+
+                        {/* Barra de Comparação com a Meta de 2.3 km/l */}
+                        <div className="driver-efficiency-bar-wrap">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#94a3b8', marginBottom: '2px' }}>
+                            <span>Desempenho vs Meta (2.3 km/l):</span>
+                            <span style={{ color: driver.desvioPct < 0 ? '#f43f5e' : '#34d399', fontWeight: 700 }}>
+                              {driver.desvioPct > 0 ? `+${driver.desvioPct}%` : `${driver.desvioPct}%`}
+                            </span>
+                          </div>
+                          <div className="driver-efficiency-bar-bg">
+                            <div 
+                              className="driver-efficiency-bar-fill"
+                              style={{
+                                width: `${Math.min(100, Math.max(10, (driver.mediaKmL / 3.0) * 100))}%`,
+                                background: driver.status.color
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+
+                        <div className="driver-metrics-strip">
+                          <div className="driver-metric-cell">
+                            <span className="cell-lbl">Volume</span>
+                            <span className="cell-val">{Number(driver.totalLitros).toFixed(0)} L</span>
+                          </div>
+                          <div className="driver-metric-cell">
+                            <span className="cell-lbl">Total Pago</span>
+                            <span className="cell-val" style={{ color: '#10b981' }}>
+                              R$ {Number(driver.totalValor).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                          <div className="driver-metric-cell">
+                            <span className="cell-lbl">KM Rodados</span>
+                            <span className="cell-val">{driver.totalKm.toLocaleString('pt-BR')} km</span>
+                          </div>
+                          <div className="driver-metric-cell">
+                            <span className="cell-lbl">CPK</span>
+                            <span className="cell-val" style={{ color: '#fbbf24' }}>
+                              {driver.cpk > 0 ? `R$ ${driver.cpk}` : '—'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* PAINEL DIREITA: CONSUMO POR VEÍCULOS & REDE DE ABASTECIMENTO */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {/* Tabela de Consumo Médio por Veículo */}
+              <div className="dash-panel-card">
+                <div className="dash-panel-header">
+                  <div>
+                    <div className="dash-panel-title-text">
+                      <Truck size={18} color="#10b981" />
+                      <span>Relatório de Consumo por Veículo / Carro</span>
+                    </div>
+                    <div className="dash-panel-subtitle">
+                      Média de rendimento e custo de cada conjunto tracionador da frota:
+                    </div>
+                  </div>
+
+                  <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                    {vehicleAnalytics.length} veículos apurados
+                  </span>
+                </div>
+
+                {vehicleAnalytics.length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <Truck size={36} color="#64748b" style={{ opacity: 0.5, marginBottom: '0.5rem' }} />
+                    <p style={{ margin: 0, fontSize: '0.86rem' }}>Nenhum veículo com abastecimento registrado.</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="vehicle-dash-table">
+                      <thead>
+                        <tr>
+                          <th>Placa & Modelo</th>
+                          <th>Litros</th>
+                          <th>Total Gasto</th>
+                          <th>KM Percorrido</th>
+                          <th>Média</th>
+                          <th>CPK</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vehicleAnalytics.map(v => (
+                          <tr key={v.placa}>
+                            <td>
+                              <div className="fuel-plate-badge">{v.placa}</div>
+                              <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                                {v.modelo}
+                              </div>
+                            </td>
+                            <td><strong>{Number(v.totalLitros).toFixed(0)} L</strong></td>
+                            <td><span style={{ color: '#10b981', fontWeight: 600 }}>R$ {Number(v.totalValor).toFixed(0)}</span></td>
+                            <td>{v.totalKm.toLocaleString('pt-BR')} km</td>
+                            <td>
+                              {v.mediaKmL > 0 ? (
+                                <strong style={{ color: v.status.color }}>{v.mediaKmL} km/l</strong>
+                              ) : (
+                                <span style={{ color: '#64748b' }}>—</span>
+                              )}
+                            </td>
+                            <td>{v.cpk > 0 ? `R$ ${v.cpk}` : '—'}</td>
+                            <td>
+                              <span 
+                                className={`fuel-efficiency-badge ${v.status.status}`}
+                                style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                              >
+                                {v.status.label}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Mix de Combustíveis & Postos Mais Utilizados */}
+              <div className="dash-panel-card">
+                <div className="dash-panel-header">
+                  <div className="dash-panel-title-text">
+                    <PieChart size={17} color="#a855f7" />
+                    <span>Mix de Combustíveis & Rede de Postos</span>
+                  </div>
+                  <span style={{ fontSize: '0.76rem', color: '#94a3b8' }}>Auditoria de Compras</span>
+                </div>
+
+                {/* Barra Empilhada de Mix de Combustível */}
+                <div>
+                  <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>Distribuição do Volume Abastecido:</span>
+                  <div className="fuel-mix-stacked-bar">
+                    {fuelMix.map(item => (
+                      <div 
+                        key={item.fuel} 
+                        className="fuel-mix-segment"
+                        style={{ width: `${item.pct}%`, background: item.color }}
+                        title={`${item.fuel}: ${item.liters} L (${item.pct}%)`}
+                      ></div>
+                    ))}
+                  </div>
+
+                  <div className="fuel-mix-legend-grid">
+                    {fuelMix.map(item => (
+                      <div key={item.fuel} className="fuel-mix-legend-item">
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color, flexShrink: 0 }}></span>
+                        <span>{item.fuel}: <strong>{item.pct}%</strong></span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top Postos de Abastecimento */}
+                {stationAnalytics.length > 0 && (
+                  <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
+                      Postos Credenciados com Maior Volume:
+                    </span>
+                    <div className="top-stations-list">
+                      {stationAnalytics.map(st => (
+                        <div key={st.nome} className="top-station-item">
+                          <div>
+                            <div className="top-station-name">{st.nome}</div>
+                            <div className="top-station-city">{st.cidade} • {st.count} abastecimento(s)</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: '#10b981', fontWeight: 700, fontSize: '0.85rem' }}>
+                              {Number(st.totalLitros).toFixed(0)} L
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                              Méd. R$ {st.precoMedio}/L
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : viewMode === 'simulator' ? (
+        /* VIEW 2: SIMULADOR DE AUTONOMIA & CONSUMO DE ROTA CCO */
         <div className="fuel-simulator-full-area animate-fade-in" id="fuel-simulator-full-workspace">
           {/* Hero Banner do Simulador */}
           <div className="simulator-hero-card">
@@ -986,7 +1415,6 @@ CCO Ambipar Logistics & Emergency Response`;
                   ))}
                 </div>
 
-                {/* Se houver rotas cadastradas em clientes, permite puxar */}
                 {clientRoutes.length > 0 && (
                   <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                     <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', marginBottom: '0.35rem', fontWeight: 600 }}>
@@ -1308,7 +1736,6 @@ CCO Ambipar Logistics & Emergency Response`;
 
                 <div className="telemetry-svg-container">
                   <svg width="100%" height="100%" viewBox="0 0 800 170" preserveAspectRatio="none">
-                    {/* Linha de Grade de 100%, 50% e 15% */}
                     <line x1="20" y1="35" x2="780" y2="35" stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
                     <text x="25" y="30" fill="#64748b" fontSize="10">100% Tanque Cheio</text>
 
@@ -1318,7 +1745,6 @@ CCO Ambipar Logistics & Emergency Response`;
                     <line x1="20" y1="125" x2="780" y2="125" stroke="rgba(244,63,94,0.3)" strokeDasharray="3 3" />
                     <text x="25" y="120" fill="#f43f5e" fontSize="10">Reserva de Segurança ({simulatorData.reservaSegurancaPct}%)</text>
 
-                    {/* Curva de Consumo */}
                     <path
                       d={simCalculations.svgPathD}
                       fill="none"
@@ -1328,7 +1754,6 @@ CCO Ambipar Logistics & Emergency Response`;
                       strokeLinejoin="round"
                     />
 
-                    {/* Pontos de Parada / Reabastecimento */}
                     {simCalculations.svgPoints.map((pt, idx) => (
                       <g key={idx}>
                         <circle
@@ -1402,11 +1827,6 @@ CCO Ambipar Logistics & Emergency Response`;
                 )}
 
                 <div className="sim-dre-row">
-                  <span style={{ color: '#94a3b8' }}>Agente Redutor ARLA 32:</span>
-                  <strong style={{ color: '#60a5fa' }}>R$ {Number(simCalculations.custoArlaTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                </div>
-
-                <div className="sim-dre-row">
                   <span style={{ color: '#94a3b8' }}>Custo Médio por Tonelada ({simulatorData.capacidadeCargaTon}t PBT):</span>
                   <strong style={{ color: '#fbbf24' }}>R$ {simCalculations.custoPorTon} / ton</strong>
                 </div>
@@ -1478,94 +1898,6 @@ CCO Ambipar Logistics & Emergency Response`;
             </div>
           </div>
         </div>
-      ) : viewMode === 'ranking' ? (
-        /* VIEW 2: AUDITORIA / RANKING DE EFICIÊNCIA DA FROTA */
-        <div className="fleet-audit-panel animate-fade-in">
-          <div className="fleet-audit-header">
-            <div>
-              <div className="fleet-audit-title">
-                <Award size={20} color="#10b981" />
-                <span>Auditoria de Desempenho & Eficiência por Placa (Ranking da Frota)</span>
-              </div>
-              <p style={{ fontSize: '0.84rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>
-                Acompanhamento consolidado do rendimento médio (km/l) e custo por quilômetro rodado por conjunto mecânico:
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="fuel-btn fuel-btn-secondary"
-              onClick={handleExportCSV}
-              title="Exportar dados consolidados em planilha Excel"
-            >
-              <Download size={15} />
-              <span>Exportar Excel (CSV)</span>
-            </button>
-          </div>
-
-          {fleetRanking.length === 0 ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
-              <Truck size={42} color="#10b981" style={{ opacity: 0.5, marginBottom: '0.75rem' }} />
-              <p>Nenhum abastecimento registrado para apuração de ranking.</p>
-              <button
-                type="button"
-                className="fuel-btn fuel-btn-primary"
-                onClick={handleOpenCreateForm}
-              >
-                + Lançar Primeiro Abastecimento
-              </button>
-            </div>
-          ) : (
-            <div className="fleet-audit-grid">
-              {fleetRanking.map((v, i) => (
-                <div key={v.placa} className="fleet-audit-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#38bdf8' }}>#{i + 1}</span>
-                      <div className="fuel-plate-badge">{v.placa}</div>
-                    </div>
-                    <span 
-                      className={`fuel-efficiency-badge ${v.meta.status}`}
-                      style={{ fontSize: '0.72rem' }}
-                    >
-                      {v.kmPorLitro > 0 ? `${v.kmPorLitro} km/l` : 'Sem KM'}
-                    </span>
-                  </div>
-
-                  <div style={{ fontSize: '0.76rem', color: '#94a3b8', margin: '0.5rem 0 0.2rem 0' }}>
-                    {v.modelo}
-                  </div>
-
-                  {/* Barra de Progresso de Eficiência */}
-                  <div className="fleet-progress-bar-bg">
-                    <div 
-                      className="fleet-progress-bar-fill" 
-                      style={{ 
-                        width: `${Math.min(100, Math.max(10, (v.kmPorLitro / 3.0) * 100))}%`,
-                        background: v.meta.color
-                      }}
-                    ></div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem', textAlign: 'center', marginTop: '0.65rem', background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '6px' }}>
-                    <div>
-                      <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>TOTAL PAGO</span>
-                      <strong style={{ fontSize: '0.8rem', color: '#10b981' }}>R$ {Math.round(v.totalValor)}</strong>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>VOLUME</span>
-                      <strong style={{ fontSize: '0.8rem', color: '#ffffff' }}>{Math.round(v.totalLitros)} L</strong>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>CPK MÉDIO</span>
-                      <strong style={{ fontSize: '0.8rem', color: '#fbbf24' }}>{v.cpk > 0 ? `R$ ${v.cpk}` : '—'}</strong>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       ) : viewMode === 'form' ? (
         /* VIEW 3: FORMULÁRIO DE LANÇAMENTO */
         <form onSubmit={handleSubmitForm} className="fuel-form-wizard animate-fade-in" id="fuel-create-edit-form">
@@ -1577,14 +1909,13 @@ CCO Ambipar Logistics & Emergency Response`;
             <button
               type="button"
               className="fuel-btn fuel-btn-secondary"
-              onClick={() => setViewMode('table')}
+              onClick={() => setViewMode('dashboard')}
             >
               Cancelar e Voltar
             </button>
           </div>
 
           <div className="fuel-form-panels-grid">
-            {/* Bloco 1: Veículo, Condutor e Hodômetro */}
             <div className="fuel-panel-card">
               <div className="fuel-panel-title">
                 <Truck size={17} />
@@ -1719,7 +2050,6 @@ CCO Ambipar Logistics & Emergency Response`;
               )}
             </div>
 
-            {/* Bloco 2: Combustível, Litros e Valores */}
             <div className="fuel-panel-card">
               <div className="fuel-panel-title">
                 <DollarSign size={17} />
@@ -1853,7 +2183,7 @@ CCO Ambipar Logistics & Emergency Response`;
             <button
               type="button"
               className="fuel-btn fuel-btn-secondary"
-              onClick={() => setViewMode('table')}
+              onClick={() => setViewMode('dashboard')}
             >
               Cancelar
             </button>
@@ -1870,136 +2200,6 @@ CCO Ambipar Logistics & Emergency Response`;
       ) : (
         /* VIEW 4: EXTRATO & GESTÃO DE ABASTECIMENTOS (TABELA / CARDS) */
         <>
-          {/* Grid de KPIs Operacionais (5 Colunas) */}
-          <div className="fuel-kpi-grid">
-            <div className="fuel-kpi-card">
-              <div className="fuel-kpi-top">
-                <span className="fuel-kpi-title">Gasto Total Combustível</span>
-                <div className="fuel-kpi-icon-wrap emerald">
-                  <DollarSign size={18} />
-                </div>
-              </div>
-              <div className="fuel-kpi-main-val">
-                <span className="val-number">
-                  R$ {totalFuelCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-              <div className="fuel-kpi-footer-status">
-                {records.length === 0 ? 'Nenhum lançamento no CCO' : `${records.length} notas/tickets lançados`}
-              </div>
-            </div>
-
-            <div className="fuel-kpi-card">
-              <div className="fuel-kpi-top">
-                <span className="fuel-kpi-title">Volume Total Diesel</span>
-                <div className="fuel-kpi-icon-wrap cyan">
-                  <Droplets size={18} />
-                </div>
-              </div>
-              <div className="fuel-kpi-main-val">
-                <span className="val-number">{totalFuelLiters.toLocaleString('pt-BR')}</span>
-                <span className="unit-suffix">litros</span>
-              </div>
-              <div className="fuel-kpi-footer-status">
-                {totalArlaLiters > 0 ? `+ ${totalArlaLiters.toLocaleString('pt-BR')} L de ARLA 32` : 'Diesel S10 / S500 / HVO'}
-              </div>
-            </div>
-
-            <div className="fuel-kpi-card">
-              <div className="fuel-kpi-top">
-                <span className="fuel-kpi-title">Média Geral Frota</span>
-                <div className="fuel-kpi-icon-wrap amber">
-                  <Gauge size={18} />
-                </div>
-              </div>
-              <div className="fuel-kpi-main-val">
-                <span className="val-number">{overallAvgKmPerL || '—'}</span>
-                <span className="unit-suffix">km / litro</span>
-              </div>
-              <div className="fuel-kpi-footer-status">
-                {overallAvgKmPerL > 0 ? 'Rendimento médio pesado apurado' : 'Aguardando hodômetros'}
-              </div>
-            </div>
-
-            <div className="fuel-kpi-card">
-              <div className="fuel-kpi-top">
-                <span className="fuel-kpi-title">Custo Médio p/ Km (CPK)</span>
-                <div className="fuel-kpi-icon-wrap blue">
-                  <TrendingUp size={18} />
-                </div>
-              </div>
-              <div className="fuel-kpi-main-val">
-                <span className="val-number">
-                  {overallAvgCpk > 0 ? `R$ ${overallAvgCpk}` : '—'}
-                </span>
-                <span className="unit-suffix">/ km rodado</span>
-              </div>
-              <div className="fuel-kpi-footer-status">
-                {overallAvgCpk > 0 ? 'Custo operacional direto' : 'Base de cálculo por KM'}
-              </div>
-            </div>
-
-            <div className="fuel-kpi-card">
-              <div className="fuel-kpi-top">
-                <span className="fuel-kpi-title">Emissões de CO₂ Estimadas</span>
-                <div className="fuel-kpi-icon-wrap purple">
-                  <Leaf size={18} />
-                </div>
-              </div>
-              <div className="fuel-kpi-main-val">
-                <span className="val-number">{totalCo2Tons}</span>
-                <span className="unit-suffix">t CO₂e</span>
-              </div>
-              <div className="fuel-kpi-footer-status">
-                Inventário GEE escopo 1 Ambipar
-              </div>
-            </div>
-          </div>
-
-          {/* Abas Rápidas no Topo */}
-          <div className="fuel-tabs-bar">
-            <button
-              type="button"
-              className={`fuel-tab-item ${activeTab === 'todos' ? 'active' : ''}`}
-              onClick={() => setActiveTab('todos')}
-            >
-              <Fuel size={15} />
-              <span>Todos os Registros ({records.length})</span>
-            </button>
-            <button
-              type="button"
-              className={`fuel-tab-item ${activeTab === 'diesel' ? 'active' : ''}`}
-              onClick={() => setActiveTab('diesel')}
-            >
-              <Truck size={15} />
-              <span>Diesel S10 / S500 ({records.filter(r => r.tipo_combustivel?.includes('Diesel')).length})</span>
-            </button>
-            <button
-              type="button"
-              className={`fuel-tab-item ${activeTab === 'arla' ? 'active' : ''}`}
-              onClick={() => setActiveTab('arla')}
-            >
-              <Droplets size={15} />
-              <span>ARLA 32 ({records.filter(r => r.tipo_combustivel?.includes('ARLA')).length})</span>
-            </button>
-            <button
-              type="button"
-              className={`fuel-tab-item ${activeTab === 'hvo' ? 'active' : ''}`}
-              onClick={() => setActiveTab('hvo')}
-            >
-              <Leaf size={15} />
-              <span>Biocombustível Verde HVO ({records.filter(r => r.tipo_combustivel?.includes('HVO')).length})</span>
-            </button>
-            <button
-              type="button"
-              className={`fuel-tab-item ${activeTab === 'alertas' ? 'active' : ''}`}
-              onClick={() => setActiveTab('alertas')}
-            >
-              <AlertTriangle size={15} />
-              <span>Consumo Excessivo ({records.filter(r => r.km_por_litro && r.km_por_litro < 2.0).length})</span>
-            </button>
-          </div>
-
           {/* Barra de Filtros & Busca */}
           <div className="fuel-filter-panel">
             <div className="fuel-search-bar">
@@ -2073,7 +2273,6 @@ CCO Ambipar Logistics & Emergency Response`;
                 <span>Exportar CSV</span>
               </button>
 
-              {/* Botões de Alternância de Visualização */}
               <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(0,0,0,0.3)', padding: '3px', borderRadius: '8px' }}>
                 <button
                   type="button"
@@ -2109,7 +2308,6 @@ CCO Ambipar Logistics & Emergency Response`;
             </div>
           </div>
 
-          {/* Empty State Limpo */}
           {filteredRecords.length === 0 ? (
             <div className="fuel-empty-state-card animate-fade-in" id="fuel-empty-state">
               <div className="fuel-empty-beacon">
@@ -2132,22 +2330,6 @@ CCO Ambipar Logistics & Emergency Response`;
               </p>
 
               <div className="fuel-empty-actions">
-                {searchTerm || fuelFilter !== 'Todos' || plateFilter !== 'Todas' ? (
-                  <button
-                    type="button"
-                    className="fuel-btn fuel-btn-secondary"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setFuelFilter('Todos');
-                      setPlateFilter('Todas');
-                      setActiveTab('todos');
-                    }}
-                  >
-                    <RefreshCw size={15} />
-                    <span>Limpar Filtros</span>
-                  </button>
-                ) : null}
-
                 <button
                   type="button"
                   className="fuel-btn fuel-btn-primary"
@@ -2161,7 +2343,6 @@ CCO Ambipar Logistics & Emergency Response`;
               </div>
             </div>
           ) : viewMode === 'table' ? (
-            /* Modo Tabela Operacional */
             <div className="fuel-table-wrapper animate-fade-in">
               <table className="fuel-oper-table">
                 <thead>
@@ -2307,7 +2488,6 @@ CCO Ambipar Logistics & Emergency Response`;
               </table>
             </div>
           ) : (
-            /* Modo Cards de Ticket */
             <div className="fuel-tickets-grid animate-fade-in">
               {filteredRecords.map(rec => {
                 const efficiency = getConsumptionEfficiency(rec.km_por_litro, rec.tipo_combustivel);
