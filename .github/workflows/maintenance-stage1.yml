@@ -1,9 +1,10 @@
-name: Maintenance Stage 1
+name: Maintenance stages 1 and 2
 on:
   pull_request:
     paths:
       - 'supabase/**'
-      - 'src/types/**'
+      - 'src/**'
+      - 'tests/partner*'
       - 'tests/maintenance/**'
       - 'tests/maintenance.types.ts'
       - 'tsconfig.maintenance.json'
@@ -13,7 +14,7 @@ permissions:
 jobs:
   database-and-app:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17
@@ -38,6 +39,7 @@ jobs:
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/bootstrap.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/schema.sql
           for migration in supabase/migrations/20261023*.sql; do
+            if [[ "$migration" == *23050000* ]]; then continue; fi
             docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < "$migration"
           done
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/integration.sql
@@ -45,6 +47,12 @@ jobs:
         env:
           MAINTENANCE_TEST_CONTAINER: ${{ job.services.postgres.id }}
         run: node tests/maintenance/concurrency.mjs
+      - name: Partner schema and access verification
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023050000_partner_registry.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/partners.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
         run: npm ci
@@ -60,3 +68,21 @@ jobs:
       - name: Existing API regression tests
         if: ${{ !cancelled() }}
         run: node --test tests/evolution.test.js
+      - name: Partner form validation
+        if: ${{ !cancelled() }}
+        run: node --test tests/partner-validation.test.js
+      - name: Install isolated browser tools
+        run: |
+          npm install --no-save --package-lock=false --no-audit --no-fund @playwright/test@1.56.1
+          npx playwright install chromium
+      - name: Browser partner flows with isolated API fixtures
+        env:
+          VITE_SUPABASE_URL: https://maintenance-fixture.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_fixture_key_for_tests
+        run: npx playwright test --config tests/maintenance/playwright.config.js
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: partner-browser-results
+          path: test-results/
+          if-no-files-found: ignore
