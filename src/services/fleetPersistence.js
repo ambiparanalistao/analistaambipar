@@ -1,5 +1,5 @@
 import {supabase} from '../lib/supabaseClient';
-const fields=['placa','tipo','marca_modelo','ano_fabricacao','ano_modelo','chassi','renavam','capacidade_peso_ton','capacidade_volume_m3','tipo_carga','combustivel','meta_consumo_kml','km_atual','proxima_revisao_km','validade_crlv','validade_cronotacografo','validade_cipp','validade_civ','validade_fumaca_opacidade','validade_seguro_ambiental','motorista_vinculado','status','observacoes'];
+const fields=['branch_id','placa','tipo','marca_modelo','ano_fabricacao','ano_modelo','chassi','renavam','capacidade_peso_ton','capacidade_volume_m3','tipo_carga','combustivel','meta_consumo_kml','km_atual','proxima_revisao_km','validade_crlv','validade_cronotacografo','validade_cipp','validade_civ','validade_fumaca_opacidade','validade_seguro_ambiental','motorista_vinculado','status','observacoes'];
 export function fleetPayload(payload){const result=Object.fromEntries(fields.filter(k=>payload[k]!==undefined).map(k=>[k,payload[k]===''?null:payload[k]]));return result;}
 export async function persistFleetVehicle(payload,id,userId,company){
  if(!Number.isInteger(Number(payload.km_atual))||Number(payload.km_atual)<0)throw new Error('KM deve ser um inteiro não negativo.');
