@@ -8,8 +8,6 @@ on:
       - 'tests/maintenance.types.ts'
       - 'tsconfig.maintenance.json'
       - '.github/workflows/maintenance-stage1.yml'
-  push:
-    branches: ['feat/maintenance-stage-1']
 permissions:
   contents: read
 jobs:
@@ -48,12 +46,17 @@ jobs:
           MAINTENANCE_TEST_CONTAINER: ${{ job.services.postgres.id }}
         run: node tests/maintenance/concurrency.mjs
       - name: Install project dependencies
+        if: ${{ !cancelled() }}
         run: npm ci
       - name: Build
+        if: ${{ !cancelled() }}
         run: npm run build
       - name: Lint
+        if: ${{ !cancelled() }}
         run: npm run lint
       - name: Typecheck maintenance schema
+        if: ${{ !cancelled() }}
         run: npx --yes --package typescript@5.9.3 tsc --project tsconfig.maintenance.json
       - name: Existing API regression tests
+        if: ${{ !cancelled() }}
         run: node --test tests/evolution.test.js
