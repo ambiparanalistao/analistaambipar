@@ -1,5 +1,5 @@
 import {PARTNER_TYPES,validatePartner,validDocument,normalizedDocument,validPhone,partnerPayload} from './partnerValidation.js';
-export const BRANDS=['Agrale','Audi','BMW','BYD','CAOA Chery','Chevrolet','Citroën','DAF','Fiat','Ford','Honda','Hyundai','Iveco','JAC','Jeep','Kia','Land Rover','MAN','Mercedes-Benz','Mitsubishi','Nissan','Peugeot','RAM','Renault','Scania','Shacman','Toyota','Volkswagen','Volvo'];
+export const BRANDS=['Mercedes-Benz','Volkswagen','Scania','Volvo','DAF'];
 export const SERVICES=['Mecânica geral','Motor','Câmbio manual','Câmbio automático','Embreagem','Freios','Suspensão','Direção','Elétrica','Eletrônica / diagnóstico','Injeção diesel','Injeção eletrônica','Ar-condicionado','Arrefecimento','Troca de óleo e filtros','Pneus e borracharia','Alinhamento e balanceamento','Funilaria e pintura','Solda e caldeiraria','Implementos e carretas','Hidráulica / pneumática','Tacógrafo','Rastreamento','Inspeção veicular','Socorro / guincho','Lavagem / higienização'];
 export const PROFILE_GROUPS=[
  ['Dados fiscais e da empresa',[
