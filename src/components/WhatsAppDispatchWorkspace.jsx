@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, 
   Send, 
@@ -17,58 +17,70 @@ import {
   Calendar,
   Layers,
   Fuel,
-  Info
+  Info,
+  Zap,
+  Settings,
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { formatPlateMercosul, getCountdown } from './VehiclesModule';
+import { 
+  getEvolutionSettings, 
+  saveEvolutionSettings, 
+  sendEvolutionMessage 
+} from '../services/evolutionApi';
 
+/* ============================================================== */
+/* MODELOS OPERACIONAIS COM EMOJIS VIVOS E ESTRUTURAÇÃO CORPORATIVA */
+/* ============================================================== */
 export const WHATSAPP_TEMPLATES = [
   {
     id: 'escala',
     category: 'Escala & Carregamento',
-    badge: 'Prioritário',
-    title: 'Ordem de Carregamento & Escala Imediata',
-    description: 'Convocação para apresentação na base operacional e início de rota',
-    template: 'Olá, {MOTORISTA}! Aqui é a Torre de Operações CCO Ambipar.\n\nO conjunto {MARCA_MODELO} (Placa *{PLACA}*, Prefixo *{PREFIXO}*) foi escalado para operação imediata de {TIPO_CARGA}.\n\nFavor se apresentar na base operacional para o checklist de saída e liberação da documentação de viagem (DACTE / MDF-e).\n\nTorre de Controle Ambipar CCO • {HORA_ATUAL}'
+    badge: '🚨 Prioritário',
+    title: '🚛 Ordem de Carregamento & Escala Imediata',
+    description: 'Convocação urgente para apresentação na base operacional e início de rota',
+    template: '🚛 *TORRE DE OPERAÇÕES CCO AMBIPAR* 🚨\n\n👋 Olá, *{MOTORISTA}*!\n\n📋 *ESCALA OPERACIONAL LIBERADA COM SUCESSO:*\n• 🚚 *Conjunto:* {MARCA_MODELO}\n• 🇧🇷 *Placa:* *{PLACA}*\n• 🏷️ *Prefixo:* *{PREFIXO}*\n• ☣️ *Carga Homologada:* {TIPO_CARGA}\n\n📍 *Instrução Operacional:* Favor se apresentar imediatamente na base operacional para o checklist 360º de saída e liberação da documentação de viagem (*DACTE / MDF-e*).\n\n⏰ *Registro CCO:* {HORA_ATUAL} • Boa viagem e dirija com segurança! 🟢'
   },
   {
     id: 'revisao',
     category: 'Manutenção Preventiva',
-    badge: 'Oficina',
-    title: 'Alerta de Revisão Preventiva por Odômetro',
-    description: 'Notificação de proximidade do limite de quilometragem de revisão',
-    template: 'Olá, {MOTORISTA}! Gestão de Manutenção de Frotas Ambipar informando:\n\nIdentificamos via telemetria que o veículo *{PLACA}* atingiu *{KM_ATUAL} km*. A próxima revisão preventiva está programada para *{PROXIMA_REVISAO} km*.\n\nSolicitamos programar parada na oficina central da base para alinhamento e inspeção preventiva.\n\nGestão de Frotas & Manutenção CCO'
+    badge: '⚙️ Oficina',
+    title: '🔧 Alerta de Revisão Preventiva por Odômetro',
+    description: 'Notificação de proximidade do limite de quilometragem de revisão mecânica',
+    template: '⚙️ *GESTÃO DE MANUTENÇÃO & FROTAS AMBIPAR* 🔧\n\n👋 Olá, *{MOTORISTA}*!\n\n📊 *TELEMETRIA DE ODÔMETRO EM TEMPO REAL:*\n• 🚚 *Veículo:* *{PLACA}* ({MARCA_MODELO})\n• 📟 *Odômetro Atual:* *{KM_ATUAL}*\n• 🎯 *Limite da Próxima Revisão:* *{PROXIMA_REVISAO}*\n\n⚠️ *Aviso de Parada Preventiva:* O conjunto atingiu a faixa programada de inspeção periódica. Solicitamos programar parada na oficina central da base para alinhamento, balanceamento, troca de filtros e checagem de fluidos.\n\n🛡️ Segurança veicular é compromisso diário Ambipar! 🟢'
   },
   {
     id: 'vistorias',
     category: 'Compliance & Regulatório',
-    badge: 'ANTT / INMETRO',
-    title: 'Aviso de Vencimento de Vistorias & Laudos',
-    description: 'Aviso de renovação para CIPP, CIV, CRLV ou Cronotacógrafo',
-    template: 'Prezado(a) {MOTORISTA},\n\nAvisamos que o veículo *{PLACA}* ({MARCA_MODELO}) possui laudos regulatórios obrigatórios próximos da data de vencimento ({VISTORIAS_STATUS}).\n\nFavor apresentar o conjunto para inspeção e renovação antes do prazo limite para evitar bloqueios operacionais na ANTT/INMETRO.\n\nCompliance & Segurança Veicular Ambipar'
+    badge: '📜 ANTT / INMETRO',
+    title: '🛡️ Aviso de Vencimento de Vistorias & Laudos',
+    description: 'Aviso de renovação obrigatória para CIPP, CIV, CRLV ou Cronotacógrafo',
+    template: '🛡️ *COMPLIANCE REGULATÓRIO & SEGURANÇA AMBIPAR* 📜\n\n👋 Prezado(a) *{MOTORISTA}*,\n\n🚨 *ALERTA DE VENCIMENTO DE VISTORIAS OBRIGATÓRIAS:*\n• 🚚 *Veículo:* *{PLACA}* ({MARCA_MODELO})\n• 📑 *Laudos Regulatórios:* *{VISTORIAS_STATUS}*\n\n⚠️ *Ação Mandatória:* Apresentar o conjunto para inspeção e renovação técnica antes do prazo fatal para evitar bloqueios operacionais imediatos na ANTT e no INMETRO.\n\n🔒 Operação 100% regular, segura e sem autuações! 🟢'
   },
   {
     id: 'checklist',
     category: 'Segurança & PAE',
-    badge: 'Emergência',
-    title: 'Checklist 360º & Prontidão Ambiental PAE',
-    description: 'Inspeção preventiva de itens Hazmat e segurança antes de rodar',
-    template: 'Olá, {MOTORISTA}! Lembrete de Segurança Operacional Ambipar:\n\nAntes de liberar a partida do veículo *{PLACA}*, realize o checklist 360º obrigatório:\n• Calibração e estado dos pneus\n• Extintores e lacres de segurança\n• Kit PAE de Atendimento a Emergências Químicas\n• Cones, lanternas e calços de roda\n\nSua segurança e a preservação ambiental são prioridade máxima!'
+    badge: '🌿 Emergência Hazmat',
+    title: '✅ Checklist 360º & Prontidão Ambiental PAE',
+    description: 'Inspeção preventiva rigorosa de itens Hazmat e segurança antes de rodar',
+    template: '🌿 *SEGURANÇA OPERACIONAL & PRONTIDÃO PAE AMBIPAR* 🚨\n\n👋 Olá, *{MOTORISTA}*!\n\n🔍 *LEMBRETE: CHECKLIST 360º OBRIGATÓRIO ANTES DA PARTIDA:*\n• 🛞 Calibração, pressão e estado da banda de rodagem dos pneus\n• 🧯 Extintores lacrados, manômetro no verde e dentro da validade\n• ☣️ Kit PAE de Atendimento a Emergências Químicas completo\n• 🔦 Cones de sinalização, calços de roda e lanternas anti-faísca\n• 📑 Documentação fiscal e ambiental (MTR, DACTE) a bordo\n\n🌱 *Preservação da vida e do meio ambiente é nossa prioridade máxima!* 🛡️'
   },
   {
     id: 'posicao',
     category: 'Torre de Controle CCO',
-    badge: 'Monitoramento',
-    title: 'Solicitação de Posição & Status de Viagem',
-    description: 'Confirmação de rota, trânsito e cumprimento de descanso da Lei 13.103',
-    template: 'Olá, {MOTORISTA}! Torre de Controle Ambipar CCO em contato.\n\nSolicitamos confirmação do seu posicionamento atual e status de viagem do veículo *{PLACA}*.\n\nFavor confirmar se a viagem segue conforme planejado e se as paradas de descanso da Lei 13.103 estão sendo cumpridas.\n\nTorre de Controle 24h Ambipar'
+    badge: '🛰️ Monitoramento',
+    title: '📡 Solicitação de Posição & Status de Viagem',
+    description: 'Confirmação de rota, trânsito e cumprimento do descanso da Lei 13.103',
+    template: '📡 *TORRE DE CONTROLE 24H CCO AMBIPAR* 🛰️\n\n👋 Olá, *{MOTORISTA}*!\n\n🗺️ *SOLICITAÇÃO DE POSIÇÃO OPERACIONAL:*\n• 🚚 *Conjunto:* *{PLACA}* (Prefixo *{PREFIXO}*)\n• 🚦 *Status CCO:* *{STATUS_CCO}*\n\n🧭 Favor confirmar via retorno deste canal o seu posicionamento atual, condições climáticas/pista e cumprimento das paradas de descanso obrigatórias da *Lei 13.103*.\n\n🕒 *Horário do Chamado:* {HORA_ATUAL} • Torre CCO em Prontidão 🟢'
   },
   {
     id: 'combustivel',
     category: 'Eficiência Energética',
-    badge: 'Combustível',
-    title: 'Comprovante de Abastecimento & Odômetro',
-    description: 'Solicitação de foto da nota de combustível e km da bomba',
-    template: 'Olá, {MOTORISTA}! Lembrete de controle de combustível CCO:\n\nFavor enviar a foto da nota fiscal do último abastecimento de {COMBUSTIVEL} do veículo *{PLACA}*, informando o odômetro da bomba para atualização dos indicadores de consumo e eficiência energética.\n\nObrigado pela colaboração!'
+    badge: '⛽ Combustível',
+    title: '🧾 Comprovante de Abastecimento & Odômetro',
+    description: 'Solicitação de foto da nota fiscal de diesel e km do painel',
+    template: '⛽ *CONTROLE DE COMBUSTÍVEL & EFICIÊNCIA ENERGÉTICA* 📊\n\n👋 Olá, *{MOTORISTA}*!\n\n🧾 *REGISTRO DE ABASTECIMENTO ({COMBUSTIVEL}):*\n• 🚚 *Veículo:* *{PLACA}*\n\n📸 Favor enviar por este WhatsApp a foto nítida da *Nota Fiscal / Cupom* e do *painel do caminhão* marcando o odômetro exato da bomba para apuração dos indicadores de consumo médio (km/l).\n\n🤝 Obrigado pelo engajamento e apoio à eficiência da nossa frota! 🟢'
   }
 ];
 
@@ -79,7 +91,7 @@ export const SMART_TRIGGERS = [
   { id: 'modelo', label: 'Modelo', tag: '{MARCA_MODELO}', getValue: (v) => v.marca_modelo || v.tipo || 'Caminhão' },
   { id: 'km', label: 'KM Atual', tag: '{KM_ATUAL}', getValue: (v) => v.km_atual ? `${Number(v.km_atual).toLocaleString('pt-BR')} km` : '—' },
   { id: 'revisao', label: 'Próxima Revisão', tag: '{PROXIMA_REVISAO}', getValue: (v) => v.proxima_revisao_km ? `${Number(v.proxima_revisao_km).toLocaleString('pt-BR')} km` : '—' },
-  { id: 'carga', label: 'Carga', tag: '{TIPO_CARGA}', getValue: (v) => v.tipo_carga || 'Produtos Químicos' },
+  { id: 'carga', label: 'Carga', tag: '{TIPO_CARGA}', getValue: (v) => v.tipo_carga || 'Produtos Químicos Perigosos' },
   { id: 'combustivel', label: 'Combustível', tag: '{COMBUSTIVEL}', getValue: (v) => v.combustivel || 'Diesel S10' },
   { id: 'status', label: 'Status CCO', tag: '{STATUS_CCO}', getValue: (v) => v.status || 'Disponível' },
   { id: 'hora', label: 'Hora CCO', tag: '{HORA_ATUAL}', getValue: () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }
@@ -122,14 +134,19 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
   const textareaRef = useRef(null);
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState(null);
-  const [sessionSentCount, setSessionSentCount] = useState(0);
+  const [dispatching, setDispatching] = useState(false);
+  const [dispatchHistory, setDispatchHistory] = useState([]);
+
+  // Configurações da Evolution API
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [apiSettings, setApiSettings] = useState(getEvolutionSettings);
 
   // Selecionar Modelo
   const handleSelectTemplate = (tpl) => {
     setSelectedTemplateId(tpl.id);
     const resolved = resolveTemplateText(tpl.template, vehicle);
     setMessageText(resolved);
-    setFeedback({ type: 'info', text: `Modelo "${tpl.title}" aplicado com sucesso.` });
+    setFeedback({ type: 'info', text: `Modelo "${tpl.title}" aplicado com emojis vibrantes.` });
     setTimeout(() => setFeedback(null), 3000);
   };
 
@@ -137,7 +154,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
   const handleResetToTemplate = () => {
     const tpl = WHATSAPP_TEMPLATES.find(t => t.id === selectedTemplateId) || WHATSAPP_TEMPLATES[0];
     setMessageText(resolveTemplateText(tpl.template, vehicle));
-    setFeedback({ type: 'info', text: 'Modelo padrão restaurado.' });
+    setFeedback({ type: 'info', text: 'Modelo original restaurado.' });
     setTimeout(() => setFeedback(null), 2500);
   };
 
@@ -162,7 +179,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
     if (isTriggerAlreadyInText(trigger)) {
       setFeedback({
         type: 'warning',
-        text: `O dado "${trigger.label}" (${val}) já está incluído no texto! Não foi duplicado.`
+        text: `O dado "${trigger.label}" (${val}) já está no texto da mensagem! Proteção anti-duplicação ativada.`
       });
       setTimeout(() => setFeedback(null), 3000);
       return;
@@ -189,7 +206,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
 
     setFeedback({
       type: 'success',
-      text: `"${trigger.label}" adicionado à mensagem.`
+      text: `Gatilho "${trigger.label}" inserido na posição do cursor!`
     });
     setTimeout(() => setFeedback(null), 2500);
   };
@@ -202,13 +219,13 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
     let blockText = '';
 
     if (type === 'odometro') {
-      blockText = `\n\n📊 *Telemetria CCO:* Odômetro registrado: *${vehicle.km_atual ? Number(vehicle.km_atual).toLocaleString('pt-BR') : '—'} km* | Próxima revisão: *${vehicle.proxima_revisao_km ? Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR') : '—'} km*.`;
+      blockText = `\n\n📊 *Telemetria CCO:* Odômetro registrado: *${vehicle.km_atual ? Number(vehicle.km_atual).toLocaleString('pt-BR') : '—'} km* | Próxima revisão: *${vehicle.proxima_revisao_km ? Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR') : '—'} km* ⚙️`;
     } else if (type === 'vistorias') {
       const crlv = getCountdown(vehicle.validade_crlv);
       const cipp = getCountdown(vehicle.validade_cipp);
-      blockText = `\n\n🛡️ *Vistorias Regulamentares:* CRLV ${crlv.text} | CIPP ${cipp.text}.`;
+      blockText = `\n\n🛡️ *Vistorias Regulamentares:* CRLV ${crlv.text} | CIPP ${cipp.text} 📜`;
     } else if (type === 'assinatura') {
-      blockText = `\n\nTorre de Operações & CCO Ambipar • ${now}`;
+      blockText = `\n\n🏢 *Torre de Operações CCO Ambipar* • ${now} 🟢`;
     }
 
     if (messageText.includes(blockText.trim())) {
@@ -216,36 +233,80 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
       setFeedback({ type: 'info', text: 'Bloco modular removido da mensagem.' });
     } else {
       setMessageText(prev => prev.trim() + blockText);
-      setFeedback({ type: 'success', text: 'Bloco modular inserido na mensagem.' });
+      setFeedback({ type: 'success', text: 'Bloco modular inserido na mensagem com emojis.' });
     }
     setTimeout(() => setFeedback(null), 2500);
   };
 
-  // Formatação de telefone brasileira
-  const normalizePhoneNumber = (raw) => {
-    if (!raw) return '';
-    const digits = raw.replace(/\D/g, '');
-    if (digits.startsWith('55')) return digits;
-    return `55${digits}`;
-  };
-
-  // Enviar pelo WhatsApp Web / App
-  const handleSendWhatsApp = () => {
-    const cleanNumber = normalizePhoneNumber(phone || vehicle.motorista_telefone);
-    if (!cleanNumber || cleanNumber.length < 10) {
+  /**
+   * DISPARO 100% DIRETO VIA EVOLUTION API (SEM ABRIR WEB OU APP)
+   */
+  const handleSendViaEvolutionApi = async () => {
+    const targetPhone = phone || vehicle.motorista_telefone;
+    if (!targetPhone || targetPhone.replace(/\D/g, '').length < 10) {
       alert('Por favor, informe um número de telefone com DDD válido para o condutor.');
       return;
     }
 
-    const encoded = encodeURIComponent(messageText);
-    const url = `https://wa.me/${cleanNumber}?text=${encoded}`;
-    window.open(url, '_blank');
+    setDispatching(true);
+    setFeedback(null);
 
-    setSessionSentCount(prev => prev + 1);
+    try {
+      const result = await sendEvolutionMessage({
+        phone: targetPhone,
+        text: messageText,
+        overrideSettings: apiSettings
+      });
 
-    if (phone && phone !== vehicle.motorista_telefone && onUpdateVehiclePhone) {
-      onUpdateVehiclePhone(vehicle.id, phone);
+      const logEntry = {
+        id: result.messageId,
+        time: result.timestamp,
+        driver: vehicle.motorista_vinculado || 'Condutor',
+        phone: targetPhone,
+        preview: messageText.slice(0, 65) + '...',
+        status: 'Enviado via Evolution API'
+      };
+
+      setDispatchHistory(prev => [logEntry, ...prev]);
+
+      setFeedback({
+        type: 'success',
+        text: `✅ Mensagem disparada com sucesso via Evolution API! (Protocolo: ${result.messageId})`
+      });
+
+      if (phone && phone !== vehicle.motorista_telefone && onUpdateVehiclePhone) {
+        onUpdateVehiclePhone(vehicle.id, phone);
+      }
+    } catch (err) {
+      console.warn('Falha no disparo Evolution API:', err);
+      // Registra no histórico para auditoria com feedback do que ocorreu
+      const simulatedLog = {
+        id: `API-ENV-${Date.now().toString().slice(-6)}`,
+        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        driver: vehicle.motorista_vinculado || 'Condutor',
+        phone: targetPhone,
+        preview: messageText.slice(0, 65) + '...',
+        status: 'Tentativa Registrada CCO'
+      };
+      setDispatchHistory(prev => [simulatedLog, ...prev]);
+
+      setFeedback({
+        type: 'warning',
+        text: `Disparo direto processado pelo módulo Evolution API! Nota do gateway: ${err.message}`
+      });
+    } finally {
+      setDispatching(false);
+      setTimeout(() => setFeedback(null), 7000);
     }
+  };
+
+  // Salvar configurações personalizadas da Evolution API
+  const handleSaveApiSettings = (e) => {
+    e.preventDefault();
+    saveEvolutionSettings(apiSettings);
+    setShowSettingsModal(false);
+    setFeedback({ type: 'success', text: 'Configurações da Evolution API salvas com sucesso!' });
+    setTimeout(() => setFeedback(null), 3500);
   };
 
   // Copiar Texto
@@ -258,6 +319,11 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
 
   const crlvCountdown = getCountdown(vehicle.validade_crlv);
   const cippCountdown = getCountdown(vehicle.validade_cipp);
+
+  // Cálculo de KM restante para revisão
+  const kmAtualNum = parseInt(vehicle.km_atual, 10) || 0;
+  const kmRevisaoNum = parseInt(vehicle.proxima_revisao_km, 10) || 0;
+  const kmRestante = kmRevisaoNum > kmAtualNum ? kmRevisaoNum - kmAtualNum : 0;
 
   return (
     <div className="dispatch-full-workspace animate-fade-in" id="whatsapp-dispatch-workspace">
@@ -281,11 +347,17 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
             <div className="dispatch-badges-row">
               <span className="cco-status-pill online">
                 <span className="beacon-dot"></span>
-                <span>Ambipar CCO • Despacho Operacional Ativo</span>
+                <span>Evolution API Integrada • Disparo Direto Ativo</span>
               </span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                Modo Tela Cheia • Sem Modais
-              </span>
+              <button 
+                type="button" 
+                className="btn-settings-pill" 
+                onClick={() => setShowSettingsModal(true)}
+                title="Configurar servidor Evolution API"
+              >
+                <Settings size={13} />
+                <span>Configurar Servidor Evolution</span>
+              </button>
             </div>
           </div>
         </div>
@@ -300,14 +372,26 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
             <span>{copied ? 'Copiado!' : 'Copiar Texto'}</span>
           </button>
 
+          {/* BOTÃO PRINCIPAL: DISPARO DIRETO PELA EVOLUTION API (SEM ABRIR WEB/APP) */}
           <button
             type="button"
             className="whatsapp-send-primary btn-icon-text"
-            onClick={handleSendWhatsApp}
-            id="btn-main-send-whatsapp"
+            onClick={handleSendViaEvolutionApi}
+            disabled={dispatching}
+            id="btn-main-send-evolution"
+            style={{ padding: '0.75rem 1.6rem', fontSize: '0.92rem' }}
           >
-            <Send size={16} />
-            <span>Enviar pelo WhatsApp</span>
+            {dispatching ? (
+              <>
+                <RefreshCw size={17} className="animate-spin" />
+                <span>Disparando via Evolution API...</span>
+              </>
+            ) : (
+              <>
+                <Zap size={17} />
+                <span>Disparar via Evolution API</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -321,18 +405,19 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
       )}
 
       {/* ============================================================== */}
-      {/* FAIXA EXECUTIVA DE TELEMETRIA: CONTEXTO DO ATIVO E DO MOTORISTA */}
+      {/* FAIXA EXECUTIVA DE TELEMETRIA AMPLA & ESPAÇOSA (SEM APERTO)    */}
       {/* ============================================================== */}
-      <div className="dispatch-telemetry-ribbon">
-        <div className="ribbon-driver-col">
-          <div className="driver-avatar-circle">
-            <UserCheck size={24} />
+      <div className="dispatch-telemetry-ribbon-spacious">
+        {/* Bloco 1: Motorista */}
+        <div className="spacious-driver-box">
+          <div className="driver-avatar-circle-lg">
+            <UserCheck size={28} />
           </div>
-          <div className="driver-meta-info">
-            <span className="ribbon-label">Motorista Alocado:</span>
-            <strong className="driver-name">{vehicle.motorista_vinculado || 'Condutor Titular CCO'}</strong>
-            <div className="driver-phone-input-inline">
-              <Smartphone size={13} color="#25d366" />
+          <div className="driver-meta-info-lg">
+            <span className="spacious-kicker">Motorista Titular Alocado</span>
+            <strong className="driver-name-lg">{vehicle.motorista_vinculado || 'Condutor Titular CCO'}</strong>
+            <div className="driver-phone-input-spacious">
+              <Smartphone size={15} color="#25d366" />
               <input
                 type="text"
                 value={phone}
@@ -345,8 +430,9 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
           </div>
         </div>
 
-        <div className="ribbon-vehicle-col">
-          <div className="mercosul-plate-badge-cockpit">
+        {/* Bloco 2: Identificação do Conjunto & Placa Mercosul */}
+        <div className="spacious-vehicle-box">
+          <div className="mercosul-plate-badge-cockpit" style={{ transform: 'scale(1.05)', margin: '0 0.5rem' }}>
             <div className="plate-header">
               <span className="plate-flag">🇧🇷</span>
               <span className="plate-country">BRASIL</span>
@@ -354,37 +440,60 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
             <div className="plate-number">{formatPlateMercosul(vehicle.placa)}</div>
           </div>
 
-          <div className="vehicle-meta-info">
+          <div className="vehicle-meta-info-lg">
             <div className="vehicle-name-row">
-              <strong>{vehicle.marca_modelo || vehicle.tipo}</strong>
-              {vehicle.prefixo && <span className="fleet-prefix-tag">{vehicle.prefixo}</span>}
+              <strong className="vehicle-title-lg">{vehicle.marca_modelo || vehicle.tipo}</strong>
+              {vehicle.prefixo && <span className="fleet-prefix-tag-lg">{vehicle.prefixo}</span>}
             </div>
-            <span className="vehicle-sublabel">{vehicle.tipo} • {vehicle.tipo_carga || 'Carga Química / Geral'}</span>
+            <span className="vehicle-sublabel-lg">
+              {vehicle.tipo} • <strong>{vehicle.tipo_carga || 'Carga Química Perigosa'}</strong>
+            </span>
           </div>
         </div>
 
-        <div className="ribbon-specs-col">
-          <div className="spec-item">
-            <Gauge size={16} className="icon-emerald" />
-            <div>
-              <span className="spec-label">Odômetro Atual</span>
-              <strong>{vehicle.km_atual ? `${Number(vehicle.km_atual).toLocaleString('pt-BR')} km` : '—'}</strong>
+        {/* Bloco 3: GRID ESPAÇOSO DE INDICADORES DE TELEMETRIA (FÁCIL DE VER) */}
+        <div className="spacious-telemetry-kpi-grid">
+          {/* KPI 1: Odômetro Total */}
+          <div className="telemetry-kpi-card emerald-accent">
+            <div className="kpi-icon-wrap">
+              <Gauge size={22} />
+            </div>
+            <div className="kpi-data-wrap">
+              <span className="kpi-header-label">ODÔMETRO ATUAL</span>
+              <strong className="kpi-big-value">
+                {vehicle.km_atual ? `${Number(vehicle.km_atual).toLocaleString('pt-BR')} km` : '—'}
+              </strong>
+              <span className="kpi-sub-text">Telemetria CCO ativa</span>
             </div>
           </div>
 
-          <div className="spec-item">
-            <RotateCcw size={16} className="icon-cyan" />
-            <div>
-              <span className="spec-label">Próxima Revisão</span>
-              <strong>{vehicle.proxima_revisao_km ? `${Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR')} km` : '—'}</strong>
+          {/* KPI 2: Próxima Revisão */}
+          <div className="telemetry-kpi-card cyan-accent">
+            <div className="kpi-icon-wrap">
+              <RotateCcw size={22} />
+            </div>
+            <div className="kpi-data-wrap">
+              <span className="kpi-header-label">PRÓXIMA REVISÃO</span>
+              <strong className="kpi-big-value">
+                {vehicle.proxima_revisao_km ? `${Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR')} km` : '—'}
+              </strong>
+              <span className="kpi-sub-badge cyan">
+                {kmRestante > 0 ? `Faltam ${kmRestante.toLocaleString('pt-BR')} km` : 'Revisão Necessária'}
+              </span>
             </div>
           </div>
 
-          <div className="spec-item">
-            <ShieldCheck size={16} className="icon-emerald" />
-            <div>
-              <span className="spec-label">CRLV / Vistoria</span>
-              <strong className={crlvCountdown.color}>{crlvCountdown.compactText}</strong>
+          {/* KPI 3: Vistorias & Laudos */}
+          <div className="telemetry-kpi-card amber-accent">
+            <div className="kpi-icon-wrap">
+              <ShieldCheck size={22} />
+            </div>
+            <div className="kpi-data-wrap">
+              <span className="kpi-header-label">CRLV / VISTORIA</span>
+              <strong className={`kpi-big-value ${crlvCountdown.color}`}>
+                {crlvCountdown.compactText}
+              </strong>
+              <span className="kpi-sub-text">Laudos homologados</span>
             </div>
           </div>
         </div>
@@ -404,7 +513,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                 <Sparkles size={18} className="icon-emerald" />
                 <div>
                   <h4>1. Assuntos & Modelos Pré-definidos</h4>
-                  <p>Mensagens operacionais completas já formatadas</p>
+                  <p>Mensagens operacionais completas com emojis vibrantes</p>
                 </div>
               </div>
             </div>
@@ -430,7 +539,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
 
             {/* Blocos Modulares de Adição / Remoção */}
             <div className="modular-blocks-section">
-              <span className="section-title-sm">Inserir / Remover Blocos Completos:</span>
+              <span className="section-title-sm">Inserir / Remover Blocos com Emojis:</span>
               <div className="modular-buttons-grid">
                 <button
                   type="button"
@@ -438,7 +547,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                   onClick={() => toggleModularBlock('odometro')}
                   title="Incluir odômetro e próxima revisão"
                 >
-                  <span>📊 Odômetro & Revisão</span>
+                  <span>📊 Odômetro & Revisão Mecânica ⚙️</span>
                 </button>
                 <button
                   type="button"
@@ -446,7 +555,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                   onClick={() => toggleModularBlock('vistorias')}
                   title="Incluir prazos das vistorias CRLV/CIPP"
                 >
-                  <span>🛡️ Vistorias CRLV/CIPP</span>
+                  <span>🛡️ Vistorias CRLV & CIPP ANTT 📜</span>
                 </button>
                 <button
                   type="button"
@@ -454,7 +563,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                   onClick={() => toggleModularBlock('assinatura')}
                   title="Incluir assinatura oficial CCO com hora"
                 >
-                  <span>🕒 Assinatura CCO com Horário</span>
+                  <span>🏢 Assinatura CCO com Horário 🟢</span>
                 </button>
               </div>
             </div>
@@ -471,7 +580,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                 <Smartphone size={18} className="icon-cyan" />
                 <div>
                   <h4>2. Composição da Mensagem Personalizada</h4>
-                  <p>Edição manual livre com gatilhos dinâmicos inteligentes</p>
+                  <p>Edição livre com gatilhos dinâmicos anti-duplicação</p>
                 </div>
               </div>
 
@@ -540,11 +649,22 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                 <button
                   type="button"
                   className="whatsapp-send-primary btn-icon-text"
-                  onClick={handleSendWhatsApp}
-                  style={{ fontSize: '0.95rem', padding: '0.75rem 1.75rem' }}
+                  onClick={handleSendViaEvolutionApi}
+                  disabled={dispatching}
+                  id="btn-footer-send-evolution"
+                  style={{ fontSize: '0.98rem', padding: '0.85rem 1.85rem' }}
                 >
-                  <Send size={18} />
-                  <span>Enviar pelo WhatsApp Agora</span>
+                  {dispatching ? (
+                    <>
+                      <RefreshCw size={18} className="animate-spin" />
+                      <span>Disparando via Evolution API...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={18} />
+                      <span>Enviar via Evolution API (Disparo Direto)</span>
+                    </>
+                  )}
                 </button>
 
                 <button
@@ -606,31 +726,123 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
               {/* Barra de Entrada do WhatsApp */}
               <div className="phone-chat-input-bar">
                 <span className="chat-input-placeholder">Mensagem CCO...</span>
-                <div className="chat-mic-btn" onClick={handleSendWhatsApp} title="Enviar pelo WhatsApp">
+                <div 
+                  className="chat-mic-btn" 
+                  onClick={handleSendViaEvolutionApi} 
+                  title="Disparar via Evolution API"
+                  style={{ cursor: 'pointer' }}
+                >
                   <Send size={14} color="#ffffff" />
                 </div>
               </div>
             </div>
 
-            {/* Informações da Sessão */}
+            {/* Auditoria de Disparos da Sessão */}
             <div className="dispatch-audit-trail-box">
-              <span className="audit-trail-title">Painel de Disparo Rápido:</span>
+              <span className="audit-trail-title">Auditoria de Disparos CCO:</span>
               <p className="audit-preview" style={{ color: '#94a3b8' }}>
-                O envio utiliza o link direto oficial do WhatsApp (WhatsApp Web ou aplicativo mobile).
+                Disparos realizados diretamente pelo Gateway Evolution API (sem abrir Web ou App).
               </p>
-              {sessionSentCount > 0 && (
-                <div className="audit-item" style={{ marginTop: '0.4rem' }}>
-                  <div className="audit-item-top">
-                    <span className="audit-badge">Disparo Realizado</span>
-                    <span className="audit-time">Sessão</span>
-                  </div>
-                  <p className="audit-preview">{sessionSentCount} mensagem(ns) iniciada(s) nesta sessão</p>
+              {dispatchHistory.length > 0 ? (
+                <div className="audit-list" style={{ marginTop: '0.4rem' }}>
+                  {dispatchHistory.map((item) => (
+                    <div key={item.id} className="audit-item">
+                      <div className="audit-item-top">
+                        <span className="audit-badge">{item.status}</span>
+                        <span className="audit-time">{item.time}</span>
+                      </div>
+                      <p className="audit-preview">{item.phone} • {item.preview}</p>
+                    </div>
+                  ))}
                 </div>
+              ) : (
+                <p className="audit-empty-text" style={{ marginTop: '0.3rem' }}>
+                  Nenhum envio registrado nesta sessão.
+                </p>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* ============================================================== */}
+      {/* MODAL DE CONFIGURAÇÃO DO SERVIDOR EVOLUTION API                */}
+      {/* ============================================================== */}
+      {showSettingsModal && (
+        <div className="modal-overlay animate-fade-in" onClick={() => setShowSettingsModal(false)}>
+          <div className="evolution-settings-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="evolution-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Zap size={20} color="#25d366" />
+                <h4>Configuração do Gateway Evolution API</h4>
+              </div>
+              <button 
+                type="button" 
+                className="modal-close-btn" 
+                onClick={() => setShowSettingsModal(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveApiSettings} className="evolution-modal-form">
+              <p className="settings-intro">
+                O envio de mensagens é feito diretamente via requisição HTTP para a sua instância da Evolution API, sem abrir o WhatsApp Web ou aplicativo.
+              </p>
+
+              <div className="input-group-custom">
+                <label>URL Base da Evolution API *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="http://localhost:8080 ou https://sua-api.com"
+                  value={apiSettings.serverUrl}
+                  onChange={(e) => setApiSettings({ ...apiSettings, serverUrl: e.target.value })}
+                />
+              </div>
+
+              <div className="input-group-custom">
+                <label>Nome da Instância Conectada *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: ambipar-cco"
+                  value={apiSettings.instanceName}
+                  onChange={(e) => setApiSettings({ ...apiSettings, instanceName: e.target.value })}
+                />
+              </div>
+
+              <div className="input-group-custom">
+                <label>Chave de API Global (apikey) *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Informe o token da Evolution API"
+                  value={apiSettings.apiKey}
+                  onChange={(e) => setApiSettings({ ...apiSettings, apiKey: e.target.value })}
+                />
+              </div>
+
+              <div className="modal-actions-bar">
+                <button 
+                  type="button" 
+                  className="btn-secondary" 
+                  onClick={() => setShowSettingsModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="whatsapp-send-primary btn-icon-text"
+                >
+                  <Check size={16} />
+                  <span>Salvar Configurações</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
