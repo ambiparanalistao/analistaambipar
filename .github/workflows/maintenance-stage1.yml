@@ -1,4 +1,4 @@
-name: Maintenance stages 1 to 5
+name: Maintenance stages 1 to 6
 on:
   pull_request:
     paths:
@@ -6,6 +6,7 @@ on:
       - 'src/**'
       - 'tests/partner*'
       - 'tests/communication*'
+      - 'tests/plans*'
       - 'tests/maintenance/**'
       - 'tests/maintenance.types.ts'
       - 'tsconfig.maintenance.json'
@@ -40,7 +41,7 @@ jobs:
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/bootstrap.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/schema.sql
           for migration in supabase/migrations/20261023*.sql; do
-            if [[ "$migration" == *23050000* || "$migration" == *23060000* || "$migration" == *23061000* || "$migration" == *vehicle_dossier.sql || "$migration" == *workshop_communication.sql || "$migration" == *communication_schedule.sql ]]; then continue; fi
+            if [[ "$migration" == *23050000* || "$migration" == *23060000* || "$migration" == *23061000* || "$migration" == *vehicle_dossier.sql || "$migration" == *workshop_communication.sql || "$migration" == *preventive_context_fix.sql || "$migration" == *preventive_plans.sql || "$migration" == *preventive_schedule.sql || "$migration" == *communication_schedule.sql ]]; then continue; fi
             docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < "$migration"
           done
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/integration.sql
@@ -73,6 +74,13 @@ jobs:
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023154457_workshop_communication.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/communication.sql
+      - name: Preventive plans, alerts and permissions
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023162928_preventive_plans.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023165005_preventive_context_fix.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/plans.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
         run: npm ci
@@ -90,7 +98,7 @@ jobs:
         run: node --test tests/evolution.test.js
       - name: Partner form validation
         if: ${{ !cancelled() }}
-        run: node --test tests/partner-validation.test.js tests/orders-validation.test.js tests/occurrence-validation.test.js tests/communication.test.js
+        run: node --test tests/partner-validation.test.js tests/orders-validation.test.js tests/occurrence-validation.test.js tests/communication.test.js tests/plans.test.js
       - name: Install isolated browser tools
         if: ${{ !cancelled() }}
         run: |
