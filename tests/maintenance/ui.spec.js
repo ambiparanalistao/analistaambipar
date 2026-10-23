@@ -32,7 +32,7 @@ test('lista, filtros, tema e mapa sem chave',async({page})=>{
  await expect(module.getByRole('heading',{name:'Oficinas Parceiras'})).toBeVisible();await expect(module.getByText('Horizonte',{exact:true})).toBeVisible();
  expect(fixture.queries.some(u=>u.pathname.endsWith('maintenance_partners')&&u.searchParams.get('company_id')==='eq.'+company)).toBeTruthy();
  await module.getByLabel('Tipo',{exact:true}).selectOption('borracharia');await module.getByLabel('Cidade',{exact:true}).selectOption('São Paulo');await module.getByLabel('Status',{exact:true}).selectOption('ativo');await module.getByLabel('Nota mínima',{exact:true}).selectOption('4');
- await expect.poll(()=>fixture.queries.some(u=>u.searchParams.get('tipo')==='eq.borracharia'&&u.searchParams.get('cidade')==='eq.São Paulo'&&u.searchParams.get('status')==='eq.ativo'&&u.searchParams.get('avaliacao_interna')==='gte.4')).toBeTruthy();
+ await expect.poll(()=>fixture.queries.some(u=>(u.searchParams.get('or')||'').includes('tipo.eq.borracharia')&&u.searchParams.get('cidade')==='eq.São Paulo'&&u.searchParams.get('status')==='eq.ativo'&&u.searchParams.get('avaliacao_interna')==='gte.4')).toBeTruthy();
  await module.getByLabel('Buscar parceiros').fill('Hor');await expect.poll(()=>fixture.queries.some(u=>(u.searchParams.get('or')||'').includes('ilike.%Hor%'))).toBeTruthy();await module.getByRole('button',{name:'Limpar filtros'}).click();
  await module.getByRole('button',{name:'Modo claro'}).click();await expect(module).toHaveAttribute('data-mp-theme','light');
  await module.getByRole('button',{name:'Mapa',exact:true}).click();await expect(module.getByText('Mapa indisponível')).toBeVisible();
