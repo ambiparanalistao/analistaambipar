@@ -6,7 +6,7 @@ export default function useMaintenanceAccess(user){
  useEffect(()=>{let cancelled=false;const controller=new AbortController();
  async function fetchAccess(){
  setState({loading:true,memberships:[],error:''});
- if(!supabase||!user?.id||user.id==='demo'){setState({loading:false,memberships:[],error:''});return;}
+ if(!supabase||!user?.id||user.id.startsWith('demo')){setState({loading:false,memberships:[],error:''});return;}
  try{
  const members=await supabase.from('company_members').select('company_id,role,maintenance_role').eq('user_id',user.id).eq('ativo',true).abortSignal(controller.signal);if(members.error)throw members.error;
  const ids=members.data.map(m=>m.company_id);let companies=[];

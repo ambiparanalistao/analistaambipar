@@ -107,7 +107,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $$
  maintenance_private.partner_access(m.company_id,writing)
  AND EXISTS(SELECT 1 FROM public.maintenance_partners p WHERE p.company_id=m.company_id AND p.id::text=split_part(object_name,'/',3))
  AND length(split_part(object_name,'/',4))>0
- ELSE NOT writing OR m.role IN ('analista','gestor','administrador') END);
+ ELSE maintenance_private.partner_access(m.company_id,writing) END);
 $$;
 CREATE FUNCTION public.maintenance_partner_metrics(target_company uuid,target_partner uuid)
 RETURNS TABLE(total_os bigint,custo_medio numeric) LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $$
