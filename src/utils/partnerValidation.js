@@ -50,7 +50,7 @@ export function validPhone(value) {
 }
 export const maskCep=value=>digits(value).slice(0,8).replace(/^(\d{5})(\d)/,'$1-$2');
 export function emptyPartner() {
- return {razao_social:'',nome_fantasia:'',cnpj_cpf:'',tipo:'oficina_mecanica',especialidades:[],tipos_veiculo_atendidos:[],
+ return {onboarding_profile:{},razao_social:'',nome_fantasia:'',cnpj_cpf:'',tipo:'oficina_mecanica',especialidades:[],tipos_veiculo_atendidos:[],
  contato_nome:'',telefone:'',whatsapp:'',email:'',cep:'',logradouro:'',numero:'',complemento:'',bairro:'',cidade:'',estado:'',pais:'BR',
  latitude:'',longitude:'',horario_funcionamento:Object.fromEntries(Object.keys(WEEKDAYS).map(d=>[d,{aberto:!['sab','dom'].includes(d),inicio:'08:00',fim:'18:00'}])),
  atende_24h:false,possui_guincho:false,valor_hora_mao_obra:'',prazo_pagamento_dias:'',desconto_percentual:'',status:'ativo',motivo_bloqueio:'',avaliacao_interna:''};
