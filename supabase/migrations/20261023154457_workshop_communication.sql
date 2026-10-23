@@ -76,7 +76,7 @@ CREATE FUNCTION maintenance_private.seed_communication(c uuid,creator uuid) RETU
  ON CONFLICT(company_id,nome) DO NOTHING;
 END $$;
 REVOKE ALL ON FUNCTION maintenance_private.seed_communication(uuid,uuid) FROM PUBLIC,anon,authenticated;
-DO $$DECLARE c record;BEGIN FOR c IN SELECT id,created_by FROM public.companies WHERE ativo LOOP PERFORM maintenance_private.seed_communication(c.id,c.created_by);END LOOP;END $$;
+DO $$DECLARE c record;BEGIN FOR c IN SELECT id,created_by FROM public.companies LOOP PERFORM maintenance_private.seed_communication(c.id,c.created_by);END LOOP;END $$;
 -- Trigger seeds future companies without granting membership or touching existing templates.
 CREATE FUNCTION maintenance_private.seed_company_communication() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$ BEGIN PERFORM maintenance_private.seed_communication(NEW.id,NEW.created_by);RETURN NEW;END $$;
 REVOKE ALL ON FUNCTION maintenance_private.seed_company_communication() FROM PUBLIC,anon,authenticated;
@@ -207,7 +207,7 @@ BEGIN
  IF nullif(payload->>'request_id','') IS NULL THEN RAISE EXCEPTION 'Identificador de operação ausente. Atualize a tela.';END IF;
  SELECT * INTO m FROM public.maintenance_messages WHERE company_id=c AND request_id=(payload->>'request_id')::uuid;
  IF FOUND THEN
-  IF m.order_id<>o.id OR m.enviado_por<>actor OR m.conteudo<>content OR m.canal<>payload->>'canal' OR m.direcao<>coalesce(payload->>'direcao','enviada') THEN RAISE EXCEPTION 'Identificador já utilizado por outra mensagem.';END IF;
+  IF m.order_id<>o.id OR m.enviado_por<>actor OR m.conteudo<>content OR m.assunto IS DISTINCT FROM subject OR m.canal<>payload->>'canal' OR m.direcao<>coalesce(payload->>'direcao','enviada') THEN RAISE EXCEPTION 'Identificador já utilizado por outra mensagem.';END IF;
   RETURN to_jsonb(m);
  END IF;
  SELECT * INTO p FROM public.maintenance_partners WHERE company_id=c AND id=o.partner_id;
