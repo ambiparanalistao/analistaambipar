@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 const company='12000000-0000-4000-8000-000000000001',id='42000000-0000-4000-8000-000000000001',userId='22000000-0000-4000-8000-000000000001';
-async function boot(page,role='admin_geral'){
+async function boot(page,role='admin_geral',fullAccess=false){
  const user={id:userId,email:'fixture@example.invalid',aud:'authenticated',role:'authenticated',user_metadata:{full_name:'Usuário teste'},app_metadata:{provider:'email'}};
  await page.addInitScript(({user})=>{const exp=Math.floor(Date.now()/1000)+3600;const token=btoa(JSON.stringify({alg:'HS256',typ:'JWT'}))+'.'+btoa(JSON.stringify({sub:user.id,role:'authenticated',aud:'authenticated',exp}))+'.signature';localStorage.setItem('sb-maintenance-fixture-auth-token',JSON.stringify({access_token:token,refresh_token:'fixture',expires_at:exp,expires_in:3600,token_type:'bearer',user}));},{user});
  let partner={id,company_id:company,razao_social:'Oficina Horizonte Ltda',nome_fantasia:'Horizonte',cnpj_cpf:'11222333000181',tipo:'oficina_mecanica',especialidades:['Freios'],tipos_veiculo_atendidos:['Caminhão'],contato_nome:'João',telefone:'11987654321',whatsapp:null,email:'oficina@example.invalid',cep:'01001000',logradouro:'Praça da Sé',numero:'10',complemento:null,bairro:'Sé',cidade:'São Paulo',estado:'SP',pais:'BR',latitude:-23.55,longitude:-46.63,horario_funcionamento:{},atende_24h:true,possui_guincho:true,valor_hora_mao_obra:100,prazo_pagamento_dias:30,desconto_percentual:5,status:'ativo',motivo_bloqueio:null,avaliacao_interna:4,sla_medio_dias:null,version:1};
@@ -10,7 +10,7 @@ async function boot(page,role='admin_geral'){
  let data=[];
  if(method==='OPTIONS'){await route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,PATCH,DELETE,OPTIONS'}});return;}
  if(url.pathname.includes('/auth/'))data=user;
- else if(table==='company_members')data=[{company_id:company,role:'administrador',maintenance_role:role}];
+ else if(table==='company_members')data=[{company_id:company,role:'administrador',maintenance_role:role,full_module_access:fullAccess}];
  else if(table==='companies')data=[{id:company,nome:'Empresa de teste'}];
  else if(table==='maintenance_partners'){
  if(method==='POST'){partner={...partner,...request.postDataJSON(),id,version:1};data=partner;}
@@ -58,3 +58,5 @@ test('bloqueio exige motivo, gera cadastro e permite anexo',async({page})=>{
  await expect(module.getByRole('button',{name:'Nova OS',exact:true})).toBeVisible();expect(fixture.getPartner().status).toBe('bloqueado');
  await module.getByLabel('Adicionar anexo',{exact:true}).setInputFiles({name:'contrato.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 fixture')});await module.getByRole('button',{name:'Enviar anexo',exact:true}).click();await expect(module.getByText(/contrato.pdf · Contrato/)).toBeVisible();
 });
+
+for(const role of ['supervisor','operador_logistico','motorista','cliente'])test('acesso completo liberado mantém perfil '+role,async({page})=>{await boot(page,role,true);await page.goto('/manutencao/oficinas');await expect(page.getByRole('heading',{name:'Central de Manutenção'})).toBeVisible();await expect(page.getByRole('button',{name:'Novo parceiro',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Manutenção',exact:true})).toBeVisible();await expect(page.getByRole('navigation',{name:'Áreas de manutenção'}).getByRole('button')).toHaveCount(7);await expect(page.getByText('Todos os módulos liberados',{exact:true})).toBeVisible();});

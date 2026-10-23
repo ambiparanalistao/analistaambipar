@@ -42,7 +42,7 @@ jobs:
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/bootstrap.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/schema.sql
           for migration in supabase/migrations/20261023*.sql; do
-            if [[ "$migration" == *23050000* || "$migration" == *23060000* || "$migration" == *23061000* || "$migration" == *vehicle_dossier.sql || "$migration" == *workshop_communication.sql || "$migration" == *maintenance_branches.sql || "$migration" == *maintenance_analytics.sql || "$migration" == *preventive_context_fix.sql || "$migration" == *preventive_plans.sql || "$migration" == *preventive_schedule.sql || "$migration" == *communication_schedule.sql || "$migration" == *partner_registration.sql || "$migration" == *partner_multiple_types.sql || "$migration" == *partner_approval_notice.sql ]]; then continue; fi
+            if [[ "$migration" == *23050000* || "$migration" == *23060000* || "$migration" == *23061000* || "$migration" == *vehicle_dossier.sql || "$migration" == *workshop_communication.sql || "$migration" == *maintenance_branches.sql || "$migration" == *maintenance_analytics.sql || "$migration" == *preventive_context_fix.sql || "$migration" == *preventive_plans.sql || "$migration" == *preventive_schedule.sql || "$migration" == *communication_schedule.sql || "$migration" == *partner_registration.sql || "$migration" == *partner_multiple_types.sql || "$migration" == *partner_approval_notice.sql || "$migration" == *full_module_access.sql ]]; then continue; fi
             docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < "$migration"
           done
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/integration.sql
@@ -102,6 +102,13 @@ jobs:
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023195100_partner_approval_notice.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/approval-notices.sql
+      - name: Released module access and tenant boundaries
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/full-access-seed.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023202225_full_module_access.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/full-access.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
         run: npm ci
