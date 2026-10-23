@@ -24,10 +24,14 @@ import AuthCard from './components/AuthCard';
 import SupabaseConfigModal from './components/SupabaseConfigModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import AutomationModule from './components/AutomationModule';
+import MaintenanceModule from './components/maintenance/MaintenanceModule';
+import {MAINTENANCE_PAGES} from './components/maintenance/maintenanceRoutes';
+import useMaintenanceAccess from './hooks/useMaintenanceAccess';
 import './App.css';
 
 // Mapeamento de Rotas Web para cada Módulo
 export const MODULE_ROUTES = {
+  ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.id,p.path])),
   automacao: '/automacao',
   dashboard: '/dashboard',
   frotas: '/frotas',
@@ -44,6 +48,8 @@ export const MODULE_ROUTES = {
 };
 
 export const PATH_TO_MODULE = {
+  ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.path,p.id])),
+  '/manutencao':'maintenance_partners',
   '/automacao': 'automacao',
   '/': 'dashboard',
   '/dashboard': 'dashboard',
@@ -96,6 +102,7 @@ export default function App() {
   };
 
   const [currentModule, setCurrentModule] = useState(getInitialModule);
+  const maintenanceAccess = useMaintenanceAccess(session?.user);
 
   useEffect(() => {
     // Se o Supabase não estiver configurado com credenciais, para o loading
@@ -145,6 +152,7 @@ export default function App() {
 
   // Nomes e descrições dos módulos para o cabeçalho superior
   const moduleInfo = {
+    ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.id,{title:'Manutenção · '+p.label,subtitle:'Gestão de manutenção e oficinas parceiras'}])),
     automacao: { title: 'Automação · Conexão WhatsApp', subtitle: 'Autenticação, status e reconexão da instância Evolution API' },
     dashboard: { 
       title: 'Torre de Controle Operacional', 
@@ -297,6 +305,7 @@ export default function App() {
             onLogout={handleLogout}
             onOpenConfig={() => setShowConfigModal(true)}
             isSupabaseOnline={isSupabaseConfigured}
+            maintenanceAccess={maintenanceAccess}
           />
 
           {/* Área Principal de Conteúdo */}
@@ -345,6 +354,7 @@ export default function App() {
             {/* Módulo Ativo Selecionado */}
             <main className="stage-content-body" id="stage-content-body">
               <ErrorBoundary>
+                {currentModule.startsWith('maintenance_') && <MaintenanceModule access={maintenanceAccess} page={currentModule} />}
                 {currentModule === 'dashboard' && (
                   <LogisticsDashboard 
                     user={session.user} 

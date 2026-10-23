@@ -1,3 +1,4 @@
+export type MaintenanceRole='admin_geral'|'admin_empresa'|'analista_transporte'|'supervisor'|'operador_logistico'|'motorista'|'cliente';
 // Stage 1 schema snapshot, maintained from the reviewed migrations.
 // This is scoped to the new tenant/maintenance tables, not a generated snapshot of production.
 // Dates/timestamps are ISO strings; money uses PostgreSQL numeric, serialized by supabase-js as number.
@@ -28,6 +29,7 @@ export interface MaintenanceRows {
     updated_at: string;
     created_by: string;
     user_id: string;
+    maintenance_role: MaintenanceRole | null;
     role: "analista" | "gestor" | "auditor" | "administrador";
     ativo: boolean;
   };
@@ -57,6 +59,8 @@ export interface MaintenanceRows {
     pais: string;
     latitude: number | null;
     longitude: number | null;
+    atende_24h: boolean;
+    version: number;
     horario_funcionamento: Json;
     possui_guincho: boolean;
     valor_hora_mao_obra: number;
@@ -244,6 +248,7 @@ export interface MaintenanceInserts {
     updated_at?: string;
     created_by?: string;
     user_id: string;
+    maintenance_role?: MaintenanceRole | null;
     role?: "analista" | "gestor" | "auditor" | "administrador";
     ativo?: boolean;
   };
@@ -273,6 +278,8 @@ export interface MaintenanceInserts {
     pais?: string;
     latitude?: number | null;
     longitude?: number | null;
+    atende_24h?: boolean;
+    version?: never;
     horario_funcionamento?: Json;
     possui_guincho?: boolean;
     valor_hora_mao_obra?: number;
@@ -444,7 +451,7 @@ export interface MaintenanceInserts {
 }
 
 type Immutable = 'id' | 'company_id' | 'created_at' | 'created_by';
-type AppendOnly = 'maintenance_order_timeline' | 'maintenance_messages';
+type AppendOnly = 'maintenance_order_timeline' | 'maintenance_messages' | 'maintenance_partner_audit' | 'maintenance_partner_attachments';
 export type MaintenanceUpdate<T extends keyof MaintenanceInserts> =
   T extends AppendOnly ? never : Partial<Omit<MaintenanceInserts[T], Immutable | (T extends 'maintenance_orders' ? 'vehicle_id' | 'partner_id' | 'data_abertura' : never)>>;
 export type TableName = keyof MaintenanceRows;
@@ -463,3 +470,12 @@ export type MaintenanceDatabase = {
     CompositeTypes: Record<string, never>;
   };
 };
+
+export interface MaintenanceRows {
+ maintenance_partner_attachments:{id:string;company_id:string;partner_id:string;categoria:'contrato'|'certidao'|'tabela_precos';nome:string;object_path:string;content_type:string;tamanho_bytes:number;created_at:string;updated_at:string;created_by:string};
+ maintenance_partner_audit:{id:string;company_id:string;partner_id:string;acao:'criacao'|'edicao'|'bloqueio'|'desbloqueio'|'anexo_incluido'|'anexo_excluido';antes:Json|null;depois:Json|null;created_at:string;created_by:string};
+}
+export interface MaintenanceInserts {
+ maintenance_partner_attachments:Omit<MaintenanceRows['maintenance_partner_attachments'],'id'|'created_at'|'updated_at'|'created_by'>;
+ maintenance_partner_audit:never;
+}
