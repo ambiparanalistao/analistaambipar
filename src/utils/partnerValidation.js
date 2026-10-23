@@ -4,7 +4,7 @@ export const PARTNER_TYPES = {
   guincho_socorro:'Guincho e socorro', lavagem:'Lavagem', tacografo_rastreador:'Tacógrafo e rastreador', outros:'Outros',
 };
 export const SPECIALTIES=['Motor','Câmbio','Freios','Suspensão','Elétrica','Injeção eletrônica','Pneus','Alinhamento','Funilaria','Pintura','Ar-condicionado','Hidráulica','Tacógrafo','Rastreamento','Socorro rodoviário','Lavagem'];
-export const VEHICLE_TYPES=['Caminhão','Cavalo mecânico','Carreta','Bitrem','Rodotrem','Truck','Toco','VUC','Van','Utilitário','Automóvel','Ônibus','Máquina'];
+export const VEHICLE_TYPES=['Caminhão','Cavalo mecânico','Carreta','Bitrem','Rodotrem','Truck','Toco','VUC','Semirreboque','Reboque'];
 export const WEEKDAYS={seg:'Segunda-feira',ter:'Terça-feira',qua:'Quarta-feira',qui:'Quinta-feira',sex:'Sexta-feira',sab:'Sábado',dom:'Domingo'};
 export const STATUS_LABELS={ativo:'Ativo',inativo:'Inativo',bloqueado:'Bloqueado'};
 export const DOCUMENT_CATEGORIES={contrato:'Contrato',certidao:'Certidão',tabela_precos:'Tabela de preços'};
