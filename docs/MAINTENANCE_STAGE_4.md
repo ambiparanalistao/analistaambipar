@@ -3,7 +3,7 @@
 ## Uso
 - Frota > Ficha · Manutenção: situação e permanência na oficina, oficinas padrão/preferidas, totais de OS, custo realizado, tempo efetivo em oficina, última/próxima manutenção e prontuário.
 - Manutenção > Ocorrências: registrar tipo, gravidade, veículo, motorista opcional, descrição, localização e até dez fotos JPEG/PNG/WebP de até 20 MB cada. Admin/Analista pode gerar OS com os dados preenchidos; criação e vínculo são transacionais, sem duplicação.
-- Motoristas > Acesso do motorista ao próprio veículo: administrador vincula um login com membership Motorista já provisionado na empresa a um cadastro e veículo reais (UUIDs). Não inferir acesso por nome, telefone, user_metadata ou user_id do criador do cadastro. A provisão de company_members continua administrativa, como nas etapas anteriores.
+- Motoristas > Acesso do motorista ao próprio veículo: administrador vincula ou desvincula um login com membership Motorista já provisionado na empresa a um cadastro e veículo reais (UUIDs). Não inferir acesso por nome, telefone, user_metadata ou user_id do criador do cadastro. A provisão de company_members continua administrativa, como nas etapas anteriores.
 - Motorista autenticado é direcionado à área responsiva /motorista/manutencao, sem menu administrativo: consulta placa/status/oficina do próprio veículo e envia ocorrência com GPS/foto. Empresa selecionável quando possui vários vínculos.
 - No prontuário, PDF / imprimir abre a versão própria de impressão; selecionar Salvar como PDF no navegador. Excel baixa .xlsx. Ambos exportam TODOS os eventos dos filtros, não apenas a página exibida.
 - Maps/Places reutilizam o carregador existente. Sem VITE_GOOGLE_MAPS_API_KEY, endereço e coordenadas manuais/GPS continuam funcionando; mapa mostra indisponibilidade. Nenhuma biblioteca de produção adicionada.
@@ -13,7 +13,7 @@
 - VehiclesModule.jsx: botão Ficha · Manutenção nas visões cards/tabela; painel separado; passa empresa ao workspace WhatsApp. Cadastro, leitura de documentos e sincronização driverFleetSync preservados.
 - DriversModule.jsx: painel de vínculo seguro, exclusivo do administrador. Cadastro e sincronização existentes preservados.
 - TripsModule.jsx: seleção com disponibilidade consultada; criação/retomada valida e registra alocação no servidor; conclusão libera reserva. Histórico de viagens continua com armazenamento existente. Novas reservas identificadas por UUID e empresa.
-- ClientsModule.jsx: seleção de placa disponível; valida/registra alocação ao salvar e ao redirecionar rota. Outros campos, contratos, impressão e fluxo de cadastro preservados.
+- ClientsModule.jsx: seleção de placa disponível; valida/registra nova placa ou troca de alocação ao salvar e ao redirecionar rota; editar outros dados preserva a alocação histórica. Outros campos, contratos, impressão e fluxo de cadastro preservados.
 - WhatsAppDispatchWorkspace.jsx: antes do envio do modelo Escala, consulta disponibilidade atual; notificações de revisão/posição permanecem disponíveis.
 - MaintenanceModule.jsx: ativa página de ocorrências.
 - OrderForm/OrdersPage: pré-preenchimento por ocorrência e sugestão da oficina padrão; confirmação mantém todos os controles da Etapa 3.
