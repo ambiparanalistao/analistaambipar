@@ -1,0 +1,6 @@
+export const OCCURRENCE_TYPES={quebra:'Quebra',acidente:'Acidente',pane_eletrica:'Pane elétrica',pneu:'Pneu',sinistro:'Sinistro',outros:'Outros'};
+export const SEVERITIES={leve:'Leve',moderada:'Moderada',grave:'Grave',critica:'Crítica'};
+export function validateOccurrence(form){const errors={};if(!form.vehicle_id)errors.vehicle_id='Selecione um veículo.';if(!OCCURRENCE_TYPES[form.tipo])errors.tipo='Tipo inválido.';if(!SEVERITIES[form.gravidade])errors.gravidade='Gravidade inválida.';if(String(form.descricao||'').trim().length<5||String(form.descricao||'').length>5000)errors.descricao='Descreva o ocorrido com 5 a 5000 caracteres.';
+ const lat=form.latitude,lon=form.longitude,hasLat=lat!==''&&lat!=null,hasLon=lon!==''&&lon!=null;
+ if(hasLat!==hasLon||hasLat&&(!Number.isFinite(Number(lat))||!Number.isFinite(Number(lon))||Math.abs(Number(lat))>90||Math.abs(Number(lon))>180))errors.location='Informe latitude (-90 a 90) e longitude (-180 a 180) válidas.';return errors;}
+export function filterEvents(events,filters){return events.filter(e=>(!filters.kind||e.kind===filters.kind)&&(!filters.start||e.occurred_at>=new Date(filters.start+'T00:00:00').toISOString())&&(!filters.end||e.occurred_at<=new Date(filters.end+'T23:59:59.999').toISOString()));}

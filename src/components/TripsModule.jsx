@@ -1,3 +1,5 @@
+import AvailableVehicleSelect from './maintenance/AvailableVehicleSelect';
+import {allocateVehicle,vehicleCommand} from '../services/vehicleMaintenance';
 import React, { useState, useEffect } from 'react';
 import { 
   Truck, 
@@ -9,7 +11,7 @@ import {
   Filter
 } from 'lucide-react';
 
-export default function TripsModule({ user }) {
+export default function TripsModule({ user, companyId }) {
   // Inicializa a partir de dados salvos localmente ou vazio (sem dados fictícios)
   const [trips, setTrips] = useState(() => {
     try {
@@ -20,6 +22,7 @@ export default function TripsModule({ user }) {
     }
   });
 
+  const [tripError,setTripError]=useState(''),[tripBusy,setTripBusy]=useState(false);
   const [showModal, setShowModal] = useState(false);
   const [newTrip, setNewTrip] = useState({
     vehiclePlate: '',
@@ -42,11 +45,15 @@ export default function TripsModule({ user }) {
     }
   }, [trips]);
 
-  const handleCreateTrip = (e) => {
+  const handleCreateTrip = async (e) => {
     e.preventDefault();
+    if(tripBusy)return;setTripBusy(true);setTripError('');
+    const reference=crypto.randomUUID();let selected;try{selected=await allocateVehicle(companyId,newTrip.vehiclePlate,'trip',reference);}catch(e){setTripError(e.message);setTripBusy(false);return;}
     const created = {
       ...newTrip,
-      id: `AMB-TRIP-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: reference,
+      vehicle_id:selected.id,
+      company_id:companyId,
       status: 'transito',
       statusLabel: 'Em Trânsito',
       departureTime: new Date().toLocaleString('pt-BR'),
@@ -54,6 +61,7 @@ export default function TripsModule({ user }) {
       weightTon: Number(newTrip.weightTon)
     };
     setTrips([created, ...trips]);
+    setTripBusy(false);
     setShowModal(false);
     setNewTrip({
       vehiclePlate: '',
@@ -69,12 +77,18 @@ export default function TripsModule({ user }) {
     });
   };
 
-  const handleUpdateStatus = (id, newStatus, newLabel) => {
+  const handleUpdateStatus = async (id, newStatus, newLabel) => {
+    if(tripBusy)return;setTripBusy(true);setTripError('');try{const trip=trips.find(t=>t.id===id);if(trip.company_id&&trip.company_id!==companyId)throw new Error('Selecione a empresa desta viagem.');
+    if(newStatus==='transito')await allocateVehicle(companyId,trip.vehiclePlate,'trip',trip.id);
+    else if(newStatus==='concluido'&&trip.vehicle_id)await vehicleCommand(companyId,'release',{vehicle_id:trip.vehicle_id,kind:'trip',reference:trip.id});
+
     setTrips(trips.map(t => t.id === id ? { ...t, status: newStatus, statusLabel: newLabel } : t));
+    }catch(e){setTripError(e.message);}finally{setTripBusy(false);}
   };
 
   return (
     <div className="module-view animate-fade-in" id="trips-module-root">
+      {tripError&&<p role="alert">{tripError}</p>}
       <div className="module-page-header">
         <div>
           <div className="module-tag">
@@ -218,16 +232,10 @@ export default function TripsModule({ user }) {
             </div>
 
             <form onSubmit={handleCreateTrip} className="modal-form">
+              {tripError&&<p role="alert">{tripError}</p>}
               <div className="grid-2-cols">
                 <div className="input-group-custom">
-                  <label>Placa do Veículo / Carreta</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: AMB-4K89"
-                    value={newTrip.vehiclePlate}
-                    onChange={(e) => setNewTrip({ ...newTrip, vehiclePlate: e.target.value.toUpperCase() })}
-                  />
+                  <AvailableVehicleSelect company={companyId} required value={newTrip.vehiclePlate} onChange={plate=>setNewTrip(t=>({...t,vehiclePlate:plate}))} label="Placa do veículo disponível"/>
                 </div>
 
                 <div className="input-group-custom">
@@ -349,9 +357,10 @@ export default function TripsModule({ user }) {
                 </button>
                 <button
                   type="submit"
+                  disabled={tripBusy}
                   className="btn-primary"
                 >
-                  Registrar e Iniciar Viagem
+                  {tripBusy?'Validando disponibilidade…':'Registrar e Iniciar Viagem'}
                 </button>
               </div>
             </form>

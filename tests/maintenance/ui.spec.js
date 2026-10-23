@@ -50,7 +50,7 @@ test('supervisor somente leitura e bloqueio de URL de edição',async({page})=>{
  await page.goto('/manutencao/oficinas?oficina='+id+'&acao=editar');await expect(page.locator('.mp-module').getByText('Seu perfil tem acesso somente leitura.')).toBeVisible();
 });
 test('motorista sem acesso ao menu ou dados',async({page})=>{
- const fixture=await boot(page,'motorista');await page.goto('/manutencao/oficinas');await expect(page.getByRole('heading',{name:'Acesso restrito'})).toBeVisible();expect(fixture.queries.some(u=>u.pathname.endsWith('/maintenance_partners'))).toBeFalsy();await expect(page.locator('.sidebar-nav').getByRole('button',{name:'Manutenção',exact:true})).toHaveCount(0);
+ const fixture=await boot(page,'motorista');await page.goto('/manutencao/oficinas');await expect(page.getByRole('heading',{name:'Área do motorista'})).toBeVisible();expect(fixture.queries.some(u=>u.pathname.endsWith('/maintenance_partners'))).toBeFalsy();await expect(page.locator('.sidebar-nav').getByRole('button',{name:'Manutenção',exact:true})).toHaveCount(0);
 });
 test('bloqueio exige motivo, gera cadastro e permite anexo',async({page})=>{
  const fixture=await boot(page);await page.goto('/manutencao/oficinas?oficina='+id+'&acao=editar');const module=page.locator('.mp-module');

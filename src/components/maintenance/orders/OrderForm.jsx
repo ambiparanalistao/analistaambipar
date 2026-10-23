@@ -1,7 +1,9 @@
-import React,{useState} from 'react';
+import {vehicleCommand} from '../../../services/vehicleMaintenance';
+import React,{useState,useEffect} from 'react';
 import {ORDER_TYPES,PRIORITIES,validateOrder} from '../../../utils/orderValidation';
-export default function OrderForm({options,partnerId,onSave,onBack,busy,error}){
- const [form,setForm]=useState({vehicle_id:'',partner_id:partnerId||'',driver_id:'',tipo:'corretiva',prioridade:'media',descricao_problema:'',km_abertura:'',previsao_entrega:''}),[search,setSearch]=useState(''),[errors,setErrors]=useState({});
+export default function OrderForm({options,partnerId,company,initialValues={},onSave,onBack,busy,error}){
+ const [form,setForm]=useState({vehicle_id:'',partner_id:partnerId||'',driver_id:'',tipo:'corretiva',prioridade:'media',descricao_problema:'',km_abertura:'',previsao_entrega:'',...initialValues}),[search,setSearch]=useState(''),[errors,setErrors]=useState({});
+ useEffect(()=>{let active=true;if(company&&form.vehicle_id)vehicleCommand(company,'dossier',{vehicle_id:form.vehicle_id}).then(data=>{if(active)setForm(f=>({...f,partner_id:f.partner_id||data.preferences?.default_partner_id||''}));}).catch(()=>{});return()=>{active=false;};},[company,form.vehicle_id]);
  const set=(k,v)=>setForm(f=>({...f,[k]:v})),vehicle=options.vehicles.find(v=>v.id===form.vehicle_id);
  const field=(k,label,type='text')=><label className="mp-field">{label}<input name={k} type={type} value={form[k]} onChange={e=>set(k,e.target.value)} aria-invalid={!!errors[k]}/>{errors[k]&&<span className="mp-error">{errors[k]}</span>}</label>;
  function submit(e){e.preventDefault();const invalid=validateOrder(form,vehicle);setErrors(invalid);if(!Object.keys(invalid).length)onSave({...form,km_abertura:Number(form.km_abertura),previsao_entrega:form.previsao_entrega?new Date(form.previsao_entrega).toISOString():null});}
