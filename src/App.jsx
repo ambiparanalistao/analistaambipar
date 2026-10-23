@@ -1,3 +1,4 @@
+import MaintenanceNotifications from './components/maintenance/communication/MaintenanceNotifications';
 import DriverMaintenancePage from './components/maintenance/driver/DriverMaintenancePage';
 import React, { useState, useEffect } from 'react';
 import { 
@@ -334,6 +335,7 @@ export default function App() {
               </div>
 
               <div className="topbar-actions">
+                {maintenanceAccess.canRead&&<MaintenanceNotifications key={maintenanceAccess.companyId} access={maintenanceAccess}/>}
                 <div className="live-status-chip">
                   <span className="pulse-green"></span>
                   <span>Operação Ativa</span>
