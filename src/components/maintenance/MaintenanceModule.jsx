@@ -1,3 +1,4 @@
+import RegistrationInbox from './registration/RegistrationInbox';
 import MaintenanceDashboard from './dashboard/MaintenanceDashboard';
 import MaintenanceReports from './reports/MaintenanceReports';
 import PlansPage from './plans/PlansPage';
@@ -45,6 +46,7 @@ function PartnersPage({access,theme,setLocked}){
  return <div>
  <div className="mp-row mp-between"><div><h2>Oficinas Parceiras</h2><p className="mp-muted">Prestadores, contatos e condições da empresa selecionada.</p></div>{canWrite&&<button className="mp-primary" onClick={()=>go('new')}>Novo parceiro</button>}</div>
  {notice&&<p className="mp-notice" role="status">{notice}</p>}
+ <RegistrationInbox company={companyId} canWrite={canWrite} onApproved={reload}/>
  <div className="mp-filters"><label>Buscar<input aria-label="Buscar parceiros" placeholder="Nome ou CPF/CNPJ" value={search} onChange={e=>setSearch(e.target.value)}/></label>
  <label>Tipo<select aria-label="Tipo" value={filters.tipo} onChange={e=>filter('tipo',e.target.value)}><option value="">Todos</option>{Object.entries(PARTNER_TYPES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
  <label>Cidade<select aria-label="Cidade" value={filters.cidade} onChange={e=>filter('cidade',e.target.value)}><option value="">Todas</option>{cities.map(c=><option key={c.cidade}>{c.cidade}</option>)}</select></label>

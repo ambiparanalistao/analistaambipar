@@ -1,0 +1,13 @@
+import {useEffect,useState} from 'react';
+import PartnerForm from '../PartnerForm';
+import {publicRegistration} from '../../../services/partnerRegistration';
+import {registrationBase} from '../../../utils/partnerRegistration';
+import '../MaintenanceModule.css';
+import './Registration.css';
+export default function PublicPartnerRegistration(){
+ const [token,setToken]=useState(()=>new URLSearchParams(window.location.hash.slice(1)).get('convite')||''),[requestId,setRequestId]=useState(()=>crypto.randomUUID()),[info,setInfo]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[receipt,setReceipt]=useState(null),[revision,setRevision]=useState(0);
+ useEffect(()=>{const change=()=>{setToken(new URLSearchParams(window.location.hash.slice(1)).get('convite')||'');setRequestId(crypto.randomUUID());setInfo(null);setReceipt(null);setError('');setLoading(true);};window.addEventListener('hashchange',change);return()=>window.removeEventListener('hashchange',change);},[]);
+ useEffect(()=>{let active=true;publicRegistration(token,'info').then(data=>{if(active){setInfo(data);setError('');}}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[token,revision]);
+ async function submit(form,files,confirmation){setSaving(true);setError('');try{setReceipt(await publicRegistration(token,'submit',{base:registrationBase(form),profile:form.onboarding_profile,request_id:requestId,...confirmation}));window.scrollTo({top:0,behavior:'smooth'});}catch(e){setError(e.message);}finally{setSaving(false);}}
+ return <main className="pr-public mp-module" data-mp-theme="light"><div className="pr-shell"><header className="pr-hero"><span>Rede de oficinas parceiras</span><h1>{receipt?'Cadastro recebido':info?'Seja parceiro de '+info.company:'Cadastro de oficina parceira'}</h1><p>Um cadastro completo para aproximar sua oficina da operação de transporte. Informe seus serviços, estrutura e condições comerciais. Sem envio de fotos ou arquivos.</p></header>{loading?<p role="status">Validando convite…</p>:receipt?<section className="mp-card"><h2>Solicitação pendente de análise</h2><p>Protocolo: <strong>{receipt.protocol}</strong></p><p>A empresa analisará as informações e entrará em contato pelos dados cadastrados. O envio não representa aprovação da parceria.</p><p>Guarde seu protocolo.</p></section>:!info?<section className="mp-card" role="alert"><p>{error||'Convite indisponível.'}</p><button onClick={()=>{setLoading(true);setRevision(v=>v+1);}}>Tentar novamente</button></section>:<PartnerForm external companyName={info.company} onSave={submit} saving={saving} error={error}/>}</div></main>;
+}
