@@ -56,12 +56,18 @@ SELECT order_test.act('budget','{"decisao":"reprovado","observacao":"Excede o li
 SELECT order_test.assert((SELECT decisao_por=auth.uid() AND decisao_em IS NOT NULL AND orcamento_status='reprovado' FROM public.maintenance_orders WHERE id=current_setting('order_test.id')::uuid),'rejection actor and time retained');
 SELECT set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000003',true);
 SELECT order_test.act('budget','{"decisao":"aprovado","observacao":"Analista aprovou"}');
+INSERT INTO storage.objects(bucket_id,name) VALUES('maintenance','12000000-0000-4000-8000-000000000001/orders/'||current_setting('order_test.id')||'/files/orcamento.pdf');
+SELECT order_test.act('attachment_add',jsonb_build_object('tipo','orcamento','url','12000000-0000-4000-8000-000000000001/orders/'||current_setting('order_test.id')||'/files/orcamento.pdf','nome','orcamento.pdf','content_type','application/pdf','tamanho_bytes',120));
+SELECT order_test.assert((SELECT count(*)=1 FROM public.maintenance_attachments WHERE order_id=current_setting('order_test.id')::uuid),'private attachment registered');
 SELECT order_test.act('transition','{"status":"em_transito","observacao":"Encaminhado"}');
 SELECT set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000005',true);
 SELECT set_config('order_test.second',(public.maintenance_order_command('12000000-0000-4000-8000-000000000001','create',
 '{"vehicle_id":"33000000-0000-4000-8000-000000000001","partner_id":"43000000-0000-4000-8000-000000000001","tipo":"preventiva","prioridade":"baixa","descricao_problema":"Revisão","km_abertura":1000}')->>'id'),true);
 SELECT order_test.expect_error($cmd$SELECT order_test.act('arrival','{"km":999,"observacao":"Regressivo"}')$cmd$,'P0001');
-SELECT order_test.act('arrival','{"km":1010,"observacao":"Chegada registrada"}');
+INSERT INTO storage.objects(bucket_id,name) VALUES('maintenance','12000000-0000-4000-8000-000000000001/orders/'||current_setting('order_test.id')||'/visits/chegada.jpg');
+SELECT order_test.act('arrival',jsonb_build_object('km',1010,'observacao','Chegada registrada','foto','12000000-0000-4000-8000-000000000001/orders/'||current_setting('order_test.id')||'/visits/chegada.jpg'));
+WITH removed AS(DELETE FROM storage.objects WHERE name='12000000-0000-4000-8000-000000000001/orders/'||current_setting('order_test.id')||'/visits/chegada.jpg' RETURNING id) SELECT order_test.assert((SELECT count(*)=0 FROM removed),'linked visit photos cannot be deleted directly');
+
 SELECT order_test.assert((SELECT count(*)=1 FROM public.workshop_visits WHERE order_id=current_setting('order_test.id')::uuid AND km_chegada=1010),'operator arrival');
 SELECT order_test.expect_error($cmd$SELECT order_test.act('transition','{"status":"cancelada","observacao":"Hack"}')$cmd$,'42501');
 SELECT order_test.expect_error($cmd$SELECT order_test.act('departure','{"km":1015,"observacao":"Cedo"}')$cmd$,'P0001');
