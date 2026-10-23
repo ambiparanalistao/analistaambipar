@@ -52,6 +52,7 @@ import {
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
 import { readCrlvFile } from '../utils/crlvPdfReader';
+import WhatsAppDispatchWorkspace from './WhatsAppDispatchWorkspace';
 
 export const VEHICLE_STATUS_OPTIONS = [
   { 
@@ -420,8 +421,8 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
   const [editingId, setEditingId] = useState(null);
   const [feedback, setFeedback] = useState(null);
 
-  // Estado para a Central de Despacho WhatsApp CCO
-  const [whatsappModalData, setWhatsappModalData] = useState(null);
+  // Estado para a Central de Despacho WhatsApp CCO (Tela Completa)
+  const [dispatchVehicle, setDispatchVehicle] = useState(null);
 
   // Estados para importação automática via CRLV-e (Processamento em RAM)
   const [crlvLoading, setCrlvLoading] = useState(false);
@@ -712,99 +713,18 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
   };
 
   /* ============================================================== */
-  /* CONTROLADORES DA CENTRAL DE DESPACHO WHATSAPP CCO              */
+  /* CONTROLADORES DA CENTRAL DE DESPACHO WHATSAPP CCO (WORKSPACE)   */
   /* ============================================================== */
-  const handleOpenWhatsAppModal = (vehicle) => {
-    const defaultTemplate = WHATSAPP_TEMPLATES[0];
-    const initialText = resolveMessageTags(defaultTemplate.template, vehicle);
-    setWhatsappModalData({
-      vehicle,
-      phone: vehicle.motorista_telefone || '',
-      selectedTemplateId: defaultTemplate.id,
-      messageText: initialText,
-      copied: false,
-      apiDispatching: false,
-      apiSuccess: null
-    });
+  const handleOpenWhatsAppWorkspace = (vehicle) => {
+    setDispatchVehicle(vehicle);
+    setViewMode('dispatch');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSelectTemplate = (template) => {
-    if (!whatsappModalData) return;
-    const resolved = resolveMessageTags(template.template, whatsappModalData.vehicle);
-    setWhatsappModalData(prev => ({
-      ...prev,
-      selectedTemplateId: template.id,
-      messageText: resolved,
-      copied: false,
-      apiSuccess: null
-    }));
-  };
-
-  const handleInsertTrigger = (trigger) => {
-    if (!whatsappModalData) return;
-    const resolvedVal = resolveMessageTags(trigger.tag, whatsappModalData.vehicle);
-    setWhatsappModalData(prev => {
-      const current = prev.messageText || '';
-      const spacer = current.endsWith(' ') || current.endsWith('\n') || current === '' ? '' : ' ';
-      return {
-        ...prev,
-        messageText: current + spacer + resolvedVal
-      };
-    });
-  };
-
-  const handleSendWhatsAppWeb = () => {
-    if (!whatsappModalData) return;
-    const rawPhone = whatsappModalData.phone || whatsappModalData.vehicle.motorista_telefone;
-    const cleanPhone = (rawPhone || '').replace(/\D/g, '');
-    if (!cleanPhone || cleanPhone.length < 8) {
-      alert('Por favor, informe um número de telefone com DDD válido para o condutor.');
-      return;
-    }
-    const fullPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-    const encoded = encodeURIComponent(whatsappModalData.messageText);
-    const url = `https://wa.me/${fullPhone}?text=${encoded}`;
-    window.open(url, '_blank');
-
-    if (whatsappModalData.phone && whatsappModalData.phone !== whatsappModalData.vehicle.motorista_telefone) {
-      handleSaveDriverPhone(whatsappModalData.vehicle.id, whatsappModalData.phone);
-    }
-  };
-
-  const handleCopyMessage = () => {
-    if (!whatsappModalData?.messageText) return;
-    navigator.clipboard.writeText(whatsappModalData.messageText);
-    setWhatsappModalData(prev => ({ ...prev, copied: true }));
-    setTimeout(() => {
-      setWhatsappModalData(prev => prev ? ({ ...prev, copied: false }) : null);
-    }, 2500);
-  };
-
-  const handleDispatchViaApi = async () => {
-    if (!whatsappModalData) return;
-    const rawPhone = whatsappModalData.phone || whatsappModalData.vehicle.motorista_telefone;
-    const cleanPhone = (rawPhone || '').replace(/\D/g, '');
-    if (!cleanPhone || cleanPhone.length < 8) {
-      alert('Por favor, informe o telefone do condutor para disparo.');
-      return;
-    }
-
-    setWhatsappModalData(prev => ({ ...prev, apiDispatching: true, apiSuccess: null }));
-    await new Promise(r => setTimeout(r, 850));
-
-    setWhatsappModalData(prev => ({
-      ...prev,
-      apiDispatching: false,
-      apiSuccess: `Despacho registrado no Gateway CCO Ambipar! Mensagem enviada com sucesso para ${rawPhone}.`
-    }));
-
-    if (whatsappModalData.phone && whatsappModalData.phone !== whatsappModalData.vehicle.motorista_telefone) {
-      handleSaveDriverPhone(whatsappModalData.vehicle.id, whatsappModalData.phone);
-    }
-
-    setTimeout(() => {
-      setWhatsappModalData(prev => prev ? ({ ...prev, apiSuccess: null }) : null);
-    }, 4500);
+  const handleCloseWhatsAppWorkspace = () => {
+    setDispatchVehicle(null);
+    setViewMode('list');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSaveDriverPhone = (vehicleId, newPhone) => {
@@ -1304,6 +1224,15 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
             </button>
           </div>
         </form>
+      ) : viewMode === 'dispatch' && dispatchVehicle ? (
+        /* ============================================================== */
+        /* MODO 3: CENTRAL DE DESPACHO WHATSAPP CCO - TELA COMPLETA       */
+        /* ============================================================== */
+        <WhatsAppDispatchWorkspace
+          vehicle={dispatchVehicle}
+          onBack={handleCloseWhatsAppWorkspace}
+          onUpdateVehiclePhone={handleSaveDriverPhone}
+        />
       ) : (
         /* ============================================================== */
         /* MODO 2: COCKPIT OPERACIONAL DA FROTA (CARDS & TABELA)          */
@@ -1752,9 +1681,9 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleOpenWhatsAppModal(vehicle)}
+                        onClick={() => handleOpenWhatsAppWorkspace(vehicle)}
                         className="btn-whatsapp-mini"
-                        title="Abrir Central de Despacho WhatsApp com templates CCO"
+                        title="Abrir Central de Despacho WhatsApp CCO em Tela Completa"
                         id={`btn-whatsapp-card-${vehicle.id}`}
                       >
                         <MessageCircle size={14} />
@@ -1940,9 +1869,9 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                             </strong>
                             <button
                               type="button"
-                              onClick={() => handleOpenWhatsAppModal(vehicle)}
+                              onClick={() => handleOpenWhatsAppWorkspace(vehicle)}
                               className="table-wa-direct-btn"
-                              title="Enviar mensagem WhatsApp ao condutor"
+                              title="Abrir Central de Despacho WhatsApp CCO em Tela Completa"
                               id={`btn-whatsapp-tbl-${vehicle.id}`}
                             >
                               <MessageCircle size={12} />
@@ -2011,232 +1940,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
           )}
         </>
       )}
-
-      {/* ============================================================== */}
-      {/* MODAL EXECUTIVO: CENTRAL DE DESPACHO WHATSAPP CCO             */}
-      {/* ============================================================== */}
-      {whatsappModalData && (
-        <div 
-          className="modal-overlay animate-fade-in" 
-          onClick={() => setWhatsappModalData(null)}
-          id="whatsapp-dispatch-modal"
-          style={{ zIndex: 9999 }}
-        >
-          <div 
-            className="whatsapp-dispatch-dialog animate-scale-in" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Cabeçalho do Modal */}
-            <div className="whatsapp-modal-header">
-              <div className="whatsapp-header-left">
-                <div className="whatsapp-icon-brand">
-                  <MessageCircle size={22} color="#25d366" />
-                </div>
-                <div>
-                  <div className="whatsapp-title-line">
-                    <h3>Central de Despacho WhatsApp CCO</h3>
-                    <span className="whatsapp-api-ready-badge">
-                      <Zap size={11} />
-                      <span>Pronto p/ API Gateway</span>
-                    </span>
-                  </div>
-                  <p className="whatsapp-subtitle">
-                    Condutor: <strong>{whatsappModalData.vehicle.motorista_vinculado || 'Condutor Titular'}</strong> • Veículo: <strong>{whatsappModalData.vehicle.placa}</strong> ({whatsappModalData.vehicle.prefixo || 'Frota'})
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setWhatsappModalData(null)}
-                title="Fechar janela"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Feedback de Sucesso da API */}
-            {whatsappModalData.apiSuccess && (
-              <div className="whatsapp-api-success-banner animate-fade-in">
-                <CheckCircle2 size={16} color="#10b981" />
-                <span>{whatsappModalData.apiSuccess}</span>
-              </div>
-            )}
-
-            {/* Corpo do Modal: 2 Colunas */}
-            <div className="whatsapp-modal-grid">
-              {/* Coluna 1: Templates & Gatilhos Dinâmicos */}
-              <div className="whatsapp-col-templates">
-                {/* Campo de Telefone */}
-                <div className="input-group-custom" style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Smartphone size={14} color="#25d366" />
-                      Número de WhatsApp do Condutor:
-                    </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>com DDD</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="(11) 99999-9999"
-                    value={whatsappModalData.phone}
-                    onChange={(e) => setWhatsappModalData({ ...whatsappModalData, phone: e.target.value })}
-                    style={{ background: 'rgba(0, 0, 0, 0.4)', borderColor: 'rgba(37, 211, 102, 0.3)' }}
-                    id="input-driver-whatsapp"
-                  />
-                </div>
-
-                {/* Lista de Modelos Pré-definidos */}
-                <div className="templates-selector-block">
-                  <div className="section-label-row">
-                    <span className="section-title-lbl">Modelos de Mensagens Relevantes</span>
-                    <span className="section-count-tag">{WHATSAPP_TEMPLATES.length} modelos</span>
-                  </div>
-
-                  <div className="whatsapp-templates-list">
-                    {WHATSAPP_TEMPLATES.map((tpl) => (
-                      <div
-                        key={tpl.id}
-                        className={`whatsapp-template-card ${whatsappModalData.selectedTemplateId === tpl.id ? 'active' : ''}`}
-                        onClick={() => handleSelectTemplate(tpl)}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div className="tpl-card-top">
-                          <span className="tpl-badge">{tpl.badge}</span>
-                          <span className="tpl-category">{tpl.category}</span>
-                        </div>
-                        <h5 className="tpl-title">{tpl.title}</h5>
-                        <p className="tpl-desc">{tpl.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Gatilhos Funcionais & Variáveis Dinâmicas */}
-                <div className="dynamic-triggers-block">
-                  <div className="section-label-row">
-                    <span className="section-title-lbl">Gatilhos Funcionais Rápidos</span>
-                    <span className="section-helper-tip">Clique para inserir no texto</span>
-                  </div>
-
-                  <div className="trigger-chips-cloud">
-                    {DYNAMIC_TRIGGERS.map((trig) => (
-                      <button
-                        key={trig.tag}
-                        type="button"
-                        className="trigger-chip-btn"
-                        onClick={() => handleInsertTrigger(trig)}
-                        title={`Inserir ${trig.desc}`}
-                      >
-                        <span>+ {trig.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Coluna 2: Editor Manual & Live Preview */}
-              <div className="whatsapp-col-editor">
-                <div className="section-label-row">
-                  <span className="section-title-lbl">Mensagem Personalizada</span>
-                  <span className="editor-char-counter">
-                    {(whatsappModalData.messageText || '').length} caracteres
-                  </span>
-                </div>
-
-                {/* Textarea Manual */}
-                <textarea
-                  className="whatsapp-textarea"
-                  rows={8}
-                  value={whatsappModalData.messageText}
-                  onChange={(e) => setWhatsappModalData({ ...whatsappModalData, messageText: e.target.value })}
-                  placeholder="Digite ou personalize o texto a ser enviado ao condutor..."
-                  id="textarea-whatsapp-message"
-                />
-
-                <div className="whatsapp-formatting-hint">
-                  <span>Dica: Use <strong>*negrito*</strong>, <em>_itálico_</em> e quebras de linha para formatação.</span>
-                </div>
-
-                {/* Pré-visualização Real no Estilo WhatsApp */}
-                <div className="whatsapp-live-preview-box">
-                  <div className="preview-box-header">
-                    <span className="preview-tag">Pré-Visualização do WhatsApp</span>
-                    <span className="preview-driver-hint">{whatsappModalData.vehicle.motorista_vinculado || 'Condutor'}</span>
-                  </div>
-
-                  <div className="whatsapp-chat-canvas">
-                    <div className="whatsapp-chat-bubble animate-fade-in">
-                      <p className="bubble-text">{whatsappModalData.messageText || 'Nenhuma mensagem digitada...'}</p>
-                      <div className="bubble-meta">
-                        <span className="bubble-time">
-                          {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <span className="bubble-checks">✓✓</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Rodapé de Ações do Modal */}
-            <div className="whatsapp-modal-footer">
-              <div className="footer-left-info">
-                <span className="footer-gateway-note">
-                  <Zap size={13} color="#25d366" />
-                  <span>Gateway preparado para integração de API (Z-API, Evolution, Twilio ou Ambipar CCO)</span>
-                </span>
-              </div>
-
-              <div className="footer-buttons-cluster">
-                <button
-                  type="button"
-                  className="btn-secondary btn-icon-text"
-                  onClick={handleCopyMessage}
-                  title="Copiar mensagem para a área de transferência"
-                >
-                  {whatsappModalData.copied ? (
-                    <>
-                      <Check size={16} color="#10b981" />
-                      <span style={{ color: '#10b981' }}>Copiado!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={16} />
-                      <span>Copiar Texto</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  className="btn-secondary btn-icon-text"
-                  onClick={handleDispatchViaApi}
-                  disabled={whatsappModalData.apiDispatching}
-                  title="Testar disparo via API direta do sistema"
-                  style={{ borderColor: 'rgba(37, 211, 102, 0.4)' }}
-                >
-                  <SendHorizontal size={16} className={whatsappModalData.apiDispatching ? 'animate-spin' : ''} />
-                  <span>{whatsappModalData.apiDispatching ? 'Disparando via API...' : 'Disparar via API'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="whatsapp-send-primary btn-icon-text"
-                  onClick={handleSendWhatsAppWeb}
-                  id="btn-confirm-send-whatsapp"
-                >
-                  <Send size={16} />
-                  <span>Enviar pelo WhatsApp</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+
