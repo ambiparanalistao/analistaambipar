@@ -38,6 +38,9 @@ SELECT set_config('order_test.id',(public.maintenance_order_command('12000000-00
 '{"vehicle_id":"33000000-0000-4000-8000-000000000001","partner_id":"43000000-0000-4000-8000-000000000001","tipo":"corretiva","prioridade":"alta","descricao_problema":"Freio","km_abertura":1000}')->>'id'),true);
 SELECT order_test.assert((SELECT numero LIKE 'OS-%-0001' AND version=1 FROM public.maintenance_orders WHERE id=current_setting('order_test.id')::uuid),'automatic number');
 SELECT order_test.assert((SELECT status='Manutenção' FROM public.veiculos WHERE placa='OSFX001'),'opening marks maintenance');
+SELECT set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000006',true);
+SELECT order_test.expect_error($cmd$UPDATE public.veiculos SET status='Disponível' WHERE placa='OSFX001'$cmd$,'23514');
+SELECT set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000001',true);
 SELECT order_test.expect_error($cmd$UPDATE public.maintenance_orders SET status='encerrada'$cmd$,'42501');
 SELECT order_test.expect_error($cmd$SELECT public.maintenance_order_command('12000000-0000-4000-8000-000000000002','create','{}')$cmd$,'42501');
 SELECT order_test.act('item_save','{"tipo":"peca","descricao":"Freio","quantidade":2,"valor_unitario":100}');

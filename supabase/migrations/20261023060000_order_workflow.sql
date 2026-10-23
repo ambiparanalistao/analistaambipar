@@ -152,7 +152,7 @@ BEGIN
   IF NOT(full_access OR r IN ('supervisor','operador_logistico')) THEN RAISE EXCEPTION 'Abertura não autorizada.' USING ERRCODE='42501';END IF;
   SELECT * INTO v FROM public.veiculos WHERE id=(payload->>'vehicle_id')::uuid AND company_id=c FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Selecione um veículo salvo nesta empresa.';END IF;
-  IF v.status IN ('Em Viagem','Bloqueado') THEN RAISE EXCEPTION 'Veículo em viagem ou bloqueado não pode abrir OS.';END IF;
+  IF v.status='Em Viagem' THEN RAISE EXCEPTION 'Finalize a viagem antes de abrir a OS.';END IF;
   SELECT * INTO partner FROM public.maintenance_partners WHERE id=(payload->>'partner_id')::uuid AND company_id=c;
   IF NOT FOUND OR partner.status<>'ativo' THEN RAISE EXCEPTION 'Selecione uma oficina ativa desta empresa.';END IF;
   IF nullif(payload->>'driver_id','') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.motoristas WHERE id=(payload->>'driver_id')::uuid AND company_id=c) THEN RAISE EXCEPTION 'Motorista não pertence à empresa.';END IF;
@@ -185,7 +185,7 @@ BEGIN
   IF NOT(full_access OR r='supervisor') THEN RAISE EXCEPTION 'Decisão de orçamento não autorizada.' USING ERRCODE='42501';END IF;
   IF payload->>'decisao' NOT IN ('aprovado','reprovado') THEN RAISE EXCEPTION 'Decisão inválida.';END IF;
   IF NOT EXISTS(SELECT 1 FROM public.maintenance_order_items WHERE order_id=o.id AND company_id=c) THEN RAISE EXCEPTION 'Inclua os itens do orçamento.';END IF;
-  SELECT limite_aprovacao_supervisor INTO limit_value FROM public.maintenance_settings WHERE company_id=c;
+  SELECT limite_aprovacao_supervisor INTO limit_value FROM public.maintenance_settings WHERE company_id=c FOR SHARE;
   IF r='supervisor' AND payload->>'decisao'='aprovado' AND o.valor_total>coalesce(limit_value,5000) THEN RAISE EXCEPTION 'Orçamento acima do limite do Supervisor.' USING ERRCODE='42501';END IF;
   UPDATE public.maintenance_orders SET orcamento_status=payload->>'decisao',decisao_por=actor,decisao_em=clock_timestamp(),
    aprovado_por=CASE WHEN payload->>'decisao'='aprovado' THEN actor END,aprovado_em=CASE WHEN payload->>'decisao'='aprovado' THEN clock_timestamp() END,
@@ -333,5 +333,17 @@ BEGIN
   RETURN NEW;
 END $$;
 REVOKE ALL ON FUNCTION maintenance_private.actor_and_paths() FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION maintenance_private.prevent_dispatch()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$
+BEGIN
+  IF NEW.status IN ('Disponível','Em Viagem') AND EXISTS(
+    SELECT 1 FROM public.maintenance_orders o WHERE o.company_id=NEW.company_id AND o.vehicle_id=NEW.id AND o.status NOT IN ('encerrada','cancelada')
+  ) THEN RAISE EXCEPTION 'Vehicle has an active maintenance order and cannot be released or dispatched' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION maintenance_private.prevent_dispatch() FROM PUBLIC;
 
 COMMIT;
