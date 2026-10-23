@@ -1,3 +1,4 @@
+import DriverBindingPanel from './maintenance/driver/DriverBindingPanel';
 import React, { useState, useEffect } from 'react';
 import { 
   UserCheck, 
@@ -180,7 +181,7 @@ export const getCountdown = (dateStr) => {
   };
 };
 
-export default function DriversModule({ user }) {
+export default function DriversModule({ user, maintenanceAccess }) {
   // Controle de visualização: 'list' (Quadro Geral) ou 'form' (Formulário Amplo na Página, sem pop-up)
   const [viewMode, setViewMode] = useState('list');
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' (Cards Operacionais VIP) ou 'table' (Tabela Executiva)
@@ -492,6 +493,7 @@ export default function DriversModule({ user }) {
 
   return (
     <div className="module-view animate-fade-in" id="drivers-module-root">
+      {['admin_geral','admin_empresa'].includes(maintenanceAccess?.role)&&<DriverBindingPanel access={maintenanceAccess}/>}
       {/* ============================================================== */}
       {/* CABEÇALHO DO MÓDULO */}
       {/* ============================================================== */}

@@ -1,3 +1,4 @@
+import OccurrencesPage from './occurrences/OccurrencesPage';
 import OrdersPage from './orders/OrdersPage';
 import React,{useEffect,useState} from 'react';
 import {PARTNER_TYPES,STATUS_LABELS,ROLE_LABELS,readableRole,maskPhone} from '../../utils/partnerValidation';
@@ -56,6 +57,6 @@ export default function MaintenanceModule({access,page}){
  <div className="mp-row mp-between mp-context"><div><strong>Manutenção</strong>{access.canRead&&<span> · {ROLE_LABELS[access.role]}{page!=='maintenance_orders'&&!access.canWrite?' · Somente leitura':''}</span>}</div><button onClick={toggle}>Modo {theme==='dark'?'claro':'escuro'}</button></div>
  {access.loading?<p role="status">Verificando acesso…</p>:access.error?<div role="alert" className="mp-card"><p>{access.error}</p><button onClick={access.reload}>Tentar novamente</button></div>:!access.canRead?<div className="mp-card" role="alert"><h2>Acesso restrito</h2><p>Este módulo exige um usuário autenticado e um perfil autorizado na empresa.</p></div>:<>
  <label className="mp-field mp-company">Empresa<select aria-label="Empresa" value={access.companyId} disabled={locked} onChange={e=>access.selectCompany(e.target.value)}>{access.memberships.filter(m=>readableRole(m.roleName)).map(m=><option key={m.company_id} value={m.company_id}>{m.nome}</option>)}</select></label>
- {page==='maintenance_orders'?<OrdersPage key={access.companyId} access={access} setLocked={setLocked}/>:page==='maintenance_partners'?<PartnersPage key={access.companyId} access={access} theme={theme} setLocked={setLocked}/>:<section className="mp-card mp-empty"><h2>{MAINTENANCE_PAGES.find(p=>p.id===page)?.label||'Manutenção'}</h2><p>Em breve</p><p className="mp-muted">Disponível em uma próxima etapa do módulo.</p></section>}</>}
+ {page==='maintenance_occurrences'?<OccurrencesPage key={access.companyId} access={access} setLocked={setLocked}/>:page==='maintenance_orders'?<OrdersPage key={access.companyId} access={access} setLocked={setLocked}/>:page==='maintenance_partners'?<PartnersPage key={access.companyId} access={access} theme={theme} setLocked={setLocked}/>:<section className="mp-card mp-empty"><h2>{MAINTENANCE_PAGES.find(p=>p.id===page)?.label||'Manutenção'}</h2><p>Em breve</p><p className="mp-muted">Disponível em uma próxima etapa do módulo.</p></section>}</>}
  </div>;
 }

@@ -1,3 +1,4 @@
+import VehicleMaintenancePanel from './maintenance/vehicles/VehicleMaintenancePanel';
 import {persistFleetVehicle} from '../services/fleetPersistence';
 import React, { useState, useEffect } from 'react';
 import { 
@@ -414,7 +415,8 @@ export function resolveMessageTags(templateText, vehicle) {
     .replace(/{HORA_ATUAL}/g, horaStr);
 }
 
-export default function VehiclesModule({ user, companyId, onNavigateDrivers }) {
+export default function VehiclesModule({ user, companyId, maintenanceAccess, onNavigateDrivers }) {
+  const [maintenanceVehicle,setMaintenanceVehicle]=useState(null);
   const [viewMode, setViewMode] = useState('list'); // 'list' ou 'form'
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' ou 'table'
   const [searchTerm, setSearchTerm] = useState('');
@@ -787,6 +789,7 @@ export default function VehiclesModule({ user, companyId, onNavigateDrivers }) {
     return matchesSearch && matchesStatus;
   });
 
+  if(maintenanceVehicle)return <VehicleMaintenancePanel access={maintenanceAccess} vehicleId={maintenanceVehicle.id} onBack={()=>setMaintenanceVehicle(null)}/>;
   return (
     <div className="module-page-container animate-fade-in" id="vehicles-module-root">
       {/* ============================================================== */}
@@ -1268,6 +1271,7 @@ export default function VehiclesModule({ user, companyId, onNavigateDrivers }) {
         /* MODO 3: CENTRAL DE DESPACHO WHATSAPP CCO - TELA COMPLETA       */
         /* ============================================================== */
         <WhatsAppDispatchWorkspace
+          companyId={companyId}
           vehicle={dispatchVehicle}
           onBack={handleCloseWhatsAppWorkspace}
           onUpdateVehiclePhone={handleSaveDriverPhone}
@@ -1718,6 +1722,7 @@ export default function VehiclesModule({ user, companyId, onNavigateDrivers }) {
                           {vehicle.motorista_vinculado || 'Nenhum condutor fixo alocado'}
                         </strong>
                       </div>
+                      {maintenanceAccess?.canRead&&<button type="button" onClick={()=>setMaintenanceVehicle(vehicle)}>Ficha · Manutenção</button>}
                       <button
                         type="button"
                         onClick={() => handleOpenWhatsAppWorkspace(vehicle)}
@@ -1906,6 +1911,7 @@ export default function VehiclesModule({ user, companyId, onNavigateDrivers }) {
                             <strong style={{ fontSize: '0.82rem', color: '#ffffff' }}>
                               {vehicle.motorista_vinculado || 'Não vinculado'}
                             </strong>
+                            {maintenanceAccess?.canRead&&<button type="button" onClick={()=>setMaintenanceVehicle(vehicle)}>Ficha · Manutenção</button>}
                             <button
                               type="button"
                               onClick={() => handleOpenWhatsAppWorkspace(vehicle)}
