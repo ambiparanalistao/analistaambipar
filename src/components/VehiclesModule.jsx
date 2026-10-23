@@ -38,7 +38,12 @@ import {
   Shield,
   CheckSquare,
   FileText,
-  Upload
+  Upload,
+  X,
+  Filter,
+  TrendingUp,
+  BarChart3,
+  ChevronRight
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
@@ -580,12 +585,28 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
     return `https://wa.me/${fullNumber}`;
   };
 
-  // KPIs da Frota
+  // KPIs da Frota & Telemetria Executiva CCO
   const totalVehicles = vehicles.length;
   const availableCount = vehicles.filter(v => v.status === 'Disponível').length;
   const tripCount = vehicles.filter(v => v.status === 'Em Viagem').length;
   const maintenanceCount = vehicles.filter(v => v.status === 'Manutenção').length;
   const blockedCount = vehicles.filter(v => v.status === 'Bloqueado').length;
+
+  const readyVehiclesCount = availableCount + tripCount;
+  const readinessRate = totalVehicles > 0 
+    ? Math.round((readyVehiclesCount / totalVehicles) * 100) 
+    : 100;
+  const totalCapacityTons = vehicles.reduce((sum, v) => sum + (parseFloat(v.capacidade_peso_ton) || 0), 0);
+  const totalVolumeM3 = vehicles.reduce((sum, v) => sum + (parseFloat(v.capacidade_volume_m3) || 0), 0);
+  const totalKmRodados = vehicles.reduce((sum, v) => sum + (parseInt(v.km_atual, 10) || 0), 0);
+
+  const handleKpiCardClick = (statusTarget) => {
+    if (statusFilter === statusTarget) {
+      setStatusFilter('Todos');
+    } else {
+      setStatusFilter(statusTarget);
+    }
+  };
 
   // Filtros aplicados
   const filteredVehicles = vehicles.filter(v => {
@@ -644,9 +665,10 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 type="button"
                 className="btn-primary btn-icon-text"
                 onClick={handleOpenCreateForm}
+                id="btn-open-create-vehicle"
               >
                 <Plus size={18} />
-                <span>+ Homologar Novo Veículo</span>
+                <span>Homologar Novo Veículo</span>
               </button>
             </>
           ) : (
@@ -1081,10 +1103,84 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
         /* ============================================================== */
         <>
           {/* ========================================================== */}
-          {/* 5 CARDS EXECUTIVOS DE KPIS (HORIZONTALMENTE DISTRIBUÍDOS)   */}
+          {/* COCKPIT DE TELEMETRIA & PRONTIDÃO OPERACIONAL DA FROTA     */}
+          {/* ========================================================== */}
+          <div className="fleet-readiness-widget animate-fade-in">
+            <div className="readiness-main-col">
+              <div className="readiness-header">
+                <div className="readiness-title-wrap">
+                  <span className="readiness-beacon"></span>
+                  <span className="readiness-kicker">Torre de Operações & CCO Ambipar</span>
+                </div>
+                <div className="readiness-percentage-wrap">
+                  <span className="readiness-val">{readinessRate}%</span>
+                  <span className="readiness-lbl">Prontidão da Frota</span>
+                </div>
+              </div>
+              
+              <div className="readiness-progress-track">
+                <div 
+                  className="readiness-progress-fill" 
+                  style={{ width: `${readinessRate}%` }}
+                ></div>
+              </div>
+              
+              <div className="readiness-subline">
+                <span>
+                  <strong>{readyVehiclesCount} de {totalVehicles}</strong> veículos homologados aptos para atendimento imediato ou em trânsito com carga ativa.
+                </span>
+              </div>
+            </div>
+
+            <div className="readiness-metrics-grid">
+              <div className="readiness-metric-item">
+                <div className="metric-icon-box cyan">
+                  <Gauge size={16} />
+                </div>
+                <div className="metric-info-col">
+                  <span className="metric-label">Capacidade PBTC</span>
+                  <strong className="metric-value">{totalCapacityTons.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} t</strong>
+                  <span className="metric-sublabel">Carga útil combinada</span>
+                </div>
+              </div>
+
+              <div className="readiness-metric-item">
+                <div className="metric-icon-box emerald">
+                  <Layers size={16} />
+                </div>
+                <div className="metric-info-col">
+                  <span className="metric-label">Volume de Carga</span>
+                  <strong className="metric-value">{totalVolumeM3.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} m³</strong>
+                  <span className="metric-sublabel">Tanques, silos e baús</span>
+                </div>
+              </div>
+
+              <div className="readiness-metric-item">
+                <div className="metric-icon-box purple">
+                  <TrendingUp size={16} />
+                </div>
+                <div className="metric-info-col">
+                  <span className="metric-label">Quilometragem Total</span>
+                  <strong className="metric-value">{totalKmRodados.toLocaleString('pt-BR')} km</strong>
+                  <span className="metric-sublabel">Odômetros monitorados</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================== */}
+          {/* 5 CARDS EXECUTIVOS DE KPIS INTERATIVOS (CLIQUE PARA FILTRAR)*/}
           {/* ========================================================== */}
           <div className="kpi-grid">
-            <div className="kpi-card">
+            {/* Card 1: Total */}
+            <div 
+              className={`kpi-card interactive-kpi ${statusFilter === 'Todos' ? 'kpi-active-all' : ''}`}
+              onClick={() => handleKpiCardClick('Todos')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleKpiCardClick('Todos')}
+              title="Clique para exibir todos os veículos da frota"
+            >
               <div className="kpi-top">
                 <span className="kpi-title">Frota Total Cadastrada</span>
                 <div className="kpi-icon-wrap emerald">
@@ -1094,13 +1190,28 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
               <div className="kpi-main-val">
                 <span className="val-number">{totalVehicles}</span>
                 <span className="unit-suffix">veículos</span>
+                <span className="kpi-share-chip all">100% frota</span>
               </div>
               <div className="kpi-footer-status">
                 <span>Veículos & implementos ativos</span>
+                {statusFilter === 'Todos' ? (
+                  <span className="kpi-badge-selected"><Check size={10} /> Ativo</span>
+                ) : (
+                  <span className="kpi-badge-hover"><Filter size={10} /> Filtrar</span>
+                )}
               </div>
+              <div className="kpi-bottom-glow all"></div>
             </div>
 
-            <div className="kpi-card">
+            {/* Card 2: Disponíveis */}
+            <div 
+              className={`kpi-card interactive-kpi ${statusFilter === 'Disponível' ? 'kpi-active-emerald' : ''}`}
+              onClick={() => handleKpiCardClick('Disponível')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleKpiCardClick('Disponível')}
+              title="Clique para filtrar apenas veículos disponíveis no pátio"
+            >
               <div className="kpi-top">
                 <span className="kpi-title">Disponíveis no Pátio</span>
                 <div className="kpi-icon-wrap forest">
@@ -1108,15 +1219,32 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 </div>
               </div>
               <div className="kpi-main-val">
-                <span className="val-number" style={{ color: '#10b981' }}>{availableCount}</span>
+                <span className="val-number text-emerald">{availableCount}</span>
                 <span className="unit-suffix">liberados</span>
+                <span className="kpi-share-chip emerald">
+                  {totalVehicles > 0 ? `${Math.round((availableCount / totalVehicles) * 100)}%` : '0%'}
+                </span>
               </div>
               <div className="kpi-footer-status">
                 <span>Prontos para escala imediata CCO</span>
+                {statusFilter === 'Disponível' ? (
+                  <span className="kpi-badge-selected emerald"><Check size={10} /> Ativo</span>
+                ) : (
+                  <span className="kpi-badge-hover"><Filter size={10} /> Filtrar</span>
+                )}
               </div>
+              <div className="kpi-bottom-glow emerald"></div>
             </div>
 
-            <div className="kpi-card">
+            {/* Card 3: Em Viagem */}
+            <div 
+              className={`kpi-card interactive-kpi ${statusFilter === 'Em Viagem' ? 'kpi-active-cyan' : ''}`}
+              onClick={() => handleKpiCardClick('Em Viagem')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleKpiCardClick('Em Viagem')}
+              title="Clique para filtrar veículos em viagem/operação"
+            >
               <div className="kpi-top">
                 <span className="kpi-title">Em Operação / Viagem</span>
                 <div className="kpi-icon-wrap cyan">
@@ -1124,15 +1252,32 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 </div>
               </div>
               <div className="kpi-main-val">
-                <span className="val-number" style={{ color: '#06b6d4' }}>{tripCount}</span>
+                <span className="val-number text-cyan">{tripCount}</span>
                 <span className="unit-suffix">em rota</span>
+                <span className="kpi-share-chip cyan">
+                  {totalVehicles > 0 ? `${Math.round((tripCount / totalVehicles) * 100)}%` : '0%'}
+                </span>
               </div>
               <div className="kpi-footer-status">
                 <span>Com manifesto de viagem ativo</span>
+                {statusFilter === 'Em Viagem' ? (
+                  <span className="kpi-badge-selected cyan"><Check size={10} /> Ativo</span>
+                ) : (
+                  <span className="kpi-badge-hover"><Filter size={10} /> Filtrar</span>
+                )}
               </div>
+              <div className="kpi-bottom-glow cyan"></div>
             </div>
 
-            <div className="kpi-card">
+            {/* Card 4: Manutenção */}
+            <div 
+              className={`kpi-card interactive-kpi ${statusFilter === 'Manutenção' ? 'kpi-active-orange' : ''}`}
+              onClick={() => handleKpiCardClick('Manutenção')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleKpiCardClick('Manutenção')}
+              title="Clique para filtrar veículos em manutenção preventiva"
+            >
               <div className="kpi-top">
                 <span className="kpi-title">Manutenção Preventiva</span>
                 <div className="kpi-icon-wrap orange">
@@ -1140,15 +1285,32 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 </div>
               </div>
               <div className="kpi-main-val">
-                <span className="val-number" style={{ color: '#f59e0b' }}>{maintenanceCount}</span>
+                <span className="val-number text-amber">{maintenanceCount}</span>
                 <span className="unit-suffix">em revisão</span>
+                <span className="kpi-share-chip amber">
+                  {totalVehicles > 0 ? `${Math.round((maintenanceCount / totalVehicles) * 100)}%` : '0%'}
+                </span>
               </div>
               <div className="kpi-footer-status">
-                <span>Oficina central e testes hidrostáticos</span>
+                <span>Oficina central e revisões</span>
+                {statusFilter === 'Manutenção' ? (
+                  <span className="kpi-badge-selected amber"><Check size={10} /> Ativo</span>
+                ) : (
+                  <span className="kpi-badge-hover"><Filter size={10} /> Filtrar</span>
+                )}
               </div>
+              <div className="kpi-bottom-glow orange"></div>
             </div>
 
-            <div className="kpi-card">
+            {/* Card 5: Bloqueados / Alertas */}
+            <div 
+              className={`kpi-card interactive-kpi ${statusFilter === 'Bloqueado' ? 'kpi-active-danger' : ''}`}
+              onClick={() => handleKpiCardClick('Bloqueado')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleKpiCardClick('Bloqueado')}
+              title="Clique para filtrar veículos com bloqueio ou pendência regulatória"
+            >
               <div className="kpi-top">
                 <span className="kpi-title">Bloqueados / Validade</span>
                 <div className="kpi-icon-wrap danger">
@@ -1156,14 +1318,23 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 </div>
               </div>
               <div className="kpi-main-val">
-                <span className="val-number" style={{ color: blockedCount > 0 ? '#f43f5e' : '#10b981' }}>
+                <span className={`val-number ${blockedCount > 0 ? 'text-rose' : 'text-emerald'}`}>
                   {blockedCount}
                 </span>
                 <span className="unit-suffix">{blockedCount > 0 ? 'alertas' : 'em dia'}</span>
+                <span className={`kpi-share-chip ${blockedCount > 0 ? 'rose' : 'emerald'}`}>
+                  {blockedCount > 0 ? `${blockedCount} pendente` : '100% regular'}
+                </span>
               </div>
               <div className="kpi-footer-status">
                 <span>Vistorias CIPP / CIV / Tacógrafo</span>
+                {statusFilter === 'Bloqueado' ? (
+                  <span className="kpi-badge-selected rose"><Check size={10} /> Ativo</span>
+                ) : (
+                  <span className="kpi-badge-hover"><Filter size={10} /> Filtrar</span>
+                )}
               </div>
+              <div className="kpi-bottom-glow danger"></div>
             </div>
           </div>
 
@@ -1171,26 +1342,61 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
           {/* BARRA DE COMANDO: BUSCA, FILTROS RÁPIDOS & LAYOUT SWITCHER */}
           {/* ========================================================== */}
           <div className="filter-panel">
-            <div className="search-bar">
-              <Search size={18} />
-              <input
-                type="text"
-                placeholder="Pesquisar por Placa (ex: AMB-4K89), Prefixo, Modelo, Rota GPS ou Motorista..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="search-bar-wrapper">
+              <div className="search-bar">
+                <Search size={18} className="search-icon-dim" />
+                <input
+                  type="text"
+                  placeholder="Pesquisar por Placa (ex: AMB-4K89), Prefixo, Modelo, Tipo ou Condutor..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  id="input-fleet-search"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    className="search-clear-btn"
+                    onClick={() => setSearchTerm('')}
+                    title="Limpar texto pesquisado"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              <div className="filter-results-counter">
+                <span>Exibindo <strong>{filteredVehicles.length}</strong> de {totalVehicles} ativos</span>
+                {(statusFilter !== 'Todos' || searchTerm) && (
+                  <button
+                    type="button"
+                    className="btn-clear-all-filters"
+                    onClick={() => { setStatusFilter('Todos'); setSearchTerm(''); }}
+                    title="Remover todos os filtros"
+                  >
+                    <X size={12} />
+                    <span>Limpar Filtros</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="filter-actions-row">
               <div className="status-chips-filter">
-                {['Todos', 'Disponível', 'Em Viagem', 'Manutenção', 'Bloqueado'].map((status) => (
+                {[
+                  { id: 'Todos', label: 'Todos', count: totalVehicles },
+                  { id: 'Disponível', label: 'Disponíveis', count: availableCount },
+                  { id: 'Em Viagem', label: 'Em Viagem', count: tripCount },
+                  { id: 'Manutenção', label: 'Manutenção', count: maintenanceCount },
+                  { id: 'Bloqueado', label: 'Bloqueados', count: blockedCount }
+                ].map((tab) => (
                   <button
-                    key={status}
+                    key={tab.id}
                     type="button"
-                    className={`status-chip-btn ${statusFilter === status ? 'active' : ''}`}
-                    onClick={() => setStatusFilter(status)}
+                    className={`status-chip-btn ${statusFilter === tab.id ? 'active' : ''}`}
+                    onClick={() => setStatusFilter(tab.id)}
                   >
-                    {status}
+                    <span>{tab.label}</span>
+                    <span className="chip-counter-badge">{tab.count}</span>
                   </button>
                 ))}
               </div>
@@ -1201,6 +1407,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                   className={`view-mode-btn ${displayLayout === 'cards' ? 'active' : ''}`}
                   onClick={() => setDisplayLayout('cards')}
                   title="Visualização em Cockpit de Cards"
+                  id="btn-view-cards"
                 >
                   <LayoutGrid size={15} />
                   <span>Cockpit</span>
@@ -1210,6 +1417,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                   className={`view-mode-btn ${displayLayout === 'table' ? 'active' : ''}`}
                   onClick={() => setDisplayLayout('table')}
                   title="Visualização em Tabela Executiva"
+                  id="btn-view-table"
                 >
                   <List size={15} />
                   <span>Tabela</span>
