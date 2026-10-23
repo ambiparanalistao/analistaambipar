@@ -36,10 +36,13 @@ import {
   List,
   Clock,
   Shield,
-  CheckSquare
+  CheckSquare,
+  FileText,
+  Upload
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
+import { readCrlvFile } from '../utils/crlvPdfReader';
 
 export const VEHICLE_STATUS_OPTIONS = [
   { 
@@ -312,6 +315,13 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
   const [editingId, setEditingId] = useState(null);
   const [feedback, setFeedback] = useState(null);
 
+  // Estados para importação automática via CRLV-e (Processamento em RAM)
+  const [crlvLoading, setCrlvLoading] = useState(false);
+  const [crlvProgress, setCrlvProgress] = useState('');
+  const [crlvSuccess, setCrlvSuccess] = useState(null);
+  const [crlvError, setCrlvError] = useState(null);
+  const crlvFileInputRef = React.useRef(null);
+
   // Inicializa veículos a partir do localStorage ou da frota flagship Ambipar
   const [vehicles, setVehicles] = useState(() => {
     try {
@@ -414,6 +424,9 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
   const handleOpenCreateForm = () => {
     setEditingId(null);
     setFormData(initialForm);
+    setCrlvSuccess(null);
+    setCrlvError(null);
+    setCrlvProgress('');
     setViewMode('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -427,8 +440,73 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       km_atual: vehicle.km_atual || '',
       proxima_revisao_km: vehicle.proxima_revisao_km || ''
     });
+    setCrlvSuccess(null);
+    setCrlvError(null);
+    setCrlvProgress('');
     setViewMode('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /**
+   * Processa o CRLV (PDF ou Imagem) 100% em memória RAM
+   * O documento NÃO é armazenado, apenas os campos são extraídos e aplicados
+   */
+  const handleCrlvFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCrlvLoading(true);
+    setCrlvProgress('Lendo CRLV em memória RAM...');
+    setCrlvError(null);
+    setCrlvSuccess(null);
+
+    try {
+      const data = await readCrlvFile(file, (msg) => {
+        setCrlvProgress(msg);
+      });
+
+      const extractedCount = [
+        data.placa, data.renavam, data.chassi, data.marca_modelo, 
+        data.ano_fabricacao, data.capacidade_peso_ton, data.validade_crlv
+      ].filter(Boolean).length;
+
+      if (extractedCount === 0) {
+        throw new Error('Não foi possível identificar dados do veículo no documento. Verifique se o arquivo enviado é um CRLV legível.');
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        placa: data.placa || prev.placa,
+        renavam: data.renavam || prev.renavam,
+        chassi: data.chassi || prev.chassi,
+        marca_modelo: data.marca_modelo || prev.marca_modelo,
+        ano_fabricacao: data.ano_fabricacao || prev.ano_fabricacao,
+        ano_modelo: data.ano_modelo || prev.ano_modelo || data.ano_fabricacao || prev.ano_fabricacao,
+        tipo: data.tipo || prev.tipo,
+        combustivel: data.combustivel || prev.combustivel,
+        capacidade_peso_ton: data.capacidade_peso_ton || prev.capacidade_peso_ton,
+        validade_crlv: data.validade_crlv || prev.validade_crlv,
+        observacoes: data.observacoes 
+          ? (prev.observacoes && !prev.observacoes.includes('CRLV') ? `${prev.observacoes} | ${data.observacoes}` : data.observacoes)
+          : prev.observacoes
+      }));
+
+      setCrlvSuccess({
+        placa: data.placa,
+        marca_modelo: data.marca_modelo,
+        renavam: data.renavam,
+        chassi: data.chassi,
+        ano: data.ano_modelo || data.ano_fabricacao,
+        validade: data.validade_crlv
+      });
+    } catch (err) {
+      console.error('Erro na extração do CRLV:', err);
+      setCrlvError(err.message || 'Falha ao processar o arquivo do CRLV.');
+    } finally {
+      setCrlvLoading(false);
+      setCrlvProgress('');
+      if (e.target) e.target.value = '';
+    }
   };
 
   const handleSubmitForm = async (e) => {
@@ -618,6 +696,93 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
               </button>
             </div>
           </div>
+
+          {/* ============================================================== */}
+          {/* BANNER DE IMPORTAÇÃO AUTOMÁTICA VIA CRLV-e (SEM ARMAZENAMENTO)  */}
+          {/* ============================================================== */}
+          <div className="crlv-smart-import-card animate-fade-in" id="crlv-import-banner">
+            <div className="crlv-import-left">
+              <div className="crlv-icon-wrap">
+                <FileText size={26} className="text-emerald" />
+              </div>
+              <div className="crlv-info-texts">
+                <div className="crlv-title-row">
+                  <h4>Importação Automática via CRLV-e (PDF ou Foto)</h4>
+                  <span className="crlv-badge-safe">
+                    <ShieldCheck size={13} />
+                    <span>Processamento em RAM (Não armazena documento)</span>
+                  </span>
+                </div>
+                <p className="crlv-desc">
+                  Envie o CRLV Digital do veículo para preencher automaticamente <strong>Placa, Chassi, Renavam, Marca/Modelo, Ano, Tipo e Licenciamento</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="crlv-import-actions">
+              <input
+                type="file"
+                ref={crlvFileInputRef}
+                onChange={handleCrlvFileUpload}
+                accept=".pdf,image/png,image/jpeg,image/jpg,image/webp"
+                style={{ display: 'none' }}
+                id="crlv-file-upload-input"
+              />
+
+              <button
+                type="button"
+                className="btn-primary btn-icon-text crlv-btn-upload"
+                onClick={() => crlvFileInputRef.current?.click()}
+                disabled={crlvLoading}
+                id="btn-upload-crlv"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {crlvLoading ? (
+                  <>
+                    <RefreshCw size={16} className="animate-spin" />
+                    <span>{crlvProgress || 'Lendo CRLV...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} />
+                    <span>Importar do CRLV</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Feedback de Alerta / Erro do CRLV */}
+          {crlvError && (
+            <div className="alert alert-error animate-fade-in" style={{ marginBottom: '1.25rem' }}>
+              <AlertTriangle size={18} />
+              <div>
+                <strong>Atenção na leitura do CRLV:</strong>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem' }}>{crlvError}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Feedback de Sucesso do CRLV com campos lidos */}
+          {crlvSuccess && (
+            <div className="crlv-success-banner animate-fade-in" style={{ marginBottom: '1.25rem' }}>
+              <div className="crlv-success-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <CheckCircle2 size={18} className="text-emerald" />
+                  <strong>Campos do CRLV extraídos e preenchidos automaticamente no formulário:</strong>
+                </div>
+                <span className="crlv-ephemeral-tag">Arquivo descartado da memória com segurança</span>
+              </div>
+              <div className="crlv-extracted-chips">
+                {crlvSuccess.placa && <span className="extracted-chip"><strong>Placa:</strong> {crlvSuccess.placa}</span>}
+                {crlvSuccess.marca_modelo && <span className="extracted-chip"><strong>Marca/Modelo:</strong> {crlvSuccess.marca_modelo}</span>}
+                {crlvSuccess.chassi && <span className="extracted-chip"><strong>Chassi:</strong> {crlvSuccess.chassi}</span>}
+                {crlvSuccess.renavam && <span className="extracted-chip"><strong>Renavam:</strong> {crlvSuccess.renavam}</span>}
+                {crlvSuccess.ano && <span className="extracted-chip"><strong>Ano:</strong> {crlvSuccess.ano}</span>}
+                {crlvSuccess.validade && <span className="extracted-chip"><strong>Validade CRLV:</strong> {crlvSuccess.validade}</span>}
+              </div>
+            </div>
+          )}
 
           <div className="driver-form-sections-grid">
             {/* Bloco 1: Identificação Civil & Placa */}
