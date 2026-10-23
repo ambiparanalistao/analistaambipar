@@ -10,6 +10,7 @@
   },
   "files": [
     "src/types/database.maintenance.ts",
-    "tests/maintenance.types.ts"
+    "tests/maintenance.types.ts",
+    "tests/partner.types.ts"
   ]
 }
