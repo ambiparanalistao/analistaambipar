@@ -1,7 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import {vehicleEvents,signedMaintenanceFile} from '../../../services/vehicleMaintenance';
 import {exportVehicleExcel,openVehiclePrint,printVehicle} from '../../../utils/maintenanceExports';
-const EVENT_TYPES={mudanca_status:'Status da OS',ocorrencia:'Ocorrência',chegada:'Chegada',saida:'Saída',comentario:'Serviços, peças e alterações',aprovacao:'Orçamento',anexo:'Anexo',preferencias:'Oficinas preferidas',vinculo_motorista:'Vínculo do motorista',alocacao:'Alocação'};
+const EVENT_TYPES={mensagem:'Comunicação',mudanca_status:'Status da OS',ocorrencia:'Ocorrência',chegada:'Chegada',saida:'Saída',comentario:'Serviços, peças e alterações',aprovacao:'Orçamento',anexo:'Anexo',preferencias:'Oficinas preferidas',vinculo_motorista:'Vínculo do motorista',alocacao:'Alocação'};
 export function EventDetails({value}){if(value==null)return null;if(Array.isArray(value))return <ul>{value.map((v,i)=><li key={i}><EventDetails value={v}/></li>)}</ul>;if(typeof value==='object')return <dl className="vm-event-fields">{Object.entries(value).filter(([k,v])=>v!=null&&!['company_id','created_by','updated_at','created_at','id','vehicle_id','order_id','partner_id'].includes(k)).map(([k,v])=><div key={k}><dt>{k.replaceAll('_',' ')}</dt><dd><EventDetails value={v}/></dd></div>)}</dl>;return <span>{String(value)}</span>;}
 export default function VehicleTimeline({company,data}){
  const [filters,setFilters]=useState({kind:'',start:'',end:''}),[page,setPage]=useState(1),[state,setState]=useState({loading:true,rows:[],error:''}),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[error,setError]=useState('');
