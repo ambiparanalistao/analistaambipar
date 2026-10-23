@@ -1,3 +1,4 @@
+import FleetBranchField from './maintenance/analytics/FleetBranchField';
 import VehicleMaintenancePanel from './maintenance/vehicles/VehicleMaintenancePanel';
 import {persistFleetVehicle} from '../services/fleetPersistence';
 import React, { useState, useEffect } from 'react';
@@ -490,6 +491,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   }, []);
 
   const initialForm = {
+    branch_id: '',
     placa: '',
     prefixo: 'AMB-',
     tipo: 'Carreta Tanque Químico (Inox 316L)',
@@ -1094,7 +1096,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
 
               <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
                 <div className="input-group-custom">
-                  <label>Odômetro Registrado (Km)</label>
+                  <FleetBranchField key={companyId} company={companyId} canWrite={maintenanceAccess?.canWrite} value={formData.branch_id} onChange={value=>setFormData(f=>({...f,branch_id:value}))}/><label>Odômetro Registrado (Km)</label>
                   <input
                     type="number"
                     placeholder="Ex: 118420"
