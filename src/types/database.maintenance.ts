@@ -13,6 +13,8 @@ export type Enums = {
 };
 
 export interface MaintenanceRows {
+  maintenance_partner_requests: {id:string;company_id:string;request_id:string;protocol:string;cnpj:string;payload:Json;status:'pendente'|'aprovada'|'recusada';submitted_at:string;consent_version:string;reviewed_at:string|null;reviewed_by:string|null;review_note:string|null;partner_id:string|null};
+  maintenance_partner_request_audit: {id:string;company_id:string;request_id:string;actor_id:string|null;action:string;occurred_at:string;note:string|null};
   companies: {
     id: string;
     company_id: string;
@@ -34,6 +36,7 @@ export interface MaintenanceRows {
     ativo: boolean;
   };
   maintenance_partners: {
+    onboarding_profile: Json;
     id: string;
     company_id: string;
     created_at: string;
@@ -483,6 +486,8 @@ export type MaintenanceDatabase = {
       maintenance_vehicle_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_order_command: { Args:{target_company:string;command:string;body:Json};Returns:Json };
       maintenance_partner_metrics: { Args: { target_company:string; target_partner:string }; Returns:{total_os:number;custo_medio:number|null}[] };
+      maintenance_partner_registration: {Args:{invite:string;command:'info'|'submit';body?:Json};Returns:Json};
+      maintenance_partner_requests_command: {Args:{target_company:string;command:'link'|'rotate'|'revoke'|'list'|'detail'|'approve'|'reject';body?:Json};Returns:Json};
       maintenance_partner_cities: { Args:{target_company:string}; Returns:{cidade:string}[] };
     };
     Enums: Enums;
@@ -528,3 +533,5 @@ export interface MaintenanceRows {
  maintenance_analytics_audit:{id:string;company_id:string;actor_id:string;action:string;entity_id:string|null;occurred_at:string;snapshot:Json};
 }
 export interface MaintenanceInserts {maintenance_branches:never;maintenance_analytics_audit:never;}
+
+export interface MaintenanceInserts {maintenance_partner_requests:never;maintenance_partner_request_audit:never;}
