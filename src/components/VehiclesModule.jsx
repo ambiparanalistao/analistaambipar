@@ -755,61 +755,63 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       {/* ============================================================== */}
       {/* CABEÇALHO DO MÓDULO & TORRE DE TELEMETRIA AO VIVO              */}
       {/* ============================================================== */}
-      <div className="module-page-header">
-        <div className="module-title-area">
-          <div className="module-icon-pill forest">
-            <Truck size={24} />
-          </div>
-          <div>
-            <div className="cockpit-meta-badges">
-              <span className="esg-fleet-chip">
-                <ShieldCheck size={12} color="#10b981" />
-                <span>Conformidade ANTT & INMETRO</span>
-              </span>
-              <span className="esg-fleet-chip">
-                <Flame size={12} color="#10b981" />
-                <span>Frota Euro 6 & Descarbonização B100</span>
-              </span>
+      {viewMode !== 'dispatch' && (
+        <div className="module-page-header">
+          <div className="module-title-area">
+            <div className="module-icon-pill forest">
+              <Truck size={24} />
             </div>
-            <h2>Gestão de Frotas & Veículos Homologados</h2>
-            <p>Controle operacional de veículos, carretas, vistorias CIPP/CIV, cronotacógrafo e conformidade regulatória ANTT/INMETRO</p>
+            <div>
+              <div className="cockpit-meta-badges">
+                <span className="esg-fleet-chip">
+                  <ShieldCheck size={12} color="#10b981" />
+                  <span>Conformidade ANTT & INMETRO</span>
+                </span>
+                <span className="esg-fleet-chip">
+                  <Flame size={12} color="#10b981" />
+                  <span>Frota Euro 6 & Descarbonização B100</span>
+                </span>
+              </div>
+              <h2>Gestão de Frotas & Veículos Homologados</h2>
+              <p>Controle operacional de veículos, carretas, vistorias CIPP/CIV, cronotacógrafo e conformidade regulatória ANTT/INMETRO</p>
+            </div>
           </div>
-        </div>
 
-        <div className="module-header-actions">
-          {viewMode === 'list' ? (
-            <>
+          <div className="module-header-actions">
+            {viewMode === 'list' ? (
+              <>
+                <button
+                  type="button"
+                  className="btn-secondary btn-icon-text"
+                  onClick={fetchSupabaseVehicles}
+                  disabled={loading}
+                >
+                  <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                  <span>Atualizar Lista</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary btn-icon-text"
+                  onClick={handleOpenCreateForm}
+                  id="btn-open-create-vehicle"
+                >
+                  <Plus size={18} />
+                  <span>Homologar Novo Veículo</span>
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
                 className="btn-secondary btn-icon-text"
-                onClick={fetchSupabaseVehicles}
-                disabled={loading}
+                onClick={() => setViewMode('list')}
               >
-                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                <span>Atualizar Lista</span>
+                <ArrowLeft size={16} />
+                <span>Voltar à Lista de Frotas</span>
               </button>
-              <button
-                type="button"
-                className="btn-primary btn-icon-text"
-                onClick={handleOpenCreateForm}
-                id="btn-open-create-vehicle"
-              >
-                <Plus size={18} />
-                <span>Homologar Novo Veículo</span>
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="btn-secondary btn-icon-text"
-              onClick={() => setViewMode('list')}
-            >
-              <ArrowLeft size={16} />
-              <span>Voltar à Lista de Frotas</span>
-            </button>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {feedback && (
         <div className={`alert alert-${feedback.type} animate-fade-in`} style={{ marginBottom: '1.25rem' }}>
