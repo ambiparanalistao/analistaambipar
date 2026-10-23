@@ -27,7 +27,7 @@ async function boot(page,role='admin_geral'){
  });
  return{queries,getPartner:()=>partner};
 }
-test('lista, filtros, tema, mapa sem chave e páginas futuras',async({page})=>{
+test('lista, filtros, tema e mapa sem chave',async({page})=>{
  const fixture=await boot(page);await page.goto('/manutencao/oficinas');const module=page.locator('.mp-module');
  await expect(module.getByRole('heading',{name:'Oficinas Parceiras'})).toBeVisible();await expect(module.getByText('Horizonte',{exact:true})).toBeVisible();
  expect(fixture.queries.some(u=>u.pathname.endsWith('maintenance_partners')&&u.searchParams.get('company_id')==='eq.'+company)).toBeTruthy();
@@ -37,7 +37,7 @@ test('lista, filtros, tema, mapa sem chave e páginas futuras',async({page})=>{
  await module.getByRole('button',{name:'Modo claro'}).click();await expect(module).toHaveAttribute('data-mp-theme','light');
  await module.getByRole('button',{name:'Mapa',exact:true}).click();await expect(module.getByText('Mapa indisponível')).toBeVisible();
  await page.setViewportSize({width:390,height:844});await expect(module.getByRole('button',{name:'Novo parceiro'})).toBeVisible();await expect.poll(async()=>(await module.boundingBox()).width).toBeGreaterThan(220);const box=await module.boundingBox();expect(box.x+box.width).toBeLessThanOrEqual(390);await page.screenshot({path:'test-results/oficinas-mobile.png',fullPage:true});
- await page.goto('/manutencao/dashboard');await expect(page.locator('.mp-module').getByText('Em breve',{exact:true})).toBeVisible();
+
 });
 test('cadastro valida obrigatórios e salva endereço manual',async({page})=>{
  await boot(page);await page.goto('/manutencao/oficinas?acao=nova');const module=page.locator('.mp-module');

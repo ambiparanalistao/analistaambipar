@@ -477,6 +477,8 @@ export type MaintenanceDatabase = {
     Views: Record<string, never>;
     Functions: {
       maintenance_plan_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
+      maintenance_branch_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
+      maintenance_analytics_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_communication_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_vehicle_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_order_command: { Args:{target_company:string;command:string;body:Json};Returns:Json };
@@ -520,3 +522,9 @@ export interface MaintenanceRows {
  maintenance_plan_audit:{id:string;company_id:string;entity_id:string;actor_id:string|null;action:string;occurred_at:string;snapshot:Json};
 }
 export interface MaintenanceInserts {maintenance_plan_vehicles:never;maintenance_plan_orders:never;maintenance_preventive_notifications:never;maintenance_plan_audit:never;}
+
+export interface MaintenanceRows {
+ maintenance_branches:{id:string;company_id:string;nome:string;ativo:boolean;version:number;created_at:string;updated_at:string;created_by:string};
+ maintenance_analytics_audit:{id:string;company_id:string;actor_id:string;action:string;entity_id:string|null;occurred_at:string;snapshot:Json};
+}
+export interface MaintenanceInserts {maintenance_branches:never;maintenance_analytics_audit:never;}
