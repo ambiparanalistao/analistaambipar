@@ -1,3 +1,5 @@
+import AvailableVehicleSelect from './maintenance/AvailableVehicleSelect';
+import {allocateVehicle} from '../services/vehicleMaintenance';
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
@@ -138,7 +140,7 @@ export const formatCEP = (val) => {
   return clean;
 };
 
-export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }) {
+export default function ClientsModule({ user, companyId, onNavigateTrips, onNavigateFleet }) {
   // Estado de Clientes Inicial: 100% LIMPO (sem nenhum dado fictício)
   const [clients, setClients] = useState(() => {
     try {
@@ -337,13 +339,15 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   };
 
   // Salvar Formulário
-  const handleSubmitForm = (e) => {
+  const handleSubmitForm = async (e) => {
     e.preventDefault();
     if (!formData.razao_social.trim() || !formData.cnpj.trim()) {
       alert('Por favor informe a Razão Social e o CNPJ da empresa.');
       return;
     }
 
+    const allocationRef=editingId||crypto.randomUUID();
+    if(formData.veiculo_alocado_placa&&(!editingId||formData.veiculo_alocado_placa!==clients.find(c=>c.id===editingId)?.veiculo_alocado_placa)){try{await allocateVehicle(companyId,formData.veiculo_alocado_placa,'client',allocationRef);}catch(e){setFeedback({type:'error',text:e.message});return;}}
     const routeName = formData.rota_nome?.trim() || 
       (formData.origem && formData.destino ? `${formData.origem} ⇄ ${formData.destino}` : '');
 
@@ -366,7 +370,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
     } else {
       const newClient = {
         ...payload,
-        id: `CLI-AMB${Math.floor(100 + Math.random() * 900)}`,
+        id: allocationRef,
         created_at: new Date().toISOString()
       };
       setClients([newClient, ...clients]);
@@ -406,8 +410,9 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   };
 
   // Confirmar Mudança Rápida de Rota
-  const handleConfirmRedirectRoute = () => {
+  const handleConfirmRedirectRoute = async () => {
     if (!clientToRedirect) return;
+    if(clientToRedirect.veiculo_alocado_placa){try{await allocateVehicle(companyId,clientToRedirect.veiculo_alocado_placa,'client',clientToRedirect.id);}catch(e){setFeedback({type:'error',text:e.message});return;}}
 
     const updated = clients.map(c => {
       if (c.id === clientToRedirect.id) {
@@ -974,13 +979,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 </div>
 
                 <div className="input-group-custom">
-                  <label>Placa do Veículo Alocado (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: AMB-4K89"
-                    value={formData.veiculo_alocado_placa}
-                    onChange={e => setFormData({ ...formData, veiculo_alocado_placa: e.target.value.toUpperCase() })}
-                  />
+                  <AvailableVehicleSelect company={companyId} value={formData.veiculo_alocado_placa} onChange={plate=>setFormData(f=>({...f,veiculo_alocado_placa:plate}))} label="Placa do veículo alocado (opcional)"/>
                 </div>
               </div>
 

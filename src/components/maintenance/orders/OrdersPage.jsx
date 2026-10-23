@@ -1,3 +1,5 @@
+import OccurrenceOrderForm from '../occurrences/OccurrenceOrderForm';
+import {vehicleCommand} from '../../../services/vehicleMaintenance';
 import React,{useEffect,useMemo,useState} from 'react';
 import useMaintenanceOrders from '../../../hooks/useMaintenanceOrders';
 import {commandOrder,uploadOrderObject,removeOrderObject} from '../../../services/maintenanceOrders';
@@ -8,7 +10,7 @@ import OrderActionModal from './OrderActionModal';
 import {money,date} from '../PartnerDetail';
 import './Orders.css';
 const emptyFilters={search:'',status:'',tipo:'',prioridade:'',vehicle_id:'',partner_id:'',start:'',end:'',late:false};
-function route(){const q=new URLSearchParams(window.location.search);return{id:q.get('os'),mode:q.get('acao')==='nova'?'new':q.has('os')?'detail':'list',partnerId:q.get('oficina')};}
+function route(){const q=new URLSearchParams(window.location.search);return{id:q.get('os'),mode:q.get('acao')==='nova'?'new':q.has('os')?'detail':'list',partnerId:q.get('oficina'),occurrenceId:q.get('ocorrencia')};}
 export default function OrdersPage({access,setLocked}){
  const [view,setView]=useState(route),[filters,setFilters]=useState(emptyFilters),[search,setSearch]=useState(''),[page,setPage]=useState(1),[board,setBoard]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[modal,setModal]=useState(null),[detailTab,setDetailTab]=useState('resumo');
  const permissions=useMemo(()=>orderPermissions(access.role),[access.role]),data=useMaintenanceOrders(access.companyId,filters,page,board,view.id);
@@ -18,7 +20,7 @@ export default function OrdersPage({access,setLocked}){
  const options=data.options.data;
  function go(mode,id){setDetailTab('resumo');const q=mode==='new'?'?acao=nova':id?'?os='+id:'';window.history.pushState({},'',window.location.pathname+q);setView({mode,id});setModal(null);setError('');}
  async function perform(command,body,target=data.detail.data?.order){setBusy(true);setError('');try{const row=await commandOrder(access.companyId,command,{...body,id:target?.id,version:target?.version});setNotice('Operação registrada com sucesso.');setModal(null);data.reload();return row;}catch(e){setError(e.message);throw e;}finally{setBusy(false);}}
- async function create(form){setBusy(true);setError('');try{const row=await commandOrder(access.companyId,'create',form);go('detail',row.id);setNotice('OS '+row.numero+' aberta.');data.reload();}catch(e){setError(e.message);}finally{setBusy(false);}}
+ async function create(form){setBusy(true);setError('');try{const row=view.occurrenceId?await vehicleCommand(access.companyId,'from_occurrence',{id:view.occurrenceId,order:form}):await commandOrder(access.companyId,'create',form);go('detail',row.id);setNotice('OS '+row.numero+' aberta.');data.reload();}catch(e){setError(e.message);}finally{setBusy(false);}}
  async function confirm(form,file){let object;setBusy(true);setError('');try{if(file)object=await uploadOrderObject(access.companyId,modal.order.id,file,true);await perform(modal.command,{...form,foto:object?.url},modal.order);}catch(e){if(object)await removeOrderObject(object.url).catch(()=>{});setError(e.message);}finally{setBusy(false);}}
  async function upload(file,tipo){let object;setBusy(true);setError('');try{if(tipo==='orcamento'&&file.type!=='application/pdf')throw new Error('Orçamento deve ser PDF.');if(['foto_antes','foto_depois'].includes(tipo)&&!file.type.startsWith('image/'))throw new Error('Selecione uma imagem.');object=await uploadOrderObject(access.companyId,view.id,file);await perform('attachment_add',{...object,tipo});}catch(e){if(object)await removeOrderObject(object.url).catch(()=>{});setError(e.message);throw e;}finally{setBusy(false);}}
  async function remove(file){await perform('attachment_delete',{attachment_id:file.id});await removeOrderObject(file.url);}
@@ -28,7 +30,8 @@ export default function OrdersPage({access,setLocked}){
  if(data.options.loading)return <p role="status">Carregando veículos e oficinas…</p>;
  if(data.options.error)return <div className="mp-card" role="alert"><p>{data.options.error}</p><button onClick={data.reload}>Tentar novamente</button></div>;
  if(view.mode==='new'&&!permissions.create)return <p role="alert">Sem permissão para abrir OS.</p>;
- if(view.mode==='new')return <OrderForm options={options} partnerId={view.partnerId} onSave={create} onBack={()=>go('list')} busy={busy} error={error}/>;
+ if(view.mode==='new'&&view.occurrenceId)return <OccurrenceOrderForm company={access.companyId} id={view.occurrenceId} options={options} onSave={create} onBack={()=>go('list')} busy={busy} error={error}/>;
+ if(view.mode==='new')return <OrderForm company={access.companyId} options={options} partnerId={view.partnerId} onSave={create} onBack={()=>go('list')} busy={busy} error={error}/>;
  const content=view.mode==='detail'?(data.detail.loading?<p role="status">Carregando OS…</p>:data.detail.error?<div role="alert"><p>{data.detail.error}</p><button onClick={data.reload}>Tentar novamente</button><button onClick={()=>go('list')}>Voltar</button></div>:data.detail.data?<OrderDetail tab={detailTab} setTab={setDetailTab} key={data.detail.data.order.version} data={data.detail.data} company={access.companyId} options={options} permissions={permissions} busy={busy} error={error} onCommand={perform} onAction={details=>action(data.detail.data.order,details)} onUpload={upload} onDelete={remove} onBack={()=>go('list')}/>:null):<div>
  <div className="mp-row mp-between"><div><h2>Ordens de Serviço</h2><p className="mp-muted">Manutenção da empresa · {data.list.count} ordens encontradas.</p></div>{permissions.create&&<button className="mp-primary" onClick={()=>go('new')}>Nova OS</button>}</div>
  <div className="mp-filters os-filters"><label>Buscar OS<input aria-label="Buscar OS" placeholder="Número ou problema" value={search} onChange={e=>setSearch(e.target.value)}/></label>

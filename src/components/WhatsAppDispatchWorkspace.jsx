@@ -1,3 +1,4 @@
+import {vehicleCommand} from '../services/vehicleMaintenance';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, 
@@ -123,7 +124,7 @@ export function resolveTemplateText(templateText, vehicle) {
     .replace(/{HORA_ATUAL}/g, horaStr);
 }
 
-export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVehiclePhone }) {
+export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, onUpdateVehiclePhone }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState('escala');
   const [phone, setPhone] = useState(vehicle?.motorista_telefone || '');
   const [messageText, setMessageText] = useState(() => {
@@ -252,6 +253,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
     setFeedback(null);
 
     try {
+      if(selectedTemplateId==='escala')await vehicleCommand(companyId,'check',{vehicle_id:vehicle.id});
       const result = await sendEvolutionMessage({
         phone: targetPhone,
         text: messageText,
