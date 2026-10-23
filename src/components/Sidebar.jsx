@@ -16,7 +16,8 @@ import {
   Route,
   Building2,
   Fuel,
-  Compass
+  Compass,
+  Wifi
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -33,6 +34,7 @@ export default function Sidebar({
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Analista';
 
   const menuSections = [
+    { title: 'Integrações', items: [{ id: 'automacao', label: 'Automação · WhatsApp', icon: Wifi }] },
     {
       title: 'Operação & Torre de Controle',
       items: [

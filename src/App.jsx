@@ -23,10 +23,12 @@ import FuelModule from './components/FuelModule';
 import AuthCard from './components/AuthCard';
 import SupabaseConfigModal from './components/SupabaseConfigModal';
 import ErrorBoundary from './components/ErrorBoundary';
+import AutomationModule from './components/AutomationModule';
 import './App.css';
 
 // Mapeamento de Rotas Web para cada Módulo
 export const MODULE_ROUTES = {
+  automacao: '/automacao',
   dashboard: '/dashboard',
   frotas: '/frotas',
   motoristas: '/motoristas',
@@ -42,6 +44,7 @@ export const MODULE_ROUTES = {
 };
 
 export const PATH_TO_MODULE = {
+  '/automacao': 'automacao',
   '/': 'dashboard',
   '/dashboard': 'dashboard',
   '/frotas': 'frotas',
@@ -142,6 +145,7 @@ export default function App() {
 
   // Nomes e descrições dos módulos para o cabeçalho superior
   const moduleInfo = {
+    automacao: { title: 'Automação · Conexão WhatsApp', subtitle: 'Autenticação, status e reconexão da instância Evolution API' },
     dashboard: { 
       title: 'Torre de Controle Operacional', 
       subtitle: 'Painel Geral de Operações, KPIs Consolidados e Monitoramento de Frota & Resíduos' 
@@ -374,6 +378,7 @@ export default function App() {
                 {currentModule === 'antt_formulas' && <AnttFormulasModule />}
                 {currentModule === 'ocorrencias' && <OcorrenciasModule />}
                 {currentModule === 'esg' && <EsgModule />}
+                {currentModule === 'automacao' && <AutomationModule user={session.user} />}
               </ErrorBoundary>
             </main>
           </div>
