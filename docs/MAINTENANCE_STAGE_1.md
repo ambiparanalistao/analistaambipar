@@ -40,7 +40,9 @@ isolado no CI; não constituem auditoria do schema real de produção.
 
 ## Compatibilidade e limites da transição
 Somente veiculos e motoristas recebem colunas/constraints/índices/triggers/policies adicionais.
-Nenhum arquivo antigo de migration, schema.sql, componente, cliente Supabase ou package.json foi alterado.
+Nenhum arquivo antigo de migration, schema.sql, cliente Supabase ou package.json foi alterado.
+Única correção em componente existente: FuelExcelImportModal.jsx move o retorno de modal fechado
+para depois dos hooks, eliminando dois erros preexistentes de lint, sem alterar a tela.
 As políticas antigas permanecem, mas políticas RESTRICTIVE impõem a fronteira nas linhas com company_id.
 Linhas legadas com company_id NULL continuam com as regras anteriores; NÃO têm isolamento por empresa.
 Esta etapa NÃO torna todo o sistema antigo multiempresa: clientes, combustível, perfis e dados de
