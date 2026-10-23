@@ -11,11 +11,22 @@ const buildUrl =
 
 const buildKey = 
   (typeof __SUPABASE_ANON_KEY__ !== 'undefined' && __SUPABASE_ANON_KEY__) ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.SUPABASE_ANON_KEY ||
   import.meta.env.SUPABASE_KEY ||
-  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  (typeof process !== 'undefined' && (process.env?.VITE_SUPABASE_ANON_KEY || process.env?.SUPABASE_ANON_KEY || process.env?.SUPABASE_KEY)) ||
+  (typeof process !== 'undefined' && (
+    process.env?.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env?.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env?.VITE_SUPABASE_ANON_KEY ||
+    process.env?.SUPABASE_PUBLISHABLE_KEY ||
+    process.env?.SUPABASE_ANON_KEY ||
+    process.env?.SUPABASE_KEY
+  )) ||
   '';
 
 const storedUrl = typeof window !== 'undefined' ? localStorage.getItem('supabase_url') : null;
