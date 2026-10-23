@@ -1,39 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   ArrowLeft, 
   Send, 
   Copy, 
   Check, 
-  RefreshCw, 
   Smartphone, 
-  QrCode, 
   ShieldCheck, 
   AlertTriangle, 
   CheckCircle2, 
-  Clock, 
   Sparkles, 
-  Zap, 
-  Settings, 
-  X, 
-  ExternalLink, 
   Truck, 
-  Layers, 
   UserCheck, 
   Gauge, 
-  Fuel, 
   RotateCcw,
-  CheckCheck
+  CheckCheck,
+  Calendar,
+  Layers,
+  Fuel,
+  Info
 } from 'lucide-react';
-import { 
-  getEvolutionConfig, 
-  saveEvolutionConfig, 
-  checkInstanceStatus, 
-  getEvolutionQrCode, 
-  sendEvolutionTextMessage, 
-  logoutEvolutionInstance, 
-  createEvolutionInstance,
-  formatPhoneNumberForEvolution 
-} from '../services/evolutionApi';
 import { formatPlateMercosul, getCountdown } from './VehiclesModule';
 
 export const WHATSAPP_TEMPLATES = [
@@ -128,7 +113,7 @@ export function resolveTemplateText(templateText, vehicle) {
 
 export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVehiclePhone }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState('escala');
-  const [phone, setPhone] = useState(vehicle.motorista_telefone || '');
+  const [phone, setPhone] = useState(vehicle?.motorista_telefone || '');
   const [messageText, setMessageText] = useState(() => {
     const tpl = WHATSAPP_TEMPLATES[0];
     return resolveTemplateText(tpl.template, vehicle);
@@ -136,70 +121,29 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
 
   const textareaRef = useRef(null);
   const [copied, setCopied] = useState(false);
-  const [dispatchingApi, setDispatchingApi] = useState(false);
-  const [dispatchFeedback, setDispatchFeedback] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const [sessionSentCount, setSessionSentCount] = useState(0);
 
-  // Estados da Evolution API
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [evolutionConfig, setEvolutionConfig] = useState(getEvolutionConfig);
-  const [apiStatus, setApiStatus] = useState({ connected: false, state: 'checking', details: null });
-  const [qrCodeData, setQrCodeData] = useState(null);
-  const [loadingQr, setLoadingQr] = useState(false);
-
-  // Histórico de disparos na sessão
-  const [dispatchHistory, setDispatchHistory] = useState([]);
-
-  // Verifica status da Evolution API ao montar
-  useEffect(() => {
-    checkConnection();
-  }, []);
-
-  const checkConnection = async () => {
-    const res = await checkInstanceStatus(evolutionConfig);
-    setApiStatus(res);
-  };
-
-  const handleFetchQrCode = async () => {
-    setLoadingQr(true);
-    try {
-      // Tenta criar se ainda não existir
-      await createEvolutionInstance(evolutionConfig);
-      const res = await getEvolutionQrCode(evolutionConfig);
-      if (res.success && res.qrcode) {
-        setQrCodeData(res.qrcode);
-        setApiStatus(prev => ({ ...prev, state: 'connecting' }));
-      } else {
-        alert(res.error || 'Não foi possível gerar o QR Code no servidor Evolution API.');
-      }
-    } catch (err) {
-      alert(`Erro: ${err.message}`);
-    } finally {
-      setLoadingQr(false);
-    }
-  };
-
-  const handleSaveConfig = () => {
-    saveEvolutionConfig(evolutionConfig);
-    checkConnection();
-    setShowConfigModal(false);
-    setDispatchFeedback({ type: 'success', text: 'Configurações da Evolution API salvas com sucesso!' });
-    setTimeout(() => setDispatchFeedback(null), 4000);
-  };
-
+  // Selecionar Modelo
   const handleSelectTemplate = (tpl) => {
     setSelectedTemplateId(tpl.id);
     const resolved = resolveTemplateText(tpl.template, vehicle);
     setMessageText(resolved);
+    setFeedback({ type: 'info', text: `Modelo "${tpl.title}" aplicado com sucesso.` });
+    setTimeout(() => setFeedback(null), 3000);
   };
 
+  // Restaurar modelo original
   const handleResetToTemplate = () => {
     const tpl = WHATSAPP_TEMPLATES.find(t => t.id === selectedTemplateId) || WHATSAPP_TEMPLATES[0];
     setMessageText(resolveTemplateText(tpl.template, vehicle));
+    setFeedback({ type: 'info', text: 'Modelo padrão restaurado.' });
+    setTimeout(() => setFeedback(null), 2500);
   };
 
   /**
-   * Proteção anti-duplicação:
-   * Verifica se o valor resolvido do gatilho já consta no texto
+   * PROTEÇÃO ANTI-DUPLICAÇÃO DOS GATILHOS:
+   * Verifica se o valor resolvido do gatilho já está presente no texto da mensagem
    */
   const isTriggerAlreadyInText = (trigger) => {
     const val = trigger.getValue(vehicle);
@@ -207,16 +151,20 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
     return messageText.includes(val);
   };
 
+  /**
+   * Inserção inteligente com controle de duplicação:
+   * Se já estiver no texto, não duplica e avisa o usuário
+   */
   const handleInsertTrigger = (trigger) => {
     const val = trigger.getValue(vehicle);
     if (!val || val === '—') return;
 
     if (isTriggerAlreadyInText(trigger)) {
-      setDispatchFeedback({
-        type: 'info',
-        text: `O dado "${trigger.label}" (${val}) já está presente no texto da mensagem.`
+      setFeedback({
+        type: 'warning',
+        text: `O dado "${trigger.label}" (${val}) já está incluído no texto! Não foi duplicado.`
       });
-      setTimeout(() => setDispatchFeedback(null), 3000);
+      setTimeout(() => setFeedback(null), 3000);
       return;
     }
 
@@ -232,20 +180,27 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
       setMessageText(newText);
       setTimeout(() => {
         textarea.focus();
-        textarea.setSelectionRange(start + spacerBefore.length + val.length, start + spacerBefore.length + val.length);
+        const cursorPosition = start + spacerBefore.length + val.length;
+        textarea.setSelectionRange(cursorPosition, cursorPosition);
       }, 50);
     } else {
       setMessageText(prev => `${prev} ${val}`);
     }
+
+    setFeedback({
+      type: 'success',
+      text: `"${trigger.label}" adicionado à mensagem.`
+    });
+    setTimeout(() => setFeedback(null), 2500);
   };
 
   /**
-   * Adiciona ou remove blocos modulares estruturados
+   * Blocos modulares toggleáveis (Adiciona ou Remove de forma limpa)
    */
   const toggleModularBlock = (type) => {
     const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
     let blockText = '';
+
     if (type === 'odometro') {
       blockText = `\n\n📊 *Telemetria CCO:* Odômetro registrado: *${vehicle.km_atual ? Number(vehicle.km_atual).toLocaleString('pt-BR') : '—'} km* | Próxima revisão: *${vehicle.proxima_revisao_km ? Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR') : '—'} km*.`;
     } else if (type === 'vistorias') {
@@ -258,89 +213,47 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
 
     if (messageText.includes(blockText.trim())) {
       setMessageText(messageText.replace(blockText, '').replace(blockText.trim(), ''));
+      setFeedback({ type: 'info', text: 'Bloco modular removido da mensagem.' });
     } else {
       setMessageText(prev => prev.trim() + blockText);
+      setFeedback({ type: 'success', text: 'Bloco modular inserido na mensagem.' });
     }
+    setTimeout(() => setFeedback(null), 2500);
   };
 
-  // Disparo Direto via Evolution API
-  const handleDispatchEvolution = async () => {
-    const clean = formatPhoneNumberForEvolution(phone);
-    if (!clean || clean.length < 10) {
-      alert('Informe um número de telefone com DDD válido para o condutor.');
+  // Formatação de telefone brasileira
+  const normalizePhoneNumber = (raw) => {
+    if (!raw) return '';
+    const digits = raw.replace(/\D/g, '');
+    if (digits.startsWith('55')) return digits;
+    return `55${digits}`;
+  };
+
+  // Enviar pelo WhatsApp Web / App
+  const handleSendWhatsApp = () => {
+    const cleanNumber = normalizePhoneNumber(phone || vehicle.motorista_telefone);
+    if (!cleanNumber || cleanNumber.length < 10) {
+      alert('Por favor, informe um número de telefone com DDD válido para o condutor.');
       return;
     }
 
-    setDispatchingApi(true);
-    setDispatchFeedback(null);
-
-    try {
-      const res = await sendEvolutionTextMessage({
-        phone: clean,
-        messageText,
-        overrideConfig: evolutionConfig
-      });
-
-      const newLog = {
-        id: res.messageId,
-        time: new Date().toLocaleTimeString('pt-BR'),
-        phone: clean,
-        preview: messageText.slice(0, 60) + '...',
-        status: 'Enviado via Evolution API'
-      };
-      setDispatchHistory([newLog, ...dispatchHistory]);
-
-      setDispatchFeedback({
-        type: 'success',
-        text: `Mensagem disparada com sucesso via Evolution API! (ID: ${res.messageId})`
-      });
-
-      if (phone !== vehicle.motorista_telefone) {
-        onUpdateVehiclePhone(vehicle.id, phone);
-      }
-    } catch (err) {
-      console.warn('Falha Evolution API:', err);
-      // Se a Evolution API remota estiver offline ou não configurada ainda, simula o despacho com transparência
-      const mockId = `MOCK-${Date.now().toString().slice(-6)}`;
-      const newLog = {
-        id: mockId,
-        time: new Date().toLocaleTimeString('pt-BR'),
-        phone: clean,
-        preview: messageText.slice(0, 60) + '...',
-        status: 'Simulação CCO Registrada'
-      };
-      setDispatchHistory([newLog, ...dispatchHistory]);
-
-      setDispatchFeedback({
-        type: 'warning',
-        text: `Evolution API offline no momento (${err.message}). O disparo foi simulado e salvo no histórico CCO. Utilize o envio direto via WhatsApp Web abaixo para enviar imediatamente ao condutor.`
-      });
-    } finally {
-      setDispatchingApi(false);
-      setTimeout(() => setDispatchFeedback(null), 6000);
-    }
-  };
-
-  // Disparo Fallback via WhatsApp Web / App
-  const handleSendWhatsAppWeb = () => {
-    const clean = formatPhoneNumberForEvolution(phone);
-    if (!clean || clean.length < 10) {
-      alert('Informe o telefone com DDD do condutor.');
-      return;
-    }
     const encoded = encodeURIComponent(messageText);
-    const url = `https://wa.me/${clean}?text=${encoded}`;
+    const url = `https://wa.me/${cleanNumber}?text=${encoded}`;
     window.open(url, '_blank');
 
-    if (phone !== vehicle.motorista_telefone) {
+    setSessionSentCount(prev => prev + 1);
+
+    if (phone && phone !== vehicle.motorista_telefone && onUpdateVehiclePhone) {
       onUpdateVehiclePhone(vehicle.id, phone);
     }
   };
 
-  const handleCopyText = () => {
+  // Copiar Texto
+  const handleCopyMessage = () => {
+    if (!messageText) return;
     navigator.clipboard.writeText(messageText);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   const crlvCountdown = getCountdown(vehicle.validade_crlv);
@@ -349,7 +262,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
   return (
     <div className="dispatch-full-workspace animate-fade-in" id="whatsapp-dispatch-workspace">
       {/* ============================================================== */}
-      {/* CABEÇALHO DA CENTRAL DE DESPACHO & BREADCRUMB                   */}
+      {/* CABEÇALHO DA CENTRAL DE DESPACHO & NAVEGAÇÃO                   */}
       {/* ============================================================== */}
       <div className="dispatch-top-header">
         <div className="dispatch-header-title-box">
@@ -357,27 +270,22 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
             type="button" 
             className="btn-back-clean"
             onClick={onBack}
-            title="Voltar à Lista de Frotas"
+            title="Voltar à Lista da Frota"
           >
             <ArrowLeft size={18} />
             <span>Voltar à Gestão de Frotas</span>
           </button>
 
           <div className="dispatch-title-meta">
-            <h2>Central de Despacho & Automação WhatsApp CCO</h2>
+            <h2>Central de Despacho & Mensageria WhatsApp CCO</h2>
             <div className="dispatch-badges-row">
-              <span className={`evolution-status-pill ${apiStatus.connected ? 'online' : 'offline'}`}>
+              <span className="cco-status-pill online">
                 <span className="beacon-dot"></span>
-                <span>{apiStatus.connected ? 'Evolution API Online' : 'Evolution API (Configuração Pendente)'}</span>
+                <span>Ambipar CCO • Despacho Operacional Ativo</span>
               </span>
-              <button 
-                type="button"
-                className="btn-open-evolution-config"
-                onClick={() => setShowConfigModal(true)}
-              >
-                <Settings size={13} />
-                <span>Configurar Gateway / QR Code</span>
-              </button>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                Modo Tela Cheia • Sem Modais
+              </span>
             </div>
           </div>
         </div>
@@ -386,7 +294,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
           <button
             type="button"
             className="btn-secondary btn-icon-text"
-            onClick={handleCopyText}
+            onClick={handleCopyMessage}
           >
             {copied ? <Check size={16} color="#10b981" /> : <Copy size={16} />}
             <span>{copied ? 'Copiado!' : 'Copiar Texto'}</span>
@@ -395,42 +303,33 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
           <button
             type="button"
             className="whatsapp-send-primary btn-icon-text"
-            onClick={handleDispatchEvolution}
-            disabled={dispatchingApi}
+            onClick={handleSendWhatsApp}
+            id="btn-main-send-whatsapp"
           >
-            {dispatchingApi ? (
-              <>
-                <RefreshCw size={16} className="animate-spin" />
-                <span>Disparando via API...</span>
-              </>
-            ) : (
-              <>
-                <Zap size={16} />
-                <span>Disparar via Evolution API</span>
-              </>
-            )}
+            <Send size={16} />
+            <span>Enviar pelo WhatsApp</span>
           </button>
         </div>
       </div>
 
-      {/* Feedback de Alerta / Sucesso */}
-      {dispatchFeedback && (
-        <div className={`alert alert-${dispatchFeedback.type} animate-fade-in`} style={{ marginBottom: '1.25rem' }}>
-          {dispatchFeedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
-          <span>{dispatchFeedback.text}</span>
+      {/* Alerta de Feedback */}
+      {feedback && (
+        <div className={`alert alert-${feedback.type} animate-fade-in`} style={{ margin: '0' }}>
+          {feedback.type === 'success' ? <CheckCircle2 size={18} /> : feedback.type === 'warning' ? <AlertTriangle size={18} /> : <Info size={18} />}
+          <span>{feedback.text}</span>
         </div>
       )}
 
       {/* ============================================================== */}
-      {/* FAIXA EXECUTIVA DE CONTEXTO DO ATIVO & DO CONDUTOR             */}
+      {/* FAIXA EXECUTIVA DE TELEMETRIA: CONTEXTO DO ATIVO E DO MOTORISTA */}
       {/* ============================================================== */}
       <div className="dispatch-telemetry-ribbon">
         <div className="ribbon-driver-col">
           <div className="driver-avatar-circle">
-            <UserCheck size={22} />
+            <UserCheck size={24} />
           </div>
           <div className="driver-meta-info">
-            <span className="ribbon-label">Condutor Titular Alocado:</span>
+            <span className="ribbon-label">Motorista Alocado:</span>
             <strong className="driver-name">{vehicle.motorista_vinculado || 'Condutor Titular CCO'}</strong>
             <div className="driver-phone-input-inline">
               <Smartphone size={13} color="#25d366" />
@@ -447,7 +346,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
         </div>
 
         <div className="ribbon-vehicle-col">
-          <div className="mercosul-plate-badge-cockpit" style={{ transform: 'scale(0.95)' }}>
+          <div className="mercosul-plate-badge-cockpit">
             <div className="plate-header">
               <span className="plate-flag">🇧🇷</span>
               <span className="plate-country">BRASIL</span>
@@ -466,7 +365,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
 
         <div className="ribbon-specs-col">
           <div className="spec-item">
-            <Gauge size={14} className="icon-emerald" />
+            <Gauge size={16} className="icon-emerald" />
             <div>
               <span className="spec-label">Odômetro Atual</span>
               <strong>{vehicle.km_atual ? `${Number(vehicle.km_atual).toLocaleString('pt-BR')} km` : '—'}</strong>
@@ -474,7 +373,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
           </div>
 
           <div className="spec-item">
-            <RotateCcw size={14} className="icon-cyan" />
+            <RotateCcw size={16} className="icon-cyan" />
             <div>
               <span className="spec-label">Próxima Revisão</span>
               <strong>{vehicle.proxima_revisao_km ? `${Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR')} km` : '—'}</strong>
@@ -482,7 +381,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
           </div>
 
           <div className="spec-item">
-            <ShieldCheck size={14} className="icon-emerald" />
+            <ShieldCheck size={16} className="icon-emerald" />
             <div>
               <span className="spec-label">CRLV / Vistoria</span>
               <strong className={crlvCountdown.color}>{crlvCountdown.compactText}</strong>
@@ -492,11 +391,11 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
       </div>
 
       {/* ============================================================== */}
-      {/* WORKSPACE PRINCIPAL: 3 COLUNAS ESPAÇOSAS & MODERNAS            */}
+      {/* WORKSPACE PRINCIPAL EM 3 COLUNAS ESPAÇOSAS                     */}
       {/* ============================================================== */}
       <div className="dispatch-workspace-grid">
         {/* ============================================================ */}
-        {/* COLUNA 1: MODELOS PRÉ-DEFINIDOS & BLOCOS MODULARES           */}
+        {/* COLUNA 1: MODELOS PRÉ-DEFINIDOS RELEVANTES                   */}
         {/* ============================================================ */}
         <div className="dispatch-col-templates">
           <div className="dispatch-panel-card">
@@ -504,8 +403,8 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
               <div className="header-icon-label">
                 <Sparkles size={18} className="icon-emerald" />
                 <div>
-                  <h4>1. Modelos Operacionais de Despacho</h4>
-                  <p>Selecione um assunto estruturado com dados reais</p>
+                  <h4>1. Assuntos & Modelos Pré-definidos</h4>
+                  <p>Mensagens operacionais completas já formatadas</p>
                 </div>
               </div>
             </div>
@@ -516,6 +415,8 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                   key={tpl.id}
                   className={`dispatch-template-card ${selectedTemplateId === tpl.id ? 'active' : ''}`}
                   onClick={() => handleSelectTemplate(tpl)}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div className="template-card-top">
                     <span className="template-badge">{tpl.badge}</span>
@@ -527,9 +428,9 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
               ))}
             </div>
 
-            {/* Blocos Modulares de Adição Rápida */}
+            {/* Blocos Modulares de Adição / Remoção */}
             <div className="modular-blocks-section">
-              <span className="section-title-sm">Blocos Modulares de Informação:</span>
+              <span className="section-title-sm">Inserir / Remover Blocos Completos:</span>
               <div className="modular-buttons-grid">
                 <button
                   type="button"
@@ -553,7 +454,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                   onClick={() => toggleModularBlock('assinatura')}
                   title="Incluir assinatura oficial CCO com hora"
                 >
-                  <span>🕒 Assinatura CCO</span>
+                  <span>🕒 Assinatura CCO com Horário</span>
                 </button>
               </div>
             </div>
@@ -561,7 +462,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
         </div>
 
         {/* ============================================================ */}
-        {/* COLUNA 2: EDITOR INTELIGENTE COM PROTEÇÃO ANTI-DUPLICAÇÃO    */}
+        {/* COLUNA 2: EDITOR AMPLO COM PROTEÇÃO ANTI-DUPLICAÇÃO          */}
         {/* ============================================================ */}
         <div className="dispatch-col-editor">
           <div className="dispatch-panel-card">
@@ -570,7 +471,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                 <Smartphone size={18} className="icon-cyan" />
                 <div>
                   <h4>2. Composição da Mensagem Personalizada</h4>
-                  <p>Edite livremente ou insira dados dinâmicos do conjunto</p>
+                  <p>Edição manual livre com gatilhos dinâmicos inteligentes</p>
                 </div>
               </div>
 
@@ -578,18 +479,18 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                 type="button"
                 className="btn-restore-template"
                 onClick={handleResetToTemplate}
-                title="Restaurar o modelo padrão original"
+                title="Restaurar o modelo padrão selecionado"
               >
                 <RotateCcw size={13} />
                 <span>Restaurar Modelo Padrão</span>
               </button>
             </div>
 
-            {/* Barra de Gatilhos Dinâmicos com Proteção Anti-Duplicação */}
+            {/* BARRA DE GATILHOS FUNCIONAIS COM PROTEÇÃO ANTI-DUPLICAÇÃO */}
             <div className="triggers-toolbar-box">
               <div className="triggers-toolbar-header">
                 <span className="triggers-title">Gatilhos Funcionais Rápidos:</span>
-                <span className="triggers-hint">Clique para inserir no ponto do cursor (sem duplicações)</span>
+                <span className="triggers-hint">Clique para inserir na posição do cursor</span>
               </div>
 
               <div className="smart-triggers-cloud">
@@ -601,30 +502,31 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                       type="button"
                       className={`smart-trigger-pill ${inText ? 'already-in' : ''}`}
                       onClick={() => handleInsertTrigger(trigger)}
-                      title={inText ? `"${trigger.label}" já está no texto da mensagem` : `Inserir ${trigger.label}`}
+                      title={inText ? `"${trigger.label}" já está presente no texto da mensagem` : `Inserir ${trigger.label}`}
                     >
-                      {inText ? <CheckCheck size={12} color="#10b981" /> : <span>+</span>}
+                      {inText ? <CheckCheck size={13} color="#10b981" /> : <span>+</span>}
                       <span>{trigger.label}</span>
-                      {inText && <span className="in-text-tag">No texto</span>}
+                      {inText && <span className="in-text-tag">✓ Já no texto</span>}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Textarea em Tela Completa */}
+            {/* TEXTAREA EM TELA CHEIA */}
             <div className="editor-textarea-container">
               <textarea
                 ref={textareaRef}
                 className="dispatch-full-textarea"
-                rows={13}
+                rows={14}
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
-                placeholder="Digite a instrução operacional ou ajuste a mensagem selecionada..."
+                placeholder="Escreva a instrução para o condutor..."
+                id="textarea-dispatch-full"
               />
 
               <div className="textarea-footer-counter">
-                <span>Dica: Use <strong>*negrito*</strong>, <em>_itálico_</em> e quebras de linha.</span>
+                <span>Dica: Use <strong>*negrito*</strong>, <em>_itálico_</em> e quebras de linha para formatação WhatsApp.</span>
                 <div className="counter-chips">
                   <span>{messageText.length} caracteres</span>
                   <span>{messageText.trim().split(/\s+/).filter(Boolean).length} palavras</span>
@@ -632,36 +534,26 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
               </div>
             </div>
 
-            {/* Ações de Disparo Integradas */}
+            {/* AÇÕES DE DISPARO */}
             <div className="dispatch-action-footer-bar">
               <div className="dispatch-options-group">
                 <button
                   type="button"
                   className="whatsapp-send-primary btn-icon-text"
-                  onClick={handleDispatchEvolution}
-                  disabled={dispatchingApi}
+                  onClick={handleSendWhatsApp}
+                  style={{ fontSize: '0.95rem', padding: '0.75rem 1.75rem' }}
                 >
-                  {dispatchingApi ? (
-                    <>
-                      <RefreshCw size={16} className="animate-spin" />
-                      <span>Disparando via Evolution API...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap size={16} />
-                      <span>Disparar Direto via Evolution API</span>
-                    </>
-                  )}
+                  <Send size={18} />
+                  <span>Enviar pelo WhatsApp Agora</span>
                 </button>
 
                 <button
                   type="button"
-                  className="btn-whatsapp-web btn-icon-text"
-                  onClick={handleSendWhatsAppWeb}
-                  title="Abrir diretamente no WhatsApp Web ou aplicativo de celular"
+                  className="btn-secondary btn-icon-text"
+                  onClick={handleCopyMessage}
                 >
-                  <ExternalLink size={16} />
-                  <span>Abrir no WhatsApp Web / Celular</span>
+                  {copied ? <Check size={16} color="#10b981" /> : <Copy size={16} />}
+                  <span>{copied ? 'Copiado para Área de Transferência!' : 'Copiar Texto da Mensagem'}</span>
                 </button>
               </div>
             </div>
@@ -669,24 +561,24 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
         </div>
 
         {/* ============================================================ */}
-        {/* COLUNA 3: SIMULADOR REALISTA DO SMARTPHONE WHATSAPP           */}
+        {/* COLUNA 3: SIMULADOR SMARTPHONE WHATSAPP AO VIVO              */}
         {/* ============================================================ */}
         <div className="dispatch-col-simulator">
           <div className="dispatch-panel-card simulator-card">
             <div className="simulator-phone-frame">
-              {/* Top Notch & Status Bar */}
+              {/* Notch do Celular */}
               <div className="phone-notch-bar">
                 <div className="notch-pill"></div>
               </div>
               <div className="phone-status-bar">
-                <span>03:20</span>
+                <span>{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                 <div className="phone-icons">
                   <span>5G</span>
                   <span>100%</span>
                 </div>
               </div>
 
-              {/* Chat Header */}
+              {/* Cabeçalho do Chat WhatsApp */}
               <div className="phone-chat-header">
                 <div className="chat-header-avatar">
                   <UserCheck size={18} />
@@ -694,11 +586,11 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                 </div>
                 <div className="chat-header-meta">
                   <strong>{vehicle.motorista_vinculado || 'Condutor Titular'}</strong>
-                  <span className="chat-status">online • Torre CCO Ambipar</span>
+                  <span className="chat-status">online • Torre de Operações CCO</span>
                 </div>
               </div>
 
-              {/* Chat Canvas Wallpaper */}
+              {/* Wallpaper & Balão de Mensagem Oficial */}
               <div className="phone-chat-canvas">
                 <div className="whatsapp-official-bubble animate-scale-in">
                   <p className="bubble-body">{messageText || 'Nenhuma mensagem digitada...'}</p>
@@ -711,171 +603,34 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
                 </div>
               </div>
 
-              {/* Chat Input Bar */}
+              {/* Barra de Entrada do WhatsApp */}
               <div className="phone-chat-input-bar">
                 <span className="chat-input-placeholder">Mensagem CCO...</span>
-                <div className="chat-mic-btn">
+                <div className="chat-mic-btn" onClick={handleSendWhatsApp} title="Enviar pelo WhatsApp">
                   <Send size={14} color="#ffffff" />
                 </div>
               </div>
             </div>
 
-            {/* Histórico Recente de Disparos */}
+            {/* Informações da Sessão */}
             <div className="dispatch-audit-trail-box">
-              <span className="audit-trail-title">Histórico de Disparos da Sessão:</span>
-              {dispatchHistory.length === 0 ? (
-                <p className="audit-empty-text">Nenhum disparo enviado nesta sessão.</p>
-              ) : (
-                <div className="audit-list">
-                  {dispatchHistory.map((item) => (
-                    <div key={item.id} className="audit-item">
-                      <div className="audit-item-top">
-                        <span className="audit-badge">{item.status}</span>
-                        <span className="audit-time">{item.time}</span>
-                      </div>
-                      <p className="audit-preview">{item.preview}</p>
-                    </div>
-                  ))}
+              <span className="audit-trail-title">Painel de Disparo Rápido:</span>
+              <p className="audit-preview" style={{ color: '#94a3b8' }}>
+                O envio utiliza o link direto oficial do WhatsApp (WhatsApp Web ou aplicativo mobile).
+              </p>
+              {sessionSentCount > 0 && (
+                <div className="audit-item" style={{ marginTop: '0.4rem' }}>
+                  <div className="audit-item-top">
+                    <span className="audit-badge">Disparo Realizado</span>
+                    <span className="audit-time">Sessão</span>
+                  </div>
+                  <p className="audit-preview">{sessionSentCount} mensagem(ns) iniciada(s) nesta sessão</p>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
-
-      {/* ============================================================== */}
-      {/* MODAL DE AUTENTICAÇÃO & GATEWAY EVOLUTION API (QR CODE)         */}
-      {/* ============================================================== */}
-      {showConfigModal && (
-        <div className="modal-overlay animate-fade-in" onClick={() => setShowConfigModal(false)}>
-          <div className="evolution-config-dialog animate-scale-in" onClick={(e) => e.stopPropagation()}>
-            <div className="evolution-dialog-header">
-              <div className="header-icon-label">
-                <div className="evolution-icon-glow">
-                  <QrCode size={22} color="#25d366" />
-                </div>
-                <div>
-                  <h4>Autenticação & Gateway Evolution API v2</h4>
-                  <p>Conecte a instância do WhatsApp para realizar disparos automáticos</p>
-                </div>
-              </div>
-              <button 
-                type="button" 
-                className="modal-close-btn"
-                onClick={() => setShowConfigModal(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="evolution-dialog-body">
-              <div className="evolution-form-grid">
-                <div className="input-group-custom">
-                  <label>URL do Servidor Evolution API:</label>
-                  <input
-                    type="text"
-                    value={evolutionConfig.serverUrl}
-                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, serverUrl: e.target.value })}
-                    placeholder="https://sua-evolution-api.com"
-                  />
-                  <small style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>
-                    Endereço base do seu servidor Evolution API v2 (sem barra no final)
-                  </small>
-                </div>
-
-                <div className="input-group-custom">
-                  <label>Global API Key (Token de Autenticação):</label>
-                  <input
-                    type="password"
-                    value={evolutionConfig.apiKey}
-                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, apiKey: e.target.value })}
-                    placeholder="Chave secreta configurada na Evolution API"
-                  />
-                </div>
-
-                <div className="input-group-custom">
-                  <label>Nome da Instância WhatsApp:</label>
-                  <input
-                    type="text"
-                    value={evolutionConfig.instanceName}
-                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, instanceName: e.target.value })}
-                    placeholder="ambipar-cco"
-                  />
-                </div>
-              </div>
-
-              {/* Status e Conexão QR Code */}
-              <div className="evolution-connection-box">
-                <div className="conn-status-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span className={`beacon-dot ${apiStatus.connected ? 'online' : 'offline'}`}></span>
-                    <strong>Status da Instância: {apiStatus.connected ? 'Conectado / Online' : apiStatus.state}</strong>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn-secondary btn-icon-text"
-                    onClick={checkConnection}
-                  >
-                    <RefreshCw size={14} />
-                    <span>Verificar Status</span>
-                  </button>
-                </div>
-
-                {/* Área do QR Code */}
-                <div className="qr-code-display-area">
-                  {qrCodeData ? (
-                    <div className="qr-container animate-fade-in">
-                      <p style={{ fontSize: '0.82rem', color: '#10b981', fontWeight: 600 }}>
-                        Escaneie o QR Code abaixo com seu WhatsApp:
-                      </p>
-                      <img 
-                        src={qrCodeData.startsWith('data:') ? qrCodeData : `data:image/png;base64,${qrCodeData}`} 
-                        alt="QR Code Evolution API" 
-                        className="qr-image"
-                      />
-                      <small style={{ color: 'var(--text-dim)' }}>
-                        Vá em <strong>Aparelhos Conectados &gt; Conectar um Aparelho</strong>
-                      </small>
-                    </div>
-                  ) : (
-                    <div className="qr-placeholder">
-                      <QrCode size={48} color="rgba(255, 255, 255, 0.2)" />
-                      <p>Gere um QR Code para autenticar a instância do WhatsApp</p>
-                      <button
-                        type="button"
-                        className="btn-primary btn-icon-text"
-                        onClick={handleFetchQrCode}
-                        disabled={loadingQr}
-                      >
-                        {loadingQr ? <RefreshCw size={16} className="animate-spin" /> : <QrCode size={16} />}
-                        <span>{loadingQr ? 'Gerando QR Code...' : 'Gerar QR Code de Conexão'}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="evolution-dialog-footer">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setShowConfigModal(false)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={handleSaveConfig}
-              >
-                Salvar Configurações & Conectar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
