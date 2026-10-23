@@ -268,7 +268,7 @@ export default function AuthCard({ onOpenConfig, onDemoAccess }) {
               <span className="btn-content">
                 <span>
                   {mode === 'login' && 'Entrar na Plataforma'}
-                  {mode === 'signup' && 'Criar Conta no Supabase'}
+                  {mode === 'signup' && 'Criar Nova Conta'}
                   {mode === 'forgot' && 'Enviar E-mail de Recuperação'}
                 </span>
                 <ArrowRight size={18} />
@@ -303,7 +303,7 @@ export default function AuthCard({ onOpenConfig, onDemoAccess }) {
                 </button>
               )}
               <p className="footer-note">
-                Autenticação protegida por criptografia de ponta a ponta via Supabase Auth & JWT.
+                Autenticação corporativa protegida com criptografia de ponta a ponta.
               </p>
             </div>
           )}

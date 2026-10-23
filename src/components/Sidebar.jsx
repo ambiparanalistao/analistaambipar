@@ -192,11 +192,11 @@ export default function Sidebar({
       <div className="sidebar-footer">
         <div 
           className={`sidebar-status-pill ${isSupabaseOnline ? 'online' : 'unconfigured'}`}
-          title={isSupabaseOnline ? 'Supabase PostgreSQL conectado' : 'Conexão Supabase pendente'}
+          title={isSupabaseOnline ? 'Servidor em Nuvem Sincronizado' : 'Conexão em Nuvem Pendente'}
         >
           <span className="pulse-dot"></span>
           {!isCollapsed && (
-            <span>{isSupabaseOnline ? 'Supabase Conectado' : 'Supabase Pendente'}</span>
+            <span>{isSupabaseOnline ? 'Servidor Conectado' : 'Sincronização Pendente'}</span>
           )}
         </div>
 
@@ -205,11 +205,11 @@ export default function Sidebar({
             type="button"
             className="sidebar-action-btn"
             onClick={onOpenConfig}
-            title="Configurar Chaves Supabase (.env)"
+            title="Configurações do Sistema"
             id="sidebar-config-keys-btn"
           >
             <Settings size={16} />
-            {!isCollapsed && <span>Chaves API</span>}
+            {!isCollapsed && <span>Configurações</span>}
           </button>
 
           <button

@@ -1609,20 +1609,24 @@
 }
 
 .kpi-formula-tag {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
   margin-bottom: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
 }
 
-.kpi-formula-tag code {
-  font-size: 0.7rem;
-  color: var(--accent-cyan);
+.kpi-indicator-desc {
+  font-size: 0.73rem;
+  font-weight: 500;
+  color: var(--text-muted);
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.01em;
 }
 
 .kpi-footer-status {
@@ -1822,11 +1826,13 @@
   margin-bottom: 0.85rem;
 }
 
+.math-formula-text,
 .math-formula-box code {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.85rem;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: 0.9rem;
   color: #38bdf8;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .formula-explanation {

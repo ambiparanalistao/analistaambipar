@@ -491,7 +491,7 @@ export default function DriversModule({ user }) {
                 disabled={loading}
               >
                 <RefreshCw size={16} className={loading ? 'spin-icon' : ''} />
-                <span>Sincronizar Banco</span>
+                <span>Atualizar Quadro</span>
               </button>
 
               <button

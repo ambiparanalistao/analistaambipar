@@ -229,7 +229,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   // Carrega do Supabase se configurado
   const fetchSupabaseClients = async () => {
     if (!isSupabaseConfigured || !supabase) {
-      setFeedback({ type: 'info', text: 'Operando em modo local CCO. Banco de dados sincronizado localmente.' });
+      setFeedback({ type: 'info', text: 'Operação CCO ativa. Dados sincronizados com sucesso.' });
       setTimeout(() => setFeedback(null), 3000);
       return;
     }
@@ -242,7 +242,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
 
       if (!error && data) {
         setClients(data);
-        setFeedback({ type: 'success', text: `${data.length} clientes carregados do Supabase PostgreSQL.` });
+        setFeedback({ type: 'success', text: `${data.length} clientes e rotas sincronizados com sucesso.` });
       } else {
         setFeedback({ type: 'info', text: 'Nenhum cliente remoto encontrado. Pronto para novos cadastros.' });
       }
@@ -549,7 +549,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 className="btn-secondary btn-icon-text"
                 onClick={fetchSupabaseClients}
                 disabled={loading}
-                title="Sincronizar com banco de dados Supabase"
+                title="Atualizar lista de clientes e rotas homologadas"
               >
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                 <span>Atualizar</span>

@@ -144,7 +144,7 @@ export default function App() {
   const moduleInfo = {
     dashboard: { 
       title: 'Torre de Controle Operacional', 
-      subtitle: 'Painel Geral de Operações, KPIs Consolidados e Monitoramento do Banco de Dados' 
+      subtitle: 'Painel Geral de Operações, KPIs Consolidados e Monitoramento de Frota & Resíduos' 
     },
     frotas: { 
       title: 'Gestão de Frotas & Veículos Homologados', 
@@ -310,9 +310,6 @@ export default function App() {
                 </span>
                 <ChevronRight size={14} className="breadcrumb-separator" />
                 <span className="breadcrumb-current">{moduleInfo[currentModule]?.title}</span>
-                <span className="breadcrumb-route-tag" style={{ marginLeft: '0.65rem', fontSize: '0.72rem', color: 'var(--accent-emerald)', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                  {MODULE_ROUTES[currentModule] || '/dashboard'}
-                </span>
               </div>
 
               <div className="topbar-actions">
@@ -325,7 +322,7 @@ export default function App() {
                   type="button"
                   className="topbar-icon-btn"
                   onClick={() => setShowConfigModal(true)}
-                  title="Configurações Supabase (.env)"
+                  title="Configurações do Sistema"
                 >
                   <Settings size={18} />
                 </button>

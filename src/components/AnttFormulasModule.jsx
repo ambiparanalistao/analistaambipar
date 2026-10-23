@@ -167,7 +167,7 @@ export default function AnttFormulasModule() {
             <div className="formula-detail-card animate-fade-in">
               <h4>Custo por Quilômetro Rodado (CPK)</h4>
               <div className="math-formula-box">
-                <code>CPK = (Custos Fixos + Custos Variáveis) / KM Total Rodado</code>
+                <span className="math-formula-text">CPK = (Custos Fixos + Custos Variáveis) / KM Total Rodado</span>
               </div>
               <p className="formula-explanation">
                 O CPK é a métrica padrão para precificação de fretes e controle orçamentário. Permite apurar o custo exato de cada quilômetro rodado pela frota própria ou agregada, incluindo diesel, Arla 32, pedágio, pneus, manutenção, seguro de carga perigosa e remuneração do motorista.
@@ -179,7 +179,7 @@ export default function AnttFormulasModule() {
             <div className="formula-detail-card animate-fade-in">
               <h4>Emissões de Gases de Efeito Estufa (Escopo 1 - GHG Protocol)</h4>
               <div className="math-formula-box">
-                <code>tCO₂e = (Litros Diesel × 2,671 kg CO₂/L) ÷ 1.000</code>
+                <span className="math-formula-text">tCO₂e = (Litros Diesel × 2,671 kg CO₂/L) ÷ 1.000</span>
               </div>
               <p className="formula-explanation">
                 Fator referencial do Programa Brasileiro GHG Protocol para óleo diesel comercial com adição obrigatória de biodiesel. Permite a emissão do selo verde e certificação de destinação sustentável para o cliente da Ambipar.
@@ -191,7 +191,7 @@ export default function AnttFormulasModule() {
             <div className="formula-detail-card animate-fade-in">
               <h4>Tonelada-Quilômetro Útil (TKU)</h4>
               <div className="math-formula-box">
-                <code>TKU = Peso da Carga Líquida (t) × Distância Percorrida (km)</code>
+                <span className="math-formula-text">TKU = Peso da Carga Líquida (t) × Distância Percorrida (km)</span>
               </div>
               <p className="formula-explanation">
                 Mede a produtividade real do transporte de resíduos industriais. Evita caminhões rodando com peso ocioso ou voltando vazios (otimização de rotas e logística reversa).
@@ -203,7 +203,7 @@ export default function AnttFormulasModule() {
             <div className="formula-detail-card animate-fade-in">
               <h4>On-Time In-Full (OTIF)</h4>
               <div className="math-formula-box">
-                <code>OTIF (%) = (Viagens 100% no Prazo e Sem Avarias / Total) × 100</code>
+                <span className="math-formula-text">OTIF (%) = (Viagens 100% no Prazo e Sem Avarias / Total) × 100</span>
               </div>
               <p className="formula-explanation">
                 Garante a conformidade de coleta para que os clientes industriais não acumulem resíduos além da capacidade de armazenamento licenciada em seus pátios.

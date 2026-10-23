@@ -613,7 +613,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
               }}>
                 <div>
                   <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff', display: 'block', marginBottom: '0.5rem' }}>
-                    Modo de Integração com o Banco de Dados:
+                    Modo de Processamento de Dados:
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: '#cbd5e1', cursor: 'pointer' }}>

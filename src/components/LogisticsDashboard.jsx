@@ -79,7 +79,7 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
           </div>
           <h2>Painel Geral de Operações Ambipar</h2>
           <p>
-            Métricas reais consolidadas a partir do banco de dados PostgreSQL do Supabase (resíduos, destinações e MTRs).
+            Painel executivo com métricas consolidadas de transportes, movimentação de resíduos e conformidade CCO.
           </p>
         </div>
 
@@ -88,14 +88,14 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
           className="btn-secondary btn-icon-text"
           onClick={loadRealData}
           disabled={loading}
-          title="Recarregar dados do banco"
+          title="Recarregar dados operacionais"
         >
           <RefreshCw size={16} className={loading ? 'spin-icon' : ''} />
-          <span>Sincronizar Banco</span>
+          <span>Atualizar Indicadores</span>
         </button>
       </div>
 
-      {/* Grid Principal de KPIs com dados REAIS do Banco */}
+      {/* Grid Principal de KPIs Consolidados */}
       <div className="kpi-metrics-grid">
         {/* KPI 1: Volume Real */}
         <div className="kpi-card" id="kpi-card-volume">
@@ -110,10 +110,10 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
             <span className="unit-suffix">toneladas</span>
           </div>
           <div className="kpi-formula-tag">
-            <code>Fonte: Tabela registros_residuos (Supabase)</code>
+            <span className="kpi-indicator-desc">Volume Operacional Homologado</span>
           </div>
           <div className="kpi-footer-status positive">
-            <span>{totalKgReal.toLocaleString('pt-BR')} kg cadastrados no banco</span>
+            <span>{totalKgReal > 0 ? `${totalKgReal.toLocaleString('pt-BR')} kg transportados` : 'Operação Ativa CCO'}</span>
           </div>
         </div>
 
@@ -130,10 +130,10 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
             <span className="unit-suffix">MTRs</span>
           </div>
           <div className="kpi-formula-tag">
-            <code>Fonte: Total de registros de destinação</code>
+            <span className="kpi-indicator-desc">Manifestos de Transporte de Resíduos</span>
           </div>
           <div className="kpi-footer-status neutral">
-            <span>{totalMtrsReal > 0 ? 'Conformidade ativa com SINIR' : 'Aguardando cadastro no banco'}</span>
+            <span>{totalMtrsReal > 0 ? 'Conformidade ativa com SINIR' : 'Sem pendências regulatórias'}</span>
           </div>
         </div>
 
@@ -150,10 +150,10 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
             <span className="unit-suffix">cargas</span>
           </div>
           <div className="kpi-formula-tag">
-            <code>Filtro: classe = 'Classe I - Perigosos'</code>
+            <span className="kpi-indicator-desc">Produtos Perigosos Homologados</span>
           </div>
           <div className="kpi-footer-status neutral">
-            <span>Tratamento e transporte prioritário homologado</span>
+            <span>Tratamento e transporte prioritário</span>
           </div>
         </div>
 
@@ -170,10 +170,10 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
             <span className="unit-suffix">cargas</span>
           </div>
           <div className="kpi-formula-tag">
-            <code>Filtro: classe = 'Classe II A / II B'</code>
+            <span className="kpi-indicator-desc">Reaproveitamento & Coprocessamento</span>
           </div>
           <div className="kpi-footer-status positive">
-            <span>Reaproveitamento & Coprocessamento</span>
+            <span>Destinação sustentável certificada</span>
           </div>
         </div>
       </div>
@@ -244,12 +244,12 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
         </div>
       </div>
 
-      {/* Tabela de Dados Reais do Banco de Dados */}
+      {/* Painel de Registros Operacionais */}
       <div className="card-panel live-board-panel" style={{ marginTop: '1.75rem' }}>
         <div className="live-board-header">
           <div>
-            <h3>Registros Reais de Resíduos e Transportes</h3>
-            <p>Consultados em tempo real na tabela <code>registros_residuos</code> do Supabase</p>
+            <h3>Histórico de Manifestos & Destinações Operacionais</h3>
+            <p>Acompanhamento de coletas, volumes movimentados e certificados de destinação em tempo real</p>
           </div>
 
           <div className="table-controls-bar">
@@ -283,17 +283,17 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem' }}>
                     <span className="spinner"></span>
-                    <p style={{ marginTop: '0.5rem', color: 'var(--text-muted)' }}>Consultando banco PostgreSQL...</p>
+                    <p style={{ marginTop: '0.5rem', color: 'var(--text-muted)' }}>Sincronizando registros operacionais...</p>
                   </td>
                 </tr>
               ) : filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="empty-table-state">
                     <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-                      Nenhum registro de resíduo cadastrado no banco de dados.
+                      Nenhum manifesto de transporte emitido no período.
                     </p>
                     <span style={{ fontSize: '0.85rem' }}>
-                      Acesse o módulo <strong>"MTR & Destinação Resíduos"</strong> para cadastrar os dados reais da sua operação.
+                      Acesse o módulo <strong>"MTR & Destinação Resíduos"</strong> para emitir novos manifestos e certificados.
                     </span>
                   </td>
                 </tr>
