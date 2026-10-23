@@ -2,7 +2,7 @@ import {supabase} from '../lib/supabaseClient';
 import {validateAttachment,FILE_TYPES} from '../utils/partnerValidation';
 export function checked(result){if(result.error)throw new Error(result.error.code==='42501'?'Seu perfil não permite esta ação nesta empresa.':result.error.message||'Falha ao acessar as ordens de serviço.');return result.data;}
 export const commandOrder=async(company,action,body)=>checked(await supabase.rpc('maintenance_order_command',{target_company:company,command:action,body}));
-async function allRows(table,fields,company,order){let data=[],offset=0;while(true){const rows=checked(await supabase.from(table).select(fields).eq('company_id',company).order(order).range(offset,offset+999));data.push(...rows);if(rows.length<1000)return data;offset+=1000;}}
+async function allRows(table,fields,company,order,orderId){let data=[],offset=0;while(true){let q=supabase.from(table).select(fields).eq('company_id',company);if(orderId)q=q.eq('order_id',orderId);const rows=checked(await q.order(order).order('id').range(offset,offset+999));data.push(...rows);if(rows.length<1000)return data;offset+=1000;}}
 export async function orderOptions(company){const [vehicles,partners,drivers,settings]=await Promise.all([allRows('veiculos','id,placa,marca_modelo,km_atual,status',company,'placa'),allRows('maintenance_partners','id,nome_fantasia,razao_social,status',company,'razao_social'),allRows('motoristas','id,nome',company,'nome'),supabase.from('maintenance_settings').select('limite_aprovacao_supervisor').eq('company_id',company).maybeSingle()]);return{vehicles,partners,drivers,supervisorLimit:checked(settings)?.limite_aprovacao_supervisor??5000};}
 export async function listOrders(company,filters,page=1,board=false,signal){
  let q=supabase.from('maintenance_orders').select('*',{count:'exact'}).eq('company_id',company);
@@ -16,8 +16,12 @@ export async function listOrders(company,filters,page=1,board=false,signal){
  if(signal)q=q.abortSignal(signal);const result=await q;checked(result);return{rows:result.data,count:result.count};
 }
 export async function orderDetail(company,id){
- const results=await Promise.all(['maintenance_orders','maintenance_order_items','maintenance_order_timeline','maintenance_attachments','workshop_visits'].map(table=>{let q=supabase.from(table).select('*').eq('company_id',company).eq(table==='maintenance_orders'?'id':'order_id',id);return table==='maintenance_orders'?q.single():q.order('created_at',{ascending:true});}));
- const [order,items,timeline,attachments,visits]=results.map(checked);return{order,items,timeline,attachments,visits};
+ const [order,items,timeline,attachments,visits]=await Promise.all([
+ supabase.from('maintenance_orders').select('*').eq('company_id',company).eq('id',id).single().then(checked),
+ ...['maintenance_order_items','maintenance_order_timeline','maintenance_attachments','workshop_visits'].map(table=>allRows(table,'*',company,'created_at',id))]);
+ const actors=[...new Set(timeline.map(t=>t.usuario_id))],names={};
+ for(let offset=0;offset<actors.length;offset+=100){const result=await supabase.from('profiles').select('id,full_name,email').in('id',actors.slice(offset,offset+100));if(!result.error)for(const person of result.data)names[person.id]=person.full_name||person.email||person.id;}
+ return{order,items,timeline,attachments,visits,names};
 }
 export async function uploadOrderObject(company,id,file,visit=false){
  const invalid=validateAttachment(file);if(invalid)throw new Error(invalid);

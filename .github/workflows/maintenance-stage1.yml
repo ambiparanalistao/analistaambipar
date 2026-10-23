@@ -78,10 +78,12 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test tests/partner-validation.test.js tests/orders-validation.test.js
       - name: Install isolated browser tools
+        if: ${{ !cancelled() }}
         run: |
           npm install --no-save --package-lock=false --no-audit --no-fund @playwright/test@1.56.1
           npx playwright install chromium
       - name: Browser partner flows with isolated API fixtures
+        if: ${{ !cancelled() }}
         env:
           VITE_SUPABASE_URL: https://maintenance-fixture.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_fixture_key_for_tests
