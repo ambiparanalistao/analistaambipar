@@ -1,0 +1,59 @@
+name: Maintenance Stage 1
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'src/types/**'
+      - 'tests/maintenance/**'
+      - 'tests/maintenance.types.ts'
+      - 'tsconfig.maintenance.json'
+      - '.github/workflows/maintenance-stage1.yml'
+  push:
+    branches: ['feat/maintenance-stage-1']
+permissions:
+  contents: read
+jobs:
+  database-and-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated_ci_only
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply schema and migrations to disposable PostgreSQL
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/bootstrap.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/schema.sql
+          for migration in supabase/migrations/20261023*.sql; do
+            docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < "$migration"
+          done
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/integration.sql
+      - name: Concurrency verification
+        env:
+          MAINTENANCE_TEST_CONTAINER: ${{ job.services.postgres.id }}
+        run: node tests/maintenance/concurrency.mjs
+      - name: Install project dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck maintenance schema
+        run: npx --yes --package typescript@5.9.3 tsc --project tsconfig.maintenance.json
+      - name: Existing API regression tests
+        run: node --test tests/evolution.test.js
