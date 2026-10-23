@@ -1,3 +1,4 @@
+import PreventiveIndicator from './maintenance/plans/PreventiveIndicator';
 import React,{useState} from 'react';
 import {MAINTENANCE_PAGES} from './maintenance/maintenanceRoutes';
 import { 
@@ -157,7 +158,7 @@ export default function Sidebar({
       <nav className="sidebar-nav">
         {maintenanceAccess?.canRead&&<div className="nav-group">
           <button type="button" className="nav-link-btn" aria-expanded={maintenanceOpen} title="Manutenção" onClick={()=>isCollapsed?onSelectModule('maintenance_partners'):setMaintenanceOpen(v=>!v)}><div className="nav-icon-box"><Wrench size={18}/></div>{!isCollapsed&&<span>Manutenção</span>}</button>
-          {!isCollapsed&&maintenanceOpen&&<ul className="nav-items-list maintenance-submenu">{MAINTENANCE_PAGES.map(p=><li key={p.id}><button type="button" className={'nav-link-btn '+(currentModule===p.id?'active':'')} onClick={()=>onSelectModule(p.id)}>{p.label}</button></li>)}</ul>}
+          {!isCollapsed&&maintenanceOpen&&<ul className="nav-items-list maintenance-submenu">{MAINTENANCE_PAGES.map(p=><li key={p.id}><button type="button" className={'nav-link-btn '+(currentModule===p.id?'active':'')} onClick={()=>onSelectModule(p.id)}>{p.label}{p.id==='maintenance_plans'&&<PreventiveIndicator company={maintenanceAccess.companyId} compact/>}</button></li>)}</ul>}
         </div>}
 
         {menuSections.map((section, sIdx) => (
