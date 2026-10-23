@@ -302,4 +302,36 @@ CREATE POLICY os_files_protect_references ON storage.objects AS RESTRICTIVE FOR 
 USING(bucket_id<>'maintenance' OR split_part(name,'/',2)<>'orders' OR (
  NOT EXISTS(SELECT 1 FROM public.maintenance_attachments a WHERE a.url=storage.objects.name)
  AND NOT EXISTS(SELECT 1 FROM public.workshop_visits v WHERE v.foto_chegada_url=storage.objects.name OR v.foto_saida_url=storage.objects.name)));
+CREATE OR REPLACE FUNCTION maintenance_private.actor_and_paths()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=''
+AS $$
+DECLARE photo text;
+BEGIN
+  IF TG_TABLE_NAME='workshop_visits' THEN
+    PERFORM 1 FROM public.maintenance_orders o
+    WHERE o.id=NEW.order_id AND o.company_id=NEW.company_id AND o.status NOT IN ('encerrada','cancelada') FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Workshop visits require an active order' USING ERRCODE='23514'; END IF;
+    IF NOT maintenance_private.is_provisioner() THEN NEW.registrado_por:=auth.uid(); END IF;
+  ELSIF TG_TABLE_NAME IN ('maintenance_messages','maintenance_attachments') THEN
+    IF NOT maintenance_private.is_provisioner() THEN NEW.enviado_por:=auth.uid(); END IF;
+    IF TG_TABLE_NAME='maintenance_messages' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.maintenance_orders o WHERE o.id=NEW.order_id AND o.company_id=NEW.company_id AND o.partner_id=NEW.partner_id
+    ) THEN RAISE EXCEPTION 'Message partner must match the order partner' USING ERRCODE='23514'; END IF;
+    END IF;
+  ELSIF TG_TABLE_NAME='vehicle_occurrences' THEN
+    FOREACH photo IN ARRAY NEW.fotos LOOP
+      IF photo IS NULL OR photo NOT LIKE NEW.company_id::text||'/%' THEN
+        RAISE EXCEPTION 'Photos must use a company-scoped private Storage path' USING ERRCODE='23514';
+      END IF;
+    END LOOP;
+  ELSIF TG_TABLE_NAME='maintenance_settings' THEN
+    IF NOT maintenance_private.is_provisioner() AND NOT EXISTS(
+      SELECT 1 FROM public.company_members m WHERE m.company_id=NEW.company_id AND m.user_id=auth.uid() AND m.ativo AND m.role='administrador'
+    ) THEN RAISE EXCEPTION 'Only a company administrator can change maintenance settings' USING ERRCODE='42501'; END IF;
+  END IF;
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION maintenance_private.actor_and_paths() FROM PUBLIC;
+
 COMMIT;
