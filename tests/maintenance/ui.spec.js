@@ -33,7 +33,7 @@ test('lista, filtros, tema, mapa sem chave e páginas futuras',async({page})=>{
  expect(fixture.queries.some(u=>u.pathname.endsWith('maintenance_partners')&&u.searchParams.get('company_id')==='eq.'+company)).toBeTruthy();
  await module.getByRole('button',{name:'Modo claro'}).click();await expect(module).toHaveAttribute('data-mp-theme','light');
  await module.getByRole('button',{name:'Mapa',exact:true}).click();await expect(module.getByText('Mapa indisponível')).toBeVisible();
- await page.setViewportSize({width:390,height:844});await expect(module.getByRole('button',{name:'Novo parceiro'})).toBeVisible();await page.screenshot({path:'test-results/oficinas-mobile.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});await expect(module.getByRole('button',{name:'Novo parceiro'})).toBeVisible();const box=await module.boundingBox();expect(box.width).toBeGreaterThan(220);expect(box.x+box.width).toBeLessThanOrEqual(390);await page.screenshot({path:'test-results/oficinas-mobile.png',fullPage:true});
  await page.goto('/manutencao/dashboard');await expect(page.locator('.mp-module').getByText('Em breve',{exact:true})).toBeVisible();
 });
 test('cadastro valida obrigatórios e salva endereço manual',async({page})=>{

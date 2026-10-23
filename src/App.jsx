@@ -103,6 +103,11 @@ export default function App() {
 
   const [currentModule, setCurrentModule] = useState(getInitialModule);
   const maintenanceAccess = useMaintenanceAccess(session?.user);
+  useEffect(()=>{
+    if(!currentModule.startsWith('maintenance_'))return;
+    const compact=()=>{if(window.matchMedia('(max-width:760px)').matches)setIsSidebarCollapsed(true);};
+    compact();window.addEventListener('resize',compact);return()=>window.removeEventListener('resize',compact);
+  },[currentModule]);
 
   useEffect(() => {
     // Se o Supabase não estiver configurado com credenciais, para o loading
@@ -309,7 +314,7 @@ export default function App() {
           />
 
           {/* Área Principal de Conteúdo */}
-          <div className={`main-stage-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+          <div className={`main-stage-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${currentModule.startsWith('maintenance_') ? 'maintenance-stage' : ''}`}>
             {/* Top Bar da Dashboard */}
             <header className="stage-topbar" id="stage-topbar">
               <div className="topbar-breadcrumb">
