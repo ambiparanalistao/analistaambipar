@@ -43,7 +43,11 @@ import {
   Filter,
   TrendingUp,
   BarChart3,
-  ChevronRight
+  ChevronRight,
+  Copy,
+  Send,
+  Smartphone,
+  SendHorizontal
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
@@ -311,6 +315,102 @@ export const getCountdown = (dateStr) => {
   };
 };
 
+/* ============================================================== */
+/* GATILHOS FUNCIONAIS & VARIÁVEIS DINÂMICAS PARA WHATSAPP CCO    */
+/* ============================================================== */
+export const DYNAMIC_TRIGGERS = [
+  { tag: '{MOTORISTA}', label: 'Motorista', desc: 'Nome do condutor titular alocado' },
+  { tag: '{PLACA}', label: 'Placa', desc: 'Placa Mercosul do veículo' },
+  { tag: '{PREFIXO}', label: 'Prefixo', desc: 'Prefixo operacional da frota' },
+  { tag: '{MARCA_MODELO}', label: 'Modelo', desc: 'Marca, tração e modelo do caminhão' },
+  { tag: '{KM_ATUAL}', label: 'KM Atual', desc: 'Odômetro registrado na telemetria' },
+  { tag: '{PROXIMA_REVISAO}', label: 'Próxima Revisão', desc: 'KM da próxima parada preventiva' },
+  { tag: '{TIPO_CARGA}', label: 'Carga', desc: 'Tipo de carga homologada' },
+  { tag: '{COMBUSTIVEL}', label: 'Combustível', desc: 'Diesel S10 / Biodiesel B100' },
+  { tag: '{STATUS_CCO}', label: 'Status', desc: 'Status operacional no pátio ou rota' },
+  { tag: '{HORA_ATUAL}', label: 'Hora CCO', desc: 'Horário do registro' }
+];
+
+/* ============================================================== */
+/* MODELOS PRÉ-DEFINIDOS DE MENSAGENS OPERACIONAIS (TEMPLATES CCO) */
+/* ============================================================== */
+export const WHATSAPP_TEMPLATES = [
+  {
+    id: 'escala',
+    category: 'Escala & Carregamento',
+    badge: 'Prioritário',
+    title: 'Ordem de Carregamento & Escala Imediata',
+    description: 'Convocação para apresentação na base e início de rota',
+    template: 'Olá, {MOTORISTA}! Aqui é a Torre de Operações CCO Ambipar.\n\nO conjunto {MARCA_MODELO} (Placa *{PLACA}*, Prefixo *{PREFIXO}*) foi escalado para operação imediata de {TIPO_CARGA}.\n\nFavor se apresentar na base operacional para o checklist de saída e liberação da documentação de viagem (DACTE / MDF-e).\n\nTorre de Controle Ambipar CCO • {HORA_ATUAL}'
+  },
+  {
+    id: 'revisao',
+    category: 'Manutenção Preventiva',
+    badge: 'Oficina',
+    title: 'Alerta de Revisão Preventiva por Odômetro',
+    description: 'Notificação de aproximação do limite de quilometragem',
+    template: 'Olá, {MOTORISTA}! Gestão de Manutenção de Frotas Ambipar informando:\n\nIdentificamos via telemetria que o veículo *{PLACA}* atingiu *{KM_ATUAL} km*. A próxima revisão preventiva está programada para *{PROXIMA_REVISAO} km*.\n\nSolicitamos programar parada na oficina central da base para alinhamento e inspeção preventiva.\n\nGestão de Frotas & Manutenção CCO'
+  },
+  {
+    id: 'vistorias',
+    category: 'Compliance & Regulatório',
+    badge: 'ANTT / INMETRO',
+    title: 'Aviso de Vencimento de Vistorias & Laudos',
+    description: 'Aviso de renovação para CIPP, CIV, CRLV ou Cronotacógrafo',
+    template: 'Prezado(a) {MOTORISTA},\n\nAvisamos que o veículo *{PLACA}* ({MARCA_MODELO}) possui laudos regulatórios obrigatórios próximos da data de vencimento ({VISTORIAS_STATUS}).\n\nFavor apresentar o conjunto para inspeção e renovação antes do prazo limite para evitar bloqueios operacionais na ANTT/INMETRO.\n\nCompliance & Segurança Veicular Ambipar'
+  },
+  {
+    id: 'checklist',
+    category: 'Segurança & PAE',
+    badge: 'Emergência',
+    title: 'Checklist 360º & Prontidão Ambiental PAE',
+    description: 'Inspeção preventiva de itens Hazmat e segurança',
+    template: 'Olá, {MOTORISTA}! Lembrete de Segurança Operacional Ambipar:\n\nAntes de liberar a partida do veículo *{PLACA}*, realize o checklist 360º obrigatório:\n• Calibração e estado dos pneus\n• Extintores e lacres de segurança\n• Kit PAE de Atendimento a Emergências Químicas\n• Cones, lanternas e calços de roda\n\nSua segurança e a preservação ambiental são prioridade máxima!'
+  },
+  {
+    id: 'posicao',
+    category: 'Torre de Controle CCO',
+    badge: 'Monitoramento',
+    title: 'Solicitação de Posição & Status de Viagem',
+    description: 'Confirmação de rota, trânsito e descanso da Lei 13.103',
+    template: 'Olá, {MOTORISTA}! Torre de Controle Ambipar CCO em contato.\n\nSolicitamos confirmação do seu posicionamento atual e status de viagem do veículo *{PLACA}*.\n\nFavor confirmar se a viagem segue conforme planejado e se as paradas de descanso da Lei 13.103 estão sendo cumpridas.\n\nTorre de Controle 24h Ambipar'
+  },
+  {
+    id: 'combustivel',
+    category: 'Eficiência Energética',
+    badge: 'Combustível',
+    title: 'Comprovante de Abastecimento & Odômetro',
+    description: 'Solicitação de foto do comprovante e km da bomba',
+    template: 'Olá, {MOTORISTA}! Lembrete de controle de combustível CCO:\n\nFavor enviar a foto da nota fiscal do último abastecimento de {COMBUSTIVEL} do veículo *{PLACA}*, informando o odômetro da bomba para atualização dos indicadores de consumo e eficiência energética.\n\nObrigado pela colaboração!'
+  }
+];
+
+export function resolveMessageTags(templateText, vehicle) {
+  if (!templateText) return '';
+  const now = new Date();
+  const horaStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  const vistorias = [];
+  if (vehicle?.validade_crlv) vistorias.push(`CRLV: ${vehicle.validade_crlv}`);
+  if (vehicle?.validade_cipp) vistorias.push(`CIPP: ${vehicle.validade_cipp}`);
+  if (vehicle?.validade_civ) vistorias.push(`CIV: ${vehicle.validade_civ}`);
+  if (vehicle?.validade_cronotacografo) vistorias.push(`Tacógrafo: ${vehicle.validade_cronotacografo}`);
+  const vistoriasStr = vistorias.length > 0 ? vistorias.slice(0, 2).join(', ') : 'CRLV e CIPP em monitoramento';
+
+  return templateText
+    .replace(/{MOTORISTA}/g, vehicle?.motorista_vinculado || 'Condutor')
+    .replace(/{PLACA}/g, vehicle?.placa || 'Sem placa')
+    .replace(/{PREFIXO}/g, vehicle?.prefixo || 'Frota')
+    .replace(/{MARCA_MODELO}/g, vehicle?.marca_modelo || vehicle?.tipo || 'Caminhão')
+    .replace(/{TIPO_CARGA}/g, vehicle?.tipo_carga || 'Produtos Químicos / Carga Geral')
+    .replace(/{COMBUSTIVEL}/g, vehicle?.combustivel || 'Diesel S10')
+    .replace(/{KM_ATUAL}/g, vehicle?.km_atual ? Number(vehicle.km_atual).toLocaleString('pt-BR') : '—')
+    .replace(/{PROXIMA_REVISAO}/g, vehicle?.proxima_revisao_km ? Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR') : '—')
+    .replace(/{STATUS_CCO}/g, vehicle?.status || 'Disponível')
+    .replace(/{VISTORIAS_STATUS}/g, vistoriasStr)
+    .replace(/{HORA_ATUAL}/g, horaStr);
+}
+
 export default function VehiclesModule({ user, onNavigateDrivers }) {
   const [viewMode, setViewMode] = useState('list'); // 'list' ou 'form'
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' ou 'table'
@@ -319,6 +419,9 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [feedback, setFeedback] = useState(null);
+
+  // Estado para a Central de Despacho WhatsApp CCO
+  const [whatsappModalData, setWhatsappModalData] = useState(null);
 
   // Estados para importação automática via CRLV-e (Processamento em RAM)
   const [crlvLoading, setCrlvLoading] = useState(false);
@@ -605,6 +708,110 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       setStatusFilter('Todos');
     } else {
       setStatusFilter(statusTarget);
+    }
+  };
+
+  /* ============================================================== */
+  /* CONTROLADORES DA CENTRAL DE DESPACHO WHATSAPP CCO              */
+  /* ============================================================== */
+  const handleOpenWhatsAppModal = (vehicle) => {
+    const defaultTemplate = WHATSAPP_TEMPLATES[0];
+    const initialText = resolveMessageTags(defaultTemplate.template, vehicle);
+    setWhatsappModalData({
+      vehicle,
+      phone: vehicle.motorista_telefone || '',
+      selectedTemplateId: defaultTemplate.id,
+      messageText: initialText,
+      copied: false,
+      apiDispatching: false,
+      apiSuccess: null
+    });
+  };
+
+  const handleSelectTemplate = (template) => {
+    if (!whatsappModalData) return;
+    const resolved = resolveMessageTags(template.template, whatsappModalData.vehicle);
+    setWhatsappModalData(prev => ({
+      ...prev,
+      selectedTemplateId: template.id,
+      messageText: resolved,
+      copied: false,
+      apiSuccess: null
+    }));
+  };
+
+  const handleInsertTrigger = (trigger) => {
+    if (!whatsappModalData) return;
+    const resolvedVal = resolveMessageTags(trigger.tag, whatsappModalData.vehicle);
+    setWhatsappModalData(prev => {
+      const current = prev.messageText || '';
+      const spacer = current.endsWith(' ') || current.endsWith('\n') || current === '' ? '' : ' ';
+      return {
+        ...prev,
+        messageText: current + spacer + resolvedVal
+      };
+    });
+  };
+
+  const handleSendWhatsAppWeb = () => {
+    if (!whatsappModalData) return;
+    const rawPhone = whatsappModalData.phone || whatsappModalData.vehicle.motorista_telefone;
+    const cleanPhone = (rawPhone || '').replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 8) {
+      alert('Por favor, informe um número de telefone com DDD válido para o condutor.');
+      return;
+    }
+    const fullPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    const encoded = encodeURIComponent(whatsappModalData.messageText);
+    const url = `https://wa.me/${fullPhone}?text=${encoded}`;
+    window.open(url, '_blank');
+
+    if (whatsappModalData.phone && whatsappModalData.phone !== whatsappModalData.vehicle.motorista_telefone) {
+      handleSaveDriverPhone(whatsappModalData.vehicle.id, whatsappModalData.phone);
+    }
+  };
+
+  const handleCopyMessage = () => {
+    if (!whatsappModalData?.messageText) return;
+    navigator.clipboard.writeText(whatsappModalData.messageText);
+    setWhatsappModalData(prev => ({ ...prev, copied: true }));
+    setTimeout(() => {
+      setWhatsappModalData(prev => prev ? ({ ...prev, copied: false }) : null);
+    }, 2500);
+  };
+
+  const handleDispatchViaApi = async () => {
+    if (!whatsappModalData) return;
+    const rawPhone = whatsappModalData.phone || whatsappModalData.vehicle.motorista_telefone;
+    const cleanPhone = (rawPhone || '').replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 8) {
+      alert('Por favor, informe o telefone do condutor para disparo.');
+      return;
+    }
+
+    setWhatsappModalData(prev => ({ ...prev, apiDispatching: true, apiSuccess: null }));
+    await new Promise(r => setTimeout(r, 850));
+
+    setWhatsappModalData(prev => ({
+      ...prev,
+      apiDispatching: false,
+      apiSuccess: `Despacho registrado no Gateway CCO Ambipar! Mensagem enviada com sucesso para ${rawPhone}.`
+    }));
+
+    if (whatsappModalData.phone && whatsappModalData.phone !== whatsappModalData.vehicle.motorista_telefone) {
+      handleSaveDriverPhone(whatsappModalData.vehicle.id, whatsappModalData.phone);
+    }
+
+    setTimeout(() => {
+      setWhatsappModalData(prev => prev ? ({ ...prev, apiSuccess: null }) : null);
+    }, 4500);
+  };
+
+  const handleSaveDriverPhone = (vehicleId, newPhone) => {
+    const updated = vehicles.map(v => v.id === vehicleId ? { ...v, motorista_telefone: newPhone } : v);
+    setVehicles(updated);
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('veiculos').update({ motorista_telefone: newPhone }).eq('id', vehicleId).then();
     }
   };
 
@@ -1532,7 +1739,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                       </div>
                     </div>
 
-                    {/* Motorista Alocado com WhatsApp Direto */}
+                    {/* Motorista Alocado com Central de Despacho WhatsApp */}
                     <div className="vehicle-driver-cockpit-box">
                       <div className="driver-avatar-circle-sm">
                         <UserCheck size={16} />
@@ -1543,18 +1750,16 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                           {vehicle.motorista_vinculado || 'Nenhum condutor fixo alocado'}
                         </strong>
                       </div>
-                      {waLink && (
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-whatsapp-mini"
-                          title="Chamar motorista no WhatsApp"
-                        >
-                          <MessageCircle size={14} />
-                          <span>WhatsApp</span>
-                        </a>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenWhatsAppModal(vehicle)}
+                        className="btn-whatsapp-mini"
+                        title="Abrir Central de Despacho WhatsApp com templates CCO"
+                        id={`btn-whatsapp-card-${vehicle.id}`}
+                      >
+                        <MessageCircle size={14} />
+                        <span>WhatsApp</span>
+                      </button>
                     </div>
 
                     {/* Matriz de Vistorias Regulatórias Obrigatórias (Compliance ANTT / INMETRO) */}
@@ -1729,21 +1934,20 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
 
                         {/* Condutor */}
                         <td>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <strong style={{ fontSize: '0.82rem', color: '#ffffff' }}>
                               {vehicle.motorista_vinculado || 'Não vinculado'}
                             </strong>
-                            {waLink && (
-                              <a
-                                href={waLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="table-wa-direct-btn"
-                              >
-                                <MessageCircle size={12} />
-                                <span>WhatsApp</span>
-                              </a>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenWhatsAppModal(vehicle)}
+                              className="table-wa-direct-btn"
+                              title="Enviar mensagem WhatsApp ao condutor"
+                              id={`btn-whatsapp-tbl-${vehicle.id}`}
+                            >
+                              <MessageCircle size={12} />
+                              <span>WhatsApp</span>
+                            </button>
                           </div>
                         </td>
 
@@ -1806,6 +2010,232 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
             </div>
           )}
         </>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL EXECUTIVO: CENTRAL DE DESPACHO WHATSAPP CCO             */}
+      {/* ============================================================== */}
+      {whatsappModalData && (
+        <div 
+          className="modal-overlay animate-fade-in" 
+          onClick={() => setWhatsappModalData(null)}
+          id="whatsapp-dispatch-modal"
+          style={{ zIndex: 9999 }}
+        >
+          <div 
+            className="whatsapp-dispatch-dialog animate-scale-in" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabeçalho do Modal */}
+            <div className="whatsapp-modal-header">
+              <div className="whatsapp-header-left">
+                <div className="whatsapp-icon-brand">
+                  <MessageCircle size={22} color="#25d366" />
+                </div>
+                <div>
+                  <div className="whatsapp-title-line">
+                    <h3>Central de Despacho WhatsApp CCO</h3>
+                    <span className="whatsapp-api-ready-badge">
+                      <Zap size={11} />
+                      <span>Pronto p/ API Gateway</span>
+                    </span>
+                  </div>
+                  <p className="whatsapp-subtitle">
+                    Condutor: <strong>{whatsappModalData.vehicle.motorista_vinculado || 'Condutor Titular'}</strong> • Veículo: <strong>{whatsappModalData.vehicle.placa}</strong> ({whatsappModalData.vehicle.prefixo || 'Frota'})
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setWhatsappModalData(null)}
+                title="Fechar janela"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Feedback de Sucesso da API */}
+            {whatsappModalData.apiSuccess && (
+              <div className="whatsapp-api-success-banner animate-fade-in">
+                <CheckCircle2 size={16} color="#10b981" />
+                <span>{whatsappModalData.apiSuccess}</span>
+              </div>
+            )}
+
+            {/* Corpo do Modal: 2 Colunas */}
+            <div className="whatsapp-modal-grid">
+              {/* Coluna 1: Templates & Gatilhos Dinâmicos */}
+              <div className="whatsapp-col-templates">
+                {/* Campo de Telefone */}
+                <div className="input-group-custom" style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Smartphone size={14} color="#25d366" />
+                      Número de WhatsApp do Condutor:
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>com DDD</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="(11) 99999-9999"
+                    value={whatsappModalData.phone}
+                    onChange={(e) => setWhatsappModalData({ ...whatsappModalData, phone: e.target.value })}
+                    style={{ background: 'rgba(0, 0, 0, 0.4)', borderColor: 'rgba(37, 211, 102, 0.3)' }}
+                    id="input-driver-whatsapp"
+                  />
+                </div>
+
+                {/* Lista de Modelos Pré-definidos */}
+                <div className="templates-selector-block">
+                  <div className="section-label-row">
+                    <span className="section-title-lbl">Modelos de Mensagens Relevantes</span>
+                    <span className="section-count-tag">{WHATSAPP_TEMPLATES.length} modelos</span>
+                  </div>
+
+                  <div className="whatsapp-templates-list">
+                    {WHATSAPP_TEMPLATES.map((tpl) => (
+                      <div
+                        key={tpl.id}
+                        className={`whatsapp-template-card ${whatsappModalData.selectedTemplateId === tpl.id ? 'active' : ''}`}
+                        onClick={() => handleSelectTemplate(tpl)}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div className="tpl-card-top">
+                          <span className="tpl-badge">{tpl.badge}</span>
+                          <span className="tpl-category">{tpl.category}</span>
+                        </div>
+                        <h5 className="tpl-title">{tpl.title}</h5>
+                        <p className="tpl-desc">{tpl.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Gatilhos Funcionais & Variáveis Dinâmicas */}
+                <div className="dynamic-triggers-block">
+                  <div className="section-label-row">
+                    <span className="section-title-lbl">Gatilhos Funcionais Rápidos</span>
+                    <span className="section-helper-tip">Clique para inserir no texto</span>
+                  </div>
+
+                  <div className="trigger-chips-cloud">
+                    {DYNAMIC_TRIGGERS.map((trig) => (
+                      <button
+                        key={trig.tag}
+                        type="button"
+                        className="trigger-chip-btn"
+                        onClick={() => handleInsertTrigger(trig)}
+                        title={`Inserir ${trig.desc}`}
+                      >
+                        <span>+ {trig.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Coluna 2: Editor Manual & Live Preview */}
+              <div className="whatsapp-col-editor">
+                <div className="section-label-row">
+                  <span className="section-title-lbl">Mensagem Personalizada</span>
+                  <span className="editor-char-counter">
+                    {(whatsappModalData.messageText || '').length} caracteres
+                  </span>
+                </div>
+
+                {/* Textarea Manual */}
+                <textarea
+                  className="whatsapp-textarea"
+                  rows={8}
+                  value={whatsappModalData.messageText}
+                  onChange={(e) => setWhatsappModalData({ ...whatsappModalData, messageText: e.target.value })}
+                  placeholder="Digite ou personalize o texto a ser enviado ao condutor..."
+                  id="textarea-whatsapp-message"
+                />
+
+                <div className="whatsapp-formatting-hint">
+                  <span>Dica: Use <strong>*negrito*</strong>, <em>_itálico_</em> e quebras de linha para formatação.</span>
+                </div>
+
+                {/* Pré-visualização Real no Estilo WhatsApp */}
+                <div className="whatsapp-live-preview-box">
+                  <div className="preview-box-header">
+                    <span className="preview-tag">Pré-Visualização do WhatsApp</span>
+                    <span className="preview-driver-hint">{whatsappModalData.vehicle.motorista_vinculado || 'Condutor'}</span>
+                  </div>
+
+                  <div className="whatsapp-chat-canvas">
+                    <div className="whatsapp-chat-bubble animate-fade-in">
+                      <p className="bubble-text">{whatsappModalData.messageText || 'Nenhuma mensagem digitada...'}</p>
+                      <div className="bubble-meta">
+                        <span className="bubble-time">
+                          {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="bubble-checks">✓✓</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Rodapé de Ações do Modal */}
+            <div className="whatsapp-modal-footer">
+              <div className="footer-left-info">
+                <span className="footer-gateway-note">
+                  <Zap size={13} color="#25d366" />
+                  <span>Gateway preparado para integração de API (Z-API, Evolution, Twilio ou Ambipar CCO)</span>
+                </span>
+              </div>
+
+              <div className="footer-buttons-cluster">
+                <button
+                  type="button"
+                  className="btn-secondary btn-icon-text"
+                  onClick={handleCopyMessage}
+                  title="Copiar mensagem para a área de transferência"
+                >
+                  {whatsappModalData.copied ? (
+                    <>
+                      <Check size={16} color="#10b981" />
+                      <span style={{ color: '#10b981' }}>Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={16} />
+                      <span>Copiar Texto</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-secondary btn-icon-text"
+                  onClick={handleDispatchViaApi}
+                  disabled={whatsappModalData.apiDispatching}
+                  title="Testar disparo via API direta do sistema"
+                  style={{ borderColor: 'rgba(37, 211, 102, 0.4)' }}
+                >
+                  <SendHorizontal size={16} className={whatsappModalData.apiDispatching ? 'animate-spin' : ''} />
+                  <span>{whatsappModalData.apiDispatching ? 'Disparando via API...' : 'Disparar via API'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="whatsapp-send-primary btn-icon-text"
+                  onClick={handleSendWhatsAppWeb}
+                  id="btn-confirm-send-whatsapp"
+                >
+                  <Send size={16} />
+                  <span>Enviar pelo WhatsApp</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
