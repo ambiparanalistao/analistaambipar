@@ -1,3 +1,4 @@
+import OrdersPage from './orders/OrdersPage';
 import React,{useEffect,useState} from 'react';
 import {PARTNER_TYPES,STATUS_LABELS,ROLE_LABELS,readableRole,maskPhone} from '../../utils/partnerValidation';
 import {listPartners,partnerCities,partnerDetail,savePartner,uploadPartnerFile,removePartnerFile} from '../../services/maintenancePartners';
@@ -35,7 +36,7 @@ function PartnersPage({access,theme,setLocked}){
  if(view.id&&detail.loading)return <p role="status">Carregando parceiro…</p>;
  if(view.id&&detail.error)return <div role="alert" className="mp-card"><p>{detail.error}</p><button onClick={reload}>Tentar novamente</button><button onClick={()=>go('list')}>Voltar</button></div>;
  if(view.mode==='new'||(view.mode==='edit'&&detail.data))return <PartnerForm key={view.id||'new'} partner={view.mode==='edit'?detail.data.partner:null} onSave={save} onCancel={()=>go(view.id?'detail':'list',view.id)} saving={saving} error={saveError}/>;
- if(view.mode==='detail'&&detail.data)return <>{notice&&<p className="mp-notice" role="status">{notice}</p>}<PartnerDetail data={detail.data} company={companyId} canWrite={canWrite} onBack={()=>go('list')} onEdit={()=>go('edit',view.id)} onUpload={upload} onRemove={remove} saving={saving}/></>;
+ if(view.mode==='detail'&&detail.data)return <>{notice&&<p className="mp-notice" role="status">{notice}</p>}<PartnerDetail data={detail.data} company={companyId} canWrite={canWrite} canCreateOrder={access.canRead} onBack={()=>go('list')} onEdit={()=>go('edit',view.id)} onUpload={upload} onRemove={remove} saving={saving}/></>;
  return <div>
  <div className="mp-row mp-between"><div><h2>Oficinas Parceiras</h2><p className="mp-muted">Prestadores, contatos e condições da empresa selecionada.</p></div>{canWrite&&<button className="mp-primary" onClick={()=>go('new')}>Novo parceiro</button>}</div>
  {notice&&<p className="mp-notice" role="status">{notice}</p>}
@@ -52,9 +53,9 @@ export default function MaintenanceModule({access,page}){
  const [theme,setTheme]=useState(()=>{try{return localStorage.getItem('maintenance_theme')||'dark';}catch{return'dark';}}),[locked,setLocked]=useState(false);
  const toggle=()=>setTheme(t=>{const next=t==='dark'?'light':'dark';try{localStorage.setItem('maintenance_theme',next);}catch{/* Optional preference. */}return next;});
  return <div className="mp-module" data-mp-theme={theme}>
- <div className="mp-row mp-between mp-context"><div><strong>Manutenção</strong>{access.canRead&&<span> · {ROLE_LABELS[access.role]}{access.canWrite?'':' · Somente leitura'}</span>}</div><button onClick={toggle}>Modo {theme==='dark'?'claro':'escuro'}</button></div>
+ <div className="mp-row mp-between mp-context"><div><strong>Manutenção</strong>{access.canRead&&<span> · {ROLE_LABELS[access.role]}{page!=='maintenance_orders'&&!access.canWrite?' · Somente leitura':''}</span>}</div><button onClick={toggle}>Modo {theme==='dark'?'claro':'escuro'}</button></div>
  {access.loading?<p role="status">Verificando acesso…</p>:access.error?<div role="alert" className="mp-card"><p>{access.error}</p><button onClick={access.reload}>Tentar novamente</button></div>:!access.canRead?<div className="mp-card" role="alert"><h2>Acesso restrito</h2><p>Este módulo exige um usuário autenticado e um perfil autorizado na empresa.</p></div>:<>
  <label className="mp-field mp-company">Empresa<select aria-label="Empresa" value={access.companyId} disabled={locked} onChange={e=>access.selectCompany(e.target.value)}>{access.memberships.filter(m=>readableRole(m.roleName)).map(m=><option key={m.company_id} value={m.company_id}>{m.nome}</option>)}</select></label>
- {page==='maintenance_partners'?<PartnersPage key={access.companyId} access={access} theme={theme} setLocked={setLocked}/>:<section className="mp-card mp-empty"><h2>{MAINTENANCE_PAGES.find(p=>p.id===page)?.label||'Manutenção'}</h2><p>Em breve</p><p className="mp-muted">Disponível em uma próxima etapa do módulo.</p></section>}</>}
+ {page==='maintenance_orders'?<OrdersPage key={access.companyId} access={access} setLocked={setLocked}/>:page==='maintenance_partners'?<PartnersPage key={access.companyId} access={access} theme={theme} setLocked={setLocked}/>:<section className="mp-card mp-empty"><h2>{MAINTENANCE_PAGES.find(p=>p.id===page)?.label||'Manutenção'}</h2><p>Em breve</p><p className="mp-muted">Disponível em uma próxima etapa do módulo.</p></section>}</>}
  </div>;
 }
