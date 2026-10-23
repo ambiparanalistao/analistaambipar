@@ -12,6 +12,7 @@ CREATE FUNCTION plan_test.act(action text,payload jsonb DEFAULT '{}') RETURNS js
 GRANT EXECUTE ON FUNCTION plan_test.act(text,jsonb) TO authenticated;
 SET LOCAL ROLE authenticated;SELECT set_config('request.jwt.claim.sub','26000000-0000-4000-8000-000000000001',true);
 SELECT set_config('plan_test.id',plan_test.act('save',jsonb_build_object('nome','Troca de óleo','categoria_veiculo','caminhao','intervalo_km',1000,'intervalo_dias',30,'ultima_execucao_data',current_date,'ativo',true))->>'id',true);
+SELECT plan_test.assert(jsonb_array_length(plan_test.act('context')->'plans')=1,'context lists configured plans');
 SELECT plan_test.assert((SELECT count(*)=2 FROM public.maintenance_plan_vehicles WHERE company_id='16000000-0000-4000-8000-000000000001'),'category expands separately');
 SELECT plan_test.assert((SELECT (a->>'proxima_km')::numeric=2000 FROM jsonb_array_elements(plan_test.act('alerts')->'rows') a WHERE a->>'placa'='PLAN001'),'first vehicle odometer baseline');
 SELECT plan_test.assert((SELECT (a->>'proxima_km')::numeric=6000 FROM jsonb_array_elements(plan_test.act('alerts')->'rows') a WHERE a->>'placa'='PLAN002'),'second vehicle independent baseline');
