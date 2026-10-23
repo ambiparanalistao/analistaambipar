@@ -465,7 +465,10 @@ export type MaintenanceDatabase = {
       Relationships: [];
     } };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      maintenance_partner_metrics: { Args: { target_company:string; target_partner:string }; Returns:{total_os:number;custo_medio:number|null}[] };
+      maintenance_partner_cities: { Args:{target_company:string}; Returns:{cidade:string}[] };
+    };
     Enums: Enums;
     CompositeTypes: Record<string, never>;
   };
