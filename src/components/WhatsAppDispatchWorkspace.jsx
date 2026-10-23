@@ -407,93 +407,113 @@ export default function WhatsAppDispatchWorkspace({ vehicle, onBack, onUpdateVeh
       {/* ============================================================== */}
       {/* FAIXA EXECUTIVA DE TELEMETRIA AMPLA & ESPAÇOSA (SEM APERTO)    */}
       {/* ============================================================== */}
+      {/* ============================================================== */}
+      {/* FAIXA EXECUTIVA DE TELEMETRIA AMPLA & ESPAÇOSA (SEM APERTO)    */}
+      {/* ============================================================== */}
       <div className="dispatch-telemetry-ribbon-spacious">
-        {/* Bloco 1: Motorista */}
-        <div className="spacious-driver-box">
-          <div className="driver-avatar-circle-lg">
-            <UserCheck size={28} />
-          </div>
-          <div className="driver-meta-info-lg">
-            <span className="spacious-kicker">Motorista Titular Alocado</span>
-            <strong className="driver-name-lg">{vehicle.motorista_vinculado || 'Condutor Titular CCO'}</strong>
-            <div className="driver-phone-input-spacious">
-              <Smartphone size={15} color="#25d366" />
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(11) 99999-9999"
-                title="Editar número de WhatsApp do condutor"
-              />
-              <span className="phone-country-tag">BR +55</span>
+        {/* Linha Superior: Condutor e Identificação do Veículo */}
+        <div className="telemetry-top-strip">
+          {/* Bloco 1: Motorista */}
+          <div className="spacious-driver-box">
+            <div className="driver-avatar-circle-lg">
+              <UserCheck size={26} />
             </div>
-          </div>
-        </div>
-
-        {/* Bloco 2: Identificação do Conjunto & Placa Mercosul */}
-        <div className="spacious-vehicle-box">
-          <div className="mercosul-plate-badge-cockpit" style={{ transform: 'scale(1.05)', margin: '0 0.5rem' }}>
-            <div className="plate-header">
-              <span className="plate-flag">🇧🇷</span>
-              <span className="plate-country">BRASIL</span>
+            <div className="driver-meta-info-lg">
+              <span className="spacious-kicker">Motorista Titular Alocado</span>
+              <strong className="driver-name-lg">{vehicle.motorista_vinculado || 'Condutor Titular CCO'}</strong>
+              <div className="driver-phone-input-spacious">
+                <Smartphone size={14} color="#25d366" />
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(11) 99999-9999"
+                  title="Editar número de WhatsApp do condutor"
+                />
+                <span className="phone-country-tag">BR +55</span>
+              </div>
             </div>
-            <div className="plate-number">{formatPlateMercosul(vehicle.placa)}</div>
           </div>
 
-          <div className="vehicle-meta-info-lg">
-            <div className="vehicle-name-row">
-              <strong className="vehicle-title-lg">{vehicle.marca_modelo || vehicle.tipo}</strong>
-              {vehicle.prefixo && <span className="fleet-prefix-tag-lg">{vehicle.prefixo}</span>}
+          {/* Bloco 2: Identificação do Conjunto & Placa Mercosul */}
+          <div className="spacious-vehicle-box">
+            <div className="mercosul-plate-badge-cockpit" style={{ transform: 'scale(1.02)' }}>
+              <div className="plate-header">
+                <span className="plate-flag">🇧🇷</span>
+                <span className="plate-country">BRASIL</span>
+              </div>
+              <div className="plate-number">{formatPlateMercosul(vehicle.placa)}</div>
             </div>
-            <span className="vehicle-sublabel-lg">
-              {vehicle.tipo} • <strong>{vehicle.tipo_carga || 'Carga Química Perigosa'}</strong>
+
+            <div className="vehicle-meta-info-lg">
+              <div className="vehicle-name-row">
+                <strong className="vehicle-title-lg">{vehicle.marca_modelo || vehicle.tipo}</strong>
+                {vehicle.prefixo && <span className="fleet-prefix-tag-lg">{vehicle.prefixo}</span>}
+              </div>
+              <span className="vehicle-sublabel-lg">
+                {vehicle.tipo} • <strong>{vehicle.tipo_carga || 'Carga Química Perigosa'}</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* Status CCO Badge */}
+          <div className="spacious-status-box">
+            <span className="cco-status-chip">
+              <span className="beacon-dot"></span>
+              <span>Telemetria Operacional 24h</span>
             </span>
           </div>
         </div>
 
-        {/* Bloco 3: GRID ESPAÇOSO DE INDICADORES DE TELEMETRIA (FÁCIL DE VER) */}
+        {/* Linha Inferior: GRID DE 3 INDICADORES DE TELEMETRIA AMPLOS (FÁCIL DE VER) */}
         <div className="spacious-telemetry-kpi-grid">
           {/* KPI 1: Odômetro Total */}
           <div className="telemetry-kpi-card emerald-accent">
             <div className="kpi-icon-wrap">
-              <Gauge size={22} />
+              <Gauge size={24} />
             </div>
             <div className="kpi-data-wrap">
-              <span className="kpi-header-label">ODÔMETRO ATUAL</span>
+              <span className="kpi-header-label">ODÔMETRO TOTAL / ATUAL</span>
               <strong className="kpi-big-value">
                 {vehicle.km_atual ? `${Number(vehicle.km_atual).toLocaleString('pt-BR')} km` : '—'}
               </strong>
-              <span className="kpi-sub-text">Telemetria CCO ativa</span>
+              <span className="kpi-sub-text">📡 Telemetria CAN-Bus em tempo real</span>
             </div>
           </div>
 
           {/* KPI 2: Próxima Revisão */}
           <div className="telemetry-kpi-card cyan-accent">
             <div className="kpi-icon-wrap">
-              <RotateCcw size={22} />
+              <RotateCcw size={24} />
             </div>
             <div className="kpi-data-wrap">
-              <span className="kpi-header-label">PRÓXIMA REVISÃO</span>
-              <strong className="kpi-big-value">
-                {vehicle.proxima_revisao_km ? `${Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR')} km` : '—'}
-              </strong>
-              <span className="kpi-sub-badge cyan">
-                {kmRestante > 0 ? `Faltam ${kmRestante.toLocaleString('pt-BR')} km` : 'Revisão Necessária'}
-              </span>
+              <span className="kpi-header-label">PRÓXIMA REVISÃO MECÂNICA</span>
+              <div className="kpi-val-row">
+                <strong className="kpi-big-value">
+                  {vehicle.proxima_revisao_km ? `${Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR')} km` : '—'}
+                </strong>
+                <span className="kpi-sub-badge cyan">
+                  {kmRestante > 0 ? `Faltam ${kmRestante.toLocaleString('pt-BR')} km` : '⚠️ Revisão Necessária'}
+                </span>
+              </div>
+              <span className="kpi-sub-text">🔧 Inspeção de filtros, freios e fluidos</span>
             </div>
           </div>
 
           {/* KPI 3: Vistorias & Laudos */}
           <div className="telemetry-kpi-card amber-accent">
             <div className="kpi-icon-wrap">
-              <ShieldCheck size={22} />
+              <ShieldCheck size={24} />
             </div>
             <div className="kpi-data-wrap">
-              <span className="kpi-header-label">CRLV / VISTORIA</span>
-              <strong className={`kpi-big-value ${crlvCountdown.color}`}>
-                {crlvCountdown.compactText}
-              </strong>
-              <span className="kpi-sub-text">Laudos homologados</span>
+              <span className="kpi-header-label">CRLV & LAUDOS REGULATÓRIOS</span>
+              <div className="kpi-val-row">
+                <strong className={`kpi-big-value ${crlvCountdown.color}`}>
+                  {crlvCountdown.compactText}
+                </strong>
+                <span className="kpi-sub-badge amber">Compliance 100%</span>
+              </div>
+              <span className="kpi-sub-text">📜 Laudos ANTT, CIPP e INMETRO homologados</span>
             </div>
           </div>
         </div>
