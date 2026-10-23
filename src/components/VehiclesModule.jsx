@@ -541,7 +541,7 @@ export default function VehiclesModule({ user, companyId, onNavigateDrivers }) {
         .order('placa', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        setVehicles(data);
+        setVehicles(previous=>data.map(row=>({...previous.find(v=>v.id===row.id),...row})));
       }
     } catch (err) {
       console.warn('Tabela veiculos pendente no Supabase:', err);
@@ -704,7 +704,7 @@ export default function VehiclesModule({ user, companyId, onNavigateDrivers }) {
       let query=supabase.from('veiculos').delete().eq('id',vehicleId);
       if(companyId)query=query.eq('company_id',companyId);
       const result=await query.select('id');
-      if(result.error||!result.data?.length){setFeedback({type:'error',text:result.error?.message||'Veículo não removido: verifique o acesso e as OS vinculadas.'});return;}
+      if(result.error||!result.data?.length){setFeedback({type:'error',text:result.error?.code==='23503'?'Este veículo possui OS ou vínculos e não pode ser excluído.':result.error?.message||'Veículo não removido: verifique o acesso e as OS vinculadas.'});return;}
     }
     setVehicles(previous=>previous.filter(v=>v.id!==vehicleId));
     setFeedback({type:'info',text:'Veículo placa '+placa+' removido.'});

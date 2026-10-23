@@ -295,4 +295,11 @@ CREATE FUNCTION maintenance_private.odometer_guard() RETURNS trigger LANGUAGE pl
 BEGIN IF OLD.company_id IS NOT NULL AND OLD.km_atual IS NOT NULL AND (NEW.km_atual IS NULL OR NEW.km_atual<OLD.km_atual) THEN RAISE EXCEPTION 'Odômetro não pode diminuir.' USING ERRCODE='23514';END IF;RETURN NEW;END $$;
 REVOKE ALL ON FUNCTION maintenance_private.odometer_guard() FROM PUBLIC,anon,authenticated;
 CREATE TRIGGER maintenance_odometer_guard BEFORE UPDATE OF km_atual ON public.veiculos FOR EACH ROW EXECUTE FUNCTION maintenance_private.odometer_guard();
+CREATE POLICY os_files_immutable ON storage.objects AS RESTRICTIVE FOR UPDATE TO authenticated
+USING(bucket_id<>'maintenance' OR split_part(name,'/',2)<>'orders')
+WITH CHECK(bucket_id<>'maintenance' OR split_part(name,'/',2)<>'orders');
+CREATE POLICY os_files_protect_references ON storage.objects AS RESTRICTIVE FOR DELETE TO authenticated
+USING(bucket_id<>'maintenance' OR split_part(name,'/',2)<>'orders' OR (
+ NOT EXISTS(SELECT 1 FROM public.maintenance_attachments a WHERE a.url=storage.objects.name)
+ AND NOT EXISTS(SELECT 1 FROM public.workshop_visits v WHERE v.foto_chegada_url=storage.objects.name OR v.foto_saida_url=storage.objects.name)));
 COMMIT;
