@@ -14,10 +14,18 @@ maintenance_partners.onboarding_profile armazena os campos adicionais; maintenan
 O token de convite tem 64 caracteres aleatórios e vai no fragmento da URL (não no caminho/query enviados ao servidor de hospedagem). Ele autoriza apenas ver o nome da empresa e enviar cadastro, não consultar solicitações ou parceiros. Tokens ficam em tabela privada, sem grants diretos para usuários.
 RPC pública invoker usa função definer em schema isolado, search_path vazio e allowlist de ações/campos. Não concede acesso anônimo aos outros helpers de manutenção. RLS e verificação de associação ativa protegem leituras/revisões internas.
 Limite de 30 novos cadastros por empresa/hora, honeypot, limite de tamanho e idempotência por request_id. Duplicatas por CNPJ são bloqueadas enquanto pendentes/aprovadas ou já cadastradas. O limite não é um CAPTCHA; para grande divulgação, considerar proteção adicional contra automação e ajustar limites com base no uso.
-Nenhum e-mail/WhatsApp é enviado automaticamente. A equipe contata a oficina pelos dados fornecidos. Não há consulta externa de situação cadastral do CNPJ.
+Após aprovação pelo painel, a mensagem de parabéns é enviada pelo servidor à Evolution API, usando WhatsApp do parceiro (ou telefone principal se WhatsApp não estiver preenchido). E-mails não são enviados automaticamente. Não há consulta externa de situação cadastral do CNPJ.
 
 ## Validação
 Executar build, lint, typecheck, testes Node e Playwright. SQL tests usam PostgreSQL descartável e transação com rollback: anônimo sem leitura, envio e retry, prevenção de duplicata, revisão por perfil, isolamento entre empresas, auditoria e revogação do convite.
 
 ## Tipos de oficina
 O campo aceita várias opções no cadastro público e na edição interna. As seleções são salvas em onboarding_profile.tipos_oficina e aparecem na ficha, relatórios e filtro da listagem. O campo legado tipo mantém a primeira seleção para compatibilidade. Cadastros antigos continuam exibindo seu tipo original. Migration complementar: 20261023192457_partner_multiple_types.sql.
+
+## Mensagem de aprovação pelo WhatsApp
+Migration: 20261023195100_partner_approval_notice.sql. O trigger cria uma notificação pendente na mesma transação da aprovação. O botão Aprovar usa /api/partner-approval, que valida sessão real, aprova com as permissões do banco e envia o texto persistido pela Evolution. Não aceita telefone, texto ou instância enviados pelo navegador.
+A configuração existente EVOLUTION_API_URL, EVOLUTION_API_KEY e EVOLUTION_INSTANCE_NAME permanece no servidor. A instância precisa estar conectada; a conexão é conferida antes do envio. Não usa nem amplia o envio genérico legado.
+Falhas de envio não desfazem a aprovação. A ficha da solicitação aprovada mostra o texto, contato, tentativas, resultado e ID da Evolution e permite tentar novamente. O contato é consultado no parceiro a cada tentativa, permitindo corrigi-lo na edição antes de repetir.
+Um claim bloqueia outra tentativa por cinco minutos. Mensagens aceitas pela API não são reenviadas. Timeout, resposta ambígua ou falha ao persistir o recibo exigem conferência manual da conversa antes de nova tentativa; não há garantia de exatamente uma entrega entre banco e serviço externo. O aceite pela API não confirma entrega/leitura, que dependeriam de webhook.
+Sem cron de reenvio: aprovação tenta imediatamente no servidor; pendências/falhas são retomadas explicitamente pelo Admin/Analista na solicitação. Aprovações anteriores à migration não geram envios retroativos.
+Os testes não enviam mensagens a números reais: Evolution é simulada e os testes de banco usam rollback.
