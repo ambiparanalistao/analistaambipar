@@ -42,7 +42,7 @@ jobs:
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/bootstrap.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/schema.sql
           for migration in supabase/migrations/20261023*.sql; do
-            if [[ "$migration" == *23050000* || "$migration" == *23060000* || "$migration" == *23061000* || "$migration" == *vehicle_dossier.sql || "$migration" == *workshop_communication.sql || "$migration" == *maintenance_branches.sql || "$migration" == *maintenance_analytics.sql || "$migration" == *preventive_context_fix.sql || "$migration" == *preventive_plans.sql || "$migration" == *preventive_schedule.sql || "$migration" == *communication_schedule.sql || "$migration" == *partner_registration.sql ]]; then continue; fi
+            if [[ "$migration" == *23050000* || "$migration" == *23060000* || "$migration" == *23061000* || "$migration" == *vehicle_dossier.sql || "$migration" == *workshop_communication.sql || "$migration" == *maintenance_branches.sql || "$migration" == *maintenance_analytics.sql || "$migration" == *preventive_context_fix.sql || "$migration" == *preventive_plans.sql || "$migration" == *preventive_schedule.sql || "$migration" == *communication_schedule.sql || "$migration" == *partner_registration.sql || "$migration" == *partner_multiple_types.sql ]]; then continue; fi
             docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < "$migration"
           done
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/integration.sql
@@ -94,6 +94,7 @@ jobs:
           PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023185016_partner_registration.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023192457_partner_multiple_types.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/registration.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}

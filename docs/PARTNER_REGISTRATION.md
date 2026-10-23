@@ -18,3 +18,6 @@ Nenhum e-mail/WhatsApp é enviado automaticamente. A equipe contata a oficina pe
 
 ## Validação
 Executar build, lint, typecheck, testes Node e Playwright. SQL tests usam PostgreSQL descartável e transação com rollback: anônimo sem leitura, envio e retry, prevenção de duplicata, revisão por perfil, isolamento entre empresas, auditoria e revogação do convite.
+
+## Tipos de oficina
+O campo aceita várias opções no cadastro público e na edição interna. As seleções são salvas em onboarding_profile.tipos_oficina e aparecem na ficha, relatórios e filtro da listagem. O campo legado tipo mantém a primeira seleção para compatibilidade. Cadastros antigos continuam exibindo seu tipo original. Migration complementar: 20261023192457_partner_multiple_types.sql.
