@@ -1,3 +1,4 @@
+import {persistFleetVehicle} from '../services/fleetPersistence';
 import React, { useState, useEffect } from 'react';
 import { 
   Truck, 
@@ -413,7 +414,7 @@ export function resolveMessageTags(templateText, vehicle) {
     .replace(/{HORA_ATUAL}/g, horaStr);
 }
 
-export default function VehiclesModule({ user, onNavigateDrivers }) {
+export default function VehiclesModule({ user, companyId, onNavigateDrivers }) {
   const [viewMode, setViewMode] = useState('list'); // 'list' ou 'form'
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' ou 'table'
   const [searchTerm, setSearchTerm] = useState('');
@@ -657,6 +658,18 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       nivel_tanque_percent: formData.nivel_tanque_percent ? parseInt(formData.nivel_tanque_percent, 10) : 80
     };
 
+    if (isSupabaseConfigured && supabase && !user?.id?.startsWith('demo')) {
+      try {
+        const savedVehicle=await persistFleetVehicle(payload,editingId,user?.id,companyId);
+        setVehicles(previous=>editingId?previous.map(v=>v.id===editingId?savedVehicle:v):[savedVehicle,...previous]);
+      } catch(error) {
+        setFeedback({type:'error',text:'Veículo não salvo: '+error.message});
+        return;
+      }
+    } else {
+      const localVehicle={...payload,id:editingId||'VEI-'+Date.now(),created_at:new Date().toISOString()};
+      setVehicles(previous=>editingId?previous.map(v=>v.id===editingId?localVehicle:v):[localVehicle,...previous]);
+    }
     // Sincroniza imediatamente o motorista com o Quadro de Motoristas
     if (payload.motorista_vinculado && payload.motorista_vinculado !== 'Não vinculado') {
       syncDriverFromVehicle({
@@ -667,26 +680,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       });
     }
 
-    if (editingId) {
-      const updatedList = vehicles.map(v => v.id === editingId ? { ...payload, id: editingId } : v);
-      setVehicles(updatedList);
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('veiculos').update(payload).eq('id', editingId).then();
-      }
-      setFeedback({ type: 'success', text: `Veículo placa ${formattedPlaca} atualizado com sucesso!` });
-    } else {
-      const newVehicle = {
-        ...payload,
-        id: `VEI-${Date.now().toString().slice(-6)}`,
-        created_at: new Date().toISOString()
-      };
-      setVehicles([newVehicle, ...vehicles]);
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('veiculos').insert([{ user_id: user?.id, ...payload }]).then();
-      }
-      setFeedback({ type: 'success', text: `Veículo placa ${formattedPlaca} homologado na frota Ambipar!` });
-    }
-
+    setFeedback({type:'success',text:'Veículo placa '+formattedPlaca+' salvo com sucesso!'});
     setViewMode('list');
     setTimeout(() => setFeedback(null), 4000);
   };
