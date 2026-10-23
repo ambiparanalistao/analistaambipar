@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
+import { getStoredOrSyncedDrivers } from '../utils/driverFleetSync';
 
 export const STATUS_OPTIONS = [
   { 
@@ -185,22 +186,15 @@ export default function DriversModule({ user }) {
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' (Cards Operacionais VIP) ou 'table' (Tabela Executiva)
   const [editingId, setEditingId] = useState(null);
 
-  // Motoristas reais
-  const [drivers, setDrivers] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_real_drivers');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Motoristas consolidados sincronizados automaticamente com a frota
+  const [drivers, setDrivers] = useState(() => getStoredOrSyncedDrivers());
 
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [feedback, setFeedback] = useState(null);
 
-  // Frotas Integradas (pré-programado para alimentar o futuro Módulo de Frotas)
+  // Frotas Integradas (sincronizadas com o Módulo de Frotas)
   const [fleetVehicles, setFleetVehicles] = useState(() => {
     try {
       const saved = localStorage.getItem('ambipar_fleet_vehicles');
@@ -243,14 +237,32 @@ export default function DriversModule({ user }) {
   };
 
   const [formData, setFormData] = useState(initialForm);
+
   // Salva no localStorage como backup persistente
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_real_drivers', JSON.stringify(drivers));
+      if (drivers && drivers.length > 0) {
+        localStorage.setItem('ambipar_real_drivers', JSON.stringify(drivers));
+      }
     } catch (e) {
       console.warn('Erro ao salvar motoristas:', e);
     }
   }, [drivers]);
+
+  // Sincronização automática contínua quando a janela ganha foco ou altera storage
+  useEffect(() => {
+    const handleSync = () => {
+      const consolidated = getStoredOrSyncedDrivers();
+      setDrivers(consolidated);
+    };
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, []);
 
   // Busca registros do Supabase se a tabela existir
   const fetchSupabaseDrivers = async () => {
@@ -263,7 +275,14 @@ export default function DriversModule({ user }) {
         .order('nome', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        setDrivers(data);
+        // Mescla drivers do Supabase com os sincronizados localmente
+        const localList = getStoredOrSyncedDrivers();
+        const mergedMap = new Map();
+        localList.forEach(d => mergedMap.set(d.nome?.toLowerCase(), d));
+        data.forEach(d => mergedMap.set(d.nome?.toLowerCase(), { ...mergedMap.get(d.nome?.toLowerCase()), ...d }));
+        const mergedArray = Array.from(mergedMap.values());
+        setDrivers(mergedArray);
+        localStorage.setItem('ambipar_real_drivers', JSON.stringify(mergedArray));
       }
     } catch (err) {
       console.warn('Tabela motoristas ainda não executada no Supabase:', err);
@@ -275,6 +294,22 @@ export default function DriversModule({ user }) {
   useEffect(() => {
     fetchSupabaseDrivers();
   }, []);
+
+  // Ação explícita de atualização e sincronização manual pelo botão
+  const handleRefreshQuadro = async () => {
+    setLoading(true);
+    const consolidated = getStoredOrSyncedDrivers();
+    setDrivers(consolidated);
+    if (isSupabaseConfigured && supabase) {
+      await fetchSupabaseDrivers();
+    }
+    setLoading(false);
+    setFeedback({
+      type: 'success',
+      text: `Quadro sincronizado com sucesso! ${consolidated.length} motorista(s) homologado(s) e vinculado(s) à frota.`
+    });
+    setTimeout(() => setFeedback(null), 4000);
+  };
 
   // Prepara formulário para cadastrar
   const handleOpenCreateForm = () => {
@@ -487,7 +522,7 @@ export default function DriversModule({ user }) {
               <button
                 type="button"
                 className="btn-secondary btn-icon-text"
-                onClick={fetchSupabaseDrivers}
+                onClick={handleRefreshQuadro}
                 disabled={loading}
               >
                 <RefreshCw size={16} className={loading ? 'spin-icon' : ''} />

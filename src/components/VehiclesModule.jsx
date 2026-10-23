@@ -53,6 +53,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
 import { readCrlvFile } from '../utils/crlvPdfReader';
 import WhatsAppDispatchWorkspace from './WhatsAppDispatchWorkspace';
+import { getStoredOrSyncedDrivers, syncDriverFromVehicle } from '../utils/driverFleetSync';
 
 export const VEHICLE_STATUS_OPTIONS = [
   { 
@@ -449,23 +450,40 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
     }
   });
 
-  // Lista de motoristas cadastrados para vinculação
+  // Lista de motoristas cadastrados para vinculação (sincronizada com o módulo de motoristas)
   const [availableDrivers, setAvailableDrivers] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_real_drivers');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return parsed.map(d => ({ 
-          value: d.nome, 
-          label: `${d.nome} (CNH ${d.categoria_cnh || 'E'})`,
-          phone: d.telefone || ''
-        }));
-      }
-      return [];
+      const driversList = getStoredOrSyncedDrivers();
+      return driversList.map(d => ({ 
+        value: d.nome, 
+        label: `${d.nome} (CNH ${d.categoria_cnh || 'E'})`,
+        phone: d.telefone || ''
+      }));
     } catch {
       return [];
     }
   });
+
+  // Atualiza a lista de motoristas disponíveis sempre que houver foco ou alteração no storage
+  useEffect(() => {
+    const refreshDriversList = () => {
+      try {
+        const driversList = getStoredOrSyncedDrivers();
+        setAvailableDrivers(driversList.map(d => ({ 
+          value: d.nome, 
+          label: `${d.nome} (CNH ${d.categoria_cnh || 'E'})`,
+          phone: d.telefone || ''
+        })));
+      } catch {}
+    };
+
+    window.addEventListener('storage', refreshDriversList);
+    window.addEventListener('focus', refreshDriversList);
+    return () => {
+      window.removeEventListener('storage', refreshDriversList);
+      window.removeEventListener('focus', refreshDriversList);
+    };
+  }, []);
 
   const initialForm = {
     placa: '',
@@ -639,6 +657,16 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       nivel_tanque_percent: formData.nivel_tanque_percent ? parseInt(formData.nivel_tanque_percent, 10) : 80
     };
 
+    // Sincroniza imediatamente o motorista com o Quadro de Motoristas
+    if (payload.motorista_vinculado && payload.motorista_vinculado !== 'Não vinculado') {
+      syncDriverFromVehicle({
+        name: payload.motorista_vinculado,
+        phone: payload.motorista_telefone || '',
+        placa: formattedPlaca,
+        status: payload.status
+      });
+    }
+
     if (editingId) {
       const updatedList = vehicles.map(v => v.id === editingId ? { ...payload, id: editingId } : v);
       setVehicles(updatedList);
@@ -730,6 +758,15 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
   const handleSaveDriverPhone = (vehicleId, newPhone) => {
     const updated = vehicles.map(v => v.id === vehicleId ? { ...v, motorista_telefone: newPhone } : v);
     setVehicles(updated);
+    const targetVehicle = vehicles.find(v => v.id === vehicleId);
+    if (targetVehicle && targetVehicle.motorista_vinculado) {
+      syncDriverFromVehicle({
+        name: targetVehicle.motorista_vinculado,
+        phone: newPhone,
+        placa: targetVehicle.placa,
+        status: targetVehicle.status
+      });
+    }
     if (isSupabaseConfigured && supabase) {
       supabase.from('veiculos').update({ motorista_telefone: newPhone }).eq('id', vehicleId).then();
     }
