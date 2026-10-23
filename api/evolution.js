@@ -45,7 +45,14 @@ export async function authenticate(req, config, fetcher, isSendAction = false) {
   const user = await response.json();
   if (!user.id || user.is_anonymous) throw failure(403, 'É necessário um usuário autenticado.');
   if (!isSendAction && !config.allowed.includes(user.id) && user.app_metadata?.automation_admin !== true) {
-    throw failure(403, 'Seu usuário não tem permissão para gerenciar a conexão.');
+    let membershipResponse;
+    try {
+      const membershipUrl=new URL('/rest/v1/company_members',config.authUrl);
+      for(const [key,value]of Object.entries({select:'company_id,companies!inner(ativo)',user_id:'eq.'+user.id,ativo:'eq.true',full_module_access:'eq.true','companies.ativo':'eq.true',limit:'1'}))membershipUrl.searchParams.set(key,value);
+      membershipResponse=await fetcher(membershipUrl,{headers:{apikey:config.authKey,Authorization:'Bearer '+token},signal:timeout(),redirect:'error'});
+      const rows=membershipResponse.ok?await membershipResponse.json():null;
+      if(!Array.isArray(rows)||!rows.length)throw new Error('No released membership');
+    } catch { throw failure(403,'Seu usuário não tem acesso liberado à automação na empresa.'); }
   }
   return user;
 }

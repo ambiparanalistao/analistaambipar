@@ -27,7 +27,7 @@ test('requires a real bearer token; no upstream request without authentication',
 });
 test('does not trust user_metadata for authorization', async () => {
   const r = await run({ user: { id: 'other', user_metadata: { automation_admin: true } } });
-  assert.equal(r.code, 403); assert.equal(r.calls.length, 1);
+  assert.equal(r.code,403);assert.equal(r.calls.length,2);assert.ok(!r.calls.some(c=>c.url.includes('evolution.example')));
 });
 test('rejects anonymous Supabase users even if ID is allowlisted', async () => {
   assert.equal((await run({ user: { id: 'allowed-id', is_anonymous: true } })).code, 403);
@@ -101,3 +101,5 @@ test('rejects unsafe URL and invalid instance configuration', () => {
   assert.throws(() => readConfig({ ...env, EVOLUTION_API_URL: 'http://unsafe.example' }));
   assert.throws(() => readConfig({ ...env, EVOLUTION_INSTANCE_NAME: '../other' }));
 });
+
+test('released company member can manage automation without an individual allowlist',async()=>{const r=await run({user:{id:'released-user'},upstream:url=>url.includes('/rest/v1/company_members')?response([{company_id:'company'}]):response({instance:{state:'open'}})});assert.equal(r.code,200);assert.ok(r.calls.some(c=>c.url.includes('full_module_access=eq.true')));});
