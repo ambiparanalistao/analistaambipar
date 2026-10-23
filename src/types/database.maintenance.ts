@@ -186,6 +186,7 @@ export interface MaintenanceRows {
     enviado_por: string;
   };
   maintenance_plans: {
+    version: number;
     id: string;
     company_id: string;
     created_at: string;
@@ -475,6 +476,7 @@ export type MaintenanceDatabase = {
     } };
     Views: Record<string, never>;
     Functions: {
+      maintenance_plan_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_communication_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_vehicle_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_order_command: { Args:{target_company:string;command:string;body:Json};Returns:Json };
@@ -510,3 +512,11 @@ export interface MaintenanceRows {
 export interface MaintenanceInserts {maintenance_notifications:never;maintenance_communication_audit:never;}
 // Phase 2 contract only. No active route, token issuance, table or public permission.
 export interface FuturePartnerPortalGrant { companyId:string;orderId:string;partnerId:string;tokenHash:string;expiresAt:string;revokedAt:string|null;capabilities:('update_status'|'upload_quote'|'upload_photo')[]; }
+
+export interface MaintenanceRows {
+ maintenance_plan_vehicles:{id:string;company_id:string;plan_id:string;vehicle_id:string;ultima_execucao_km:number;ultima_execucao_data:string;cycle:number;updated_at:string};
+ maintenance_plan_orders:{company_id:string;plan_vehicle_id:string;order_id:string;executed_at:string|null};
+ maintenance_preventive_notifications:{id:string;company_id:string;user_id:string;plan_vehicle_id:string;estado:'breve'|'vencida';cycle:number;titulo:string;read_at:string|null;resolved_at:string|null;updated_at:string};
+ maintenance_plan_audit:{id:string;company_id:string;entity_id:string;actor_id:string|null;action:string;occurred_at:string;snapshot:Json};
+}
+export interface MaintenanceInserts {maintenance_plan_vehicles:never;maintenance_plan_orders:never;maintenance_preventive_notifications:never;maintenance_plan_audit:never;}
