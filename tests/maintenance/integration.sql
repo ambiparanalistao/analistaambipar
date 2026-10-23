@@ -50,7 +50,7 @@ SELECT maintenance_test.assert((SELECT count(*)=1 FROM public.veiculos WHERE com
 SELECT maintenance_test.assert((SELECT status='Manutenção' FROM public.veiculos WHERE id='30000000-0000-0000-0000-000000000001'),'opening order sets maintenance status');
 SELECT maintenance_test.assert((SELECT numero ~ '^OS-[0-9]{4}-0001$' FROM public.maintenance_orders LIMIT 1),'number format and per-company counter');
 SELECT maintenance_test.expect_error($cmd$INSERT INTO public.maintenance_partners(company_id,razao_social) VALUES('10000000-0000-0000-0000-000000000002','forbidden')$cmd$,'42501');
-SELECT maintenance_test.expect_error($cmd$UPDATE public.maintenance_partners SET company_id='10000000-0000-0000-0000-000000000002' WHERE id='40000000-0000-0000-0000-000000000001'$cmd$,'23514');
+SELECT maintenance_test.expect_error($cmd$UPDATE public.maintenance_partners SET company_id='10000000-0000-0000-0000-000000000002' WHERE id='40000000-0000-0000-0000-000000000001'$cmd$,'42501');
 SELECT maintenance_test.expect_error($cmd$INSERT INTO public.maintenance_orders(company_id,vehicle_id,partner_id,descricao_problema) VALUES('10000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000002','40000000-0000-0000-0000-000000000001','Cross-company vehicle')$cmd$,'23503');
 SELECT maintenance_test.expect_error($cmd$INSERT INTO public.maintenance_order_items(company_id,order_id,tipo,descricao,quantidade,valor_unitario) VALUES('10000000-0000-0000-0000-000000000001','50000000-0000-0000-0000-000000000002','peca','Cross-company order',1,10)$cmd$,'23503');
 SELECT maintenance_test.expect_error($cmd$UPDATE public.veiculos SET status='Em Viagem' WHERE id='30000000-0000-0000-0000-000000000001'$cmd$,'23514');
