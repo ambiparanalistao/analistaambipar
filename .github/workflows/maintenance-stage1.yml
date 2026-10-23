@@ -73,7 +73,7 @@ jobs:
         run: node --test tests/partner-validation.test.js
       - name: Install isolated browser tools
         run: |
-          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npm install --no-save --package-lock=false --no-audit --no-fund @playwright/test@1.56.1
           npx playwright install --with-deps chromium
       - name: Browser partner flows with isolated API fixtures
         env:
