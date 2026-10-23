@@ -44,6 +44,8 @@ Nenhum arquivo antigo de migration, schema.sql, cliente Supabase ou package.json
 Única correção em componente existente: FuelExcelImportModal.jsx move o retorno de modal fechado
 para depois dos hooks, eliminando dois erros preexistentes de lint, sem alterar a tela.
 As políticas antigas permanecem, mas políticas RESTRICTIVE impõem a fronteira nas linhas com company_id.
+Uma policy permissiva de UPDATE, limitada à empresa autorizada, fornece USING explícito: a policy
+antiga de veículos possui apenas WITH CHECK e não deve impedir atualizações legítimas após os guards.
 Linhas legadas com company_id NULL continuam com as regras anteriores; NÃO têm isolamento por empresa.
 Esta etapa NÃO torna todo o sistema antigo multiempresa: clientes, combustível, perfis e dados de
 localStorage precisam de migração e regras próprias nas próximas etapas.
