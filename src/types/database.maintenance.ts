@@ -456,7 +456,7 @@ export interface MaintenanceInserts {
 }
 
 type Immutable = 'id' | 'company_id' | 'created_at' | 'created_by';
-type AppendOnly = 'maintenance_order_timeline' | 'maintenance_messages' | 'maintenance_partner_audit' | 'maintenance_partner_attachments';
+type AppendOnly = 'maintenance_vehicle_events'|'maintenance_vehicle_preferences'|'maintenance_driver_bindings'|'maintenance_allocations'| 'maintenance_order_timeline' | 'maintenance_messages' | 'maintenance_partner_audit' | 'maintenance_partner_attachments';
 export type MaintenanceUpdate<T extends keyof MaintenanceInserts> =
   T extends AppendOnly ? never : Partial<Omit<MaintenanceInserts[T], Immutable | (T extends 'maintenance_orders' ? 'vehicle_id' | 'partner_id' | 'data_abertura' : never)>>;
 export type TableName = keyof MaintenanceRows;
@@ -471,6 +471,7 @@ export type MaintenanceDatabase = {
     } };
     Views: Record<string, never>;
     Functions: {
+      maintenance_vehicle_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_order_command: { Args:{target_company:string;command:string;body:Json};Returns:Json };
       maintenance_partner_metrics: { Args: { target_company:string; target_partner:string }; Returns:{total_os:number;custo_medio:number|null}[] };
       maintenance_partner_cities: { Args:{target_company:string}; Returns:{cidade:string}[] };
@@ -488,3 +489,11 @@ export interface MaintenanceInserts {
  maintenance_partner_attachments:Omit<MaintenanceRows['maintenance_partner_attachments'],'id'|'created_at'|'updated_at'|'created_by'>;
  maintenance_partner_audit:never;
 }
+
+export interface MaintenanceRows {
+ maintenance_vehicle_preferences:{company_id:string;vehicle_id:string;default_partner_id:string|null;preferred_partner_ids:string[];updated_at:string;updated_by:string};
+ maintenance_driver_bindings:{company_id:string;user_id:string;driver_id:string;vehicle_id:string;updated_at:string;updated_by:string};
+ maintenance_vehicle_events:{id:string;company_id:string;vehicle_id:string;occurred_at:string;recorded_at:string;actor_id:string|null;kind:string;description:string;snapshot:Json;source_key:string};
+ maintenance_allocations:{company_id:string;kind:'trip'|'client';reference:string;vehicle_id:string;active:boolean;updated_at:string;updated_by:string};
+}
+export interface MaintenanceInserts {maintenance_vehicle_preferences:never;maintenance_driver_bindings:never;maintenance_vehicle_events:never;maintenance_allocations:never;}

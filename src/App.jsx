@@ -1,3 +1,4 @@
+import DriverMaintenancePage from './components/maintenance/driver/DriverMaintenancePage';
 import React, { useState, useEffect } from 'react';
 import { 
   Shield, 
@@ -32,6 +33,7 @@ import './App.css';
 // Mapeamento de Rotas Web para cada Módulo
 export const MODULE_ROUTES = {
   ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.id,p.path])),
+  driver_maintenance: '/motorista/manutencao',
   automacao: '/automacao',
   dashboard: '/dashboard',
   frotas: '/frotas',
@@ -49,6 +51,7 @@ export const MODULE_ROUTES = {
 
 export const PATH_TO_MODULE = {
   ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.path,p.id])),
+  '/motorista/manutencao':'driver_maintenance',
   '/manutencao':'maintenance_partners',
   '/automacao': 'automacao',
   '/': 'dashboard',
@@ -297,7 +300,7 @@ export default function App() {
             />
           </main>
         </>
-      ) : (
+      ) : maintenanceAccess.loading ? <p role="status">Verificando acesso…</p> : maintenanceAccess.error ? <div role="alert">{maintenanceAccess.error}<button onClick={maintenanceAccess.reload}>Tentar novamente</button><button onClick={handleLogout}>Sair</button></div> : (maintenanceAccess.memberships.some(m=>m.roleName==='motorista')&&!maintenanceAccess.canRead)||currentModule==='driver_maintenance' ? <DriverMaintenancePage access={maintenanceAccess} onLogout={handleLogout}/> : (
         /* Layout Principal do Analista de Logística com Sidebar Lateral */
         <div className="dashboard-app-layout" id="authenticated-layout">
           {/* Sidebar Lateral Expansível */}
@@ -369,21 +372,24 @@ export default function App() {
                 {currentModule === 'frotas' && (
                   <VehiclesModule 
                     companyId={maintenanceAccess.companyId}
+                    maintenanceAccess={maintenanceAccess}
                     user={session.user} 
                     onNavigateDrivers={() => handleSelectModule('motoristas')}
                   />
                 )}
                 {currentModule === 'motoristas' && (
                   <DriversModule 
+                    maintenanceAccess={maintenanceAccess}
                     user={session.user} 
                     onNavigateVehicles={() => handleSelectModule('frotas')}
                   />
                 )}
-                {currentModule === 'viagens' && <TripsModule user={session.user} />}
+                {currentModule === 'viagens' && <TripsModule companyId={maintenanceAccess.companyId} user={session.user} />}
                 {currentModule === 'combustivel' && <FuelModule user={session.user} initialView="dashboard" onNavigateModule={handleSelectModule} />}
                 {currentModule === 'simulador_autonomia' && <FuelModule user={session.user} initialView="simulator" onNavigateModule={handleSelectModule} />}
                 {currentModule === 'clientes' && (
                   <ClientsModule 
+                    companyId={maintenanceAccess.companyId}
                     user={session.user} 
                     onNavigateTrips={() => handleSelectModule('viagens')}
                     onNavigateFleet={() => handleSelectModule('frotas')}
