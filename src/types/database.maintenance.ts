@@ -32,6 +32,7 @@ export interface MaintenanceRows {
     created_by: string;
     user_id: string;
     maintenance_role: MaintenanceRole | null;
+    full_module_access: boolean;
     role: "analista" | "gestor" | "auditor" | "administrador";
     ativo: boolean;
   };
@@ -262,6 +263,7 @@ export interface MaintenanceInserts {
     created_by?: string;
     user_id: string;
     maintenance_role?: MaintenanceRole | null;
+    full_module_access?: boolean;
     role?: "analista" | "gestor" | "auditor" | "administrador";
     ativo?: boolean;
   };

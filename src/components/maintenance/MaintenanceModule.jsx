@@ -1,3 +1,4 @@
+import {Wrench,LayoutDashboard,ClipboardList,Building2,CalendarClock,AlertTriangle,MessageSquare,BarChart3,ArrowUpRight,Sun,Moon,ShieldCheck} from 'lucide-react';
 import {partnerTypes} from '../../utils/partnerRegistration';
 import RegistrationInbox from './registration/RegistrationInbox';
 import MaintenanceDashboard from './dashboard/MaintenanceDashboard';
@@ -14,6 +15,7 @@ import PartnerDetail from './PartnerDetail';
 import PartnerMap from './PartnerMap';
 import {MAINTENANCE_PAGES} from './maintenanceRoutes';
 import './MaintenanceModule.css';
+import './MaintenanceWorkspace.css';
 const initialFilters={search:'',tipo:'',cidade:'',status:'',nota:''};
 function locationView(){const q=new URLSearchParams(window.location.search),id=q.get('oficina');if(id&&!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id))return{mode:'invalid'};return{mode:q.get('acao')==='nova'?'new':id?q.get('acao')==='editar'?'edit':'detail':'list',id};}
 function PartnersPage({access,theme,setLocked}){
@@ -60,10 +62,13 @@ function PartnersPage({access,theme,setLocked}){
 export default function MaintenanceModule({access,page}){
  const [theme,setTheme]=useState(()=>{try{return localStorage.getItem('maintenance_theme')||'dark';}catch{return'dark';}}),[locked,setLocked]=useState(false);
  const toggle=()=>setTheme(t=>{const next=t==='dark'?'light':'dark';try{localStorage.setItem('maintenance_theme',next);}catch{/* Optional preference. */}return next;});
- return <div className="mp-module" data-mp-theme={theme}>
- <div className="mp-row mp-between mp-context"><div><strong>Manutenção</strong>{access.canRead&&<span> · {ROLE_LABELS[access.role]}{!['maintenance_orders','maintenance_occurrences','maintenance_communication','maintenance_plans'].includes(page)&&!access.canWrite?' · Somente leitura':''}</span>}</div><button onClick={toggle}>Modo {theme==='dark'?'claro':'escuro'}</button></div>
+ const icons={maintenance_dashboard:LayoutDashboard,maintenance_orders:ClipboardList,maintenance_partners:Building2,maintenance_plans:CalendarClock,maintenance_occurrences:AlertTriangle,maintenance_communication:MessageSquare,maintenance_reports:BarChart3};
+ const navigate=target=>window.location.assign(target);
+ return <div className="mp-module mp-workspace" data-mp-theme={theme}>
+ <header className="mw-header"><div className="mw-title"><span className="mw-brand-icon"><Wrench size={25}/></span><div><span className="mw-eyebrow">Operação · Frota · Oficinas</span><h2>Central de Manutenção</h2><p>Acompanhe seus veículos, serviços e parceiros em um só lugar.</p></div></div><div className="mw-header-actions"><button onClick={toggle}>{theme==='dark'?<Sun size={16}/>:<Moon size={16}/>}Modo {theme==='dark'?'claro':'escuro'}</button>{access.canRead&&<span className="mw-access"><ShieldCheck size={13}/>{access.fullModuleAccess?'Todos os módulos liberados':ROLE_LABELS[access.membership?.roleName||access.role]}</span>}</div></header>
+ {access.canRead&&<><nav className="mw-navigation" aria-label="Áreas de manutenção">{MAINTENANCE_PAGES.map(p=>{const Icon=icons[p.id];return <button key={p.id} type="button" aria-label={'Ir para '+p.label} aria-current={p.id===page?'page':undefined} disabled={locked} onClick={()=>navigate(p.path)}><Icon size={16}/><span>{p.label}</span></button>;})}</nav><div className="mw-toolbar"><div><span className="mw-status-dot"/><span>{access.membership?.nome||'Empresa selecionada'}</span><small>Gestão integrada da operação</small></div><div className="mp-row">{access.orderPermissions?.create&&<button disabled={locked} className="mw-quick-action" onClick={()=>navigate('/manutencao/ordens-de-servico?acao=nova')}>Abrir nova ordem <ArrowUpRight size={14}/></button>}{access.canWrite&&<button disabled={locked} className="mw-quick-action" onClick={()=>navigate('/manutencao/oficinas?acao=nova')}>Adicionar oficina <ArrowUpRight size={14}/></button>}</div></div></>}
  {access.loading?<p role="status">Verificando acesso…</p>:access.error?<div role="alert" className="mp-card"><p>{access.error}</p><button onClick={access.reload}>Tentar novamente</button></div>:!access.canRead?<div className="mp-card" role="alert"><h2>Acesso restrito</h2><p>Este módulo exige um usuário autenticado e um perfil autorizado na empresa.</p></div>:<>
- <label className="mp-field mp-company">Empresa<select aria-label="Empresa" value={access.companyId} disabled={locked} onChange={e=>access.selectCompany(e.target.value)}>{access.memberships.filter(m=>readableRole(m.roleName)).map(m=><option key={m.company_id} value={m.company_id}>{m.nome}</option>)}</select></label>
+ <label className="mp-field mp-company">Empresa<select aria-label="Empresa" value={access.companyId} disabled={locked} onChange={e=>access.selectCompany(e.target.value)}>{access.memberships.filter(m=>m.full_module_access||readableRole(m.roleName)).map(m=><option key={m.company_id} value={m.company_id}>{m.nome}</option>)}</select></label>
  {page==='maintenance_dashboard'?<MaintenanceDashboard key={access.companyId} access={access}/>:page==='maintenance_reports'?<MaintenanceReports key={access.companyId} access={access}/>:page==='maintenance_plans'?<PlansPage key={access.companyId} access={access} setLocked={setLocked}/>:page==='maintenance_communication'?<CommunicationPage key={access.companyId} access={access}/>:page==='maintenance_occurrences'?<OccurrencesPage key={access.companyId} access={access} setLocked={setLocked}/>:page==='maintenance_orders'?<OrdersPage key={access.companyId} access={access} setLocked={setLocked}/>:page==='maintenance_partners'?<PartnersPage key={access.companyId} access={access} theme={theme} setLocked={setLocked}/>:<section className="mp-card mp-empty"><h2>{MAINTENANCE_PAGES.find(p=>p.id===page)?.label||'Manutenção'}</h2><p>Em breve</p><p className="mp-muted">Disponível em uma próxima etapa do módulo.</p></section>}</>}
  </div>;
 }
