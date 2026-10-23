@@ -175,8 +175,10 @@ BEGIN
  SELECT * INTO v FROM public.veiculos WHERE id=o.vehicle_id AND company_id=c FOR UPDATE;
  IF action IN ('transition','summary','item_save','item_delete','attachment_delete') AND NOT full_access THEN RAISE EXCEPTION 'Ação reservada ao administrador ou analista.' USING ERRCODE='42501';END IF;
  IF action IN ('transition','arrival','departure','budget') AND length(note)=0 THEN RAISE EXCEPTION 'Informe uma observação.';END IF;
+ IF action IN ('budget','item_save','item_delete') AND o.status IN ('concluido','veiculo_retirado') THEN RAISE EXCEPTION 'Orçamento finalizado; valores não podem ser alterados.';END IF;
  previous:=to_jsonb(o);
  IF action='summary' THEN
+  IF o.status IN ('concluido','veiculo_retirado') AND nullif(btrim(payload->>'servicos_executados'),'') IS NULL THEN RAISE EXCEPTION 'Serviços executados são obrigatórios após conclusão.';END IF;
   UPDATE public.maintenance_orders SET diagnostico=nullif(btrim(payload->>'diagnostico'),''),servicos_executados=nullif(btrim(payload->>'servicos_executados'),''),previsao_entrega=nullif(payload->>'previsao_entrega','')::timestamptz WHERE id=o.id;
   PERFORM maintenance_private.order_event(c,o.id,'comentario','Resumo atualizado',jsonb_build_object('antes',previous,'depois',(SELECT to_jsonb(x) FROM public.maintenance_orders x WHERE id=o.id)));
  ELSIF action='budget' THEN
@@ -276,7 +278,7 @@ $$;
 REVOKE ALL ON FUNCTION public.maintenance_order_command(uuid,text,jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.maintenance_order_command(uuid,text,jsonb) TO authenticated;
 CREATE OR REPLACE FUNCTION maintenance_private.storage_access(object_name text,writing boolean DEFAULT false)
-RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $
+RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $$
  SELECT EXISTS(SELECT 1 FROM public.company_members m
  WHERE m.company_id::text=split_part(object_name,'/',1) AND m.user_id=(SELECT auth.uid()) AND m.ativo AND length(split_part(object_name,'/',2))>0
  AND CASE WHEN split_part(object_name,'/',2)='partners' THEN
@@ -287,6 +289,10 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $
  maintenance_private.partner_access(m.company_id) AND EXISTS(SELECT 1 FROM public.maintenance_orders o WHERE o.company_id=m.company_id AND o.id::text=split_part(object_name,'/',3) AND (NOT writing OR o.status NOT IN ('encerrada','cancelada')))
  AND (NOT writing OR maintenance_private.partner_access(m.company_id,true) OR (split_part(object_name,'/',4)='visits' AND split_part(object_name,'/',5)<>'' AND coalesce(m.maintenance_role,CASE WHEN m.role='auditor' THEN 'operador_logistico' END)='operador_logistico'))
  ELSE maintenance_private.partner_access(m.company_id,writing) END);
-$;
+$$;
 
+CREATE FUNCTION maintenance_private.odometer_guard() RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
+BEGIN IF OLD.company_id IS NOT NULL AND OLD.km_atual IS NOT NULL AND (NEW.km_atual IS NULL OR NEW.km_atual<OLD.km_atual) THEN RAISE EXCEPTION 'Odômetro não pode diminuir.' USING ERRCODE='23514';END IF;RETURN NEW;END $$;
+REVOKE ALL ON FUNCTION maintenance_private.odometer_guard() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER maintenance_odometer_guard BEFORE UPDATE OF km_atual ON public.veiculos FOR EACH ROW EXECUTE FUNCTION maintenance_private.odometer_guard();
 COMMIT;
