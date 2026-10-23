@@ -1,6 +1,7 @@
 // Disposable CI PostgreSQL only. Never connects to Supabase or a production URL.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 const container = process.env.MAINTENANCE_TEST_CONTAINER;
 if (!container || !/^[a-zA-Z0-9_-]+$/.test(container)) throw new Error('Set MAINTENANCE_TEST_CONTAINER to the isolated Docker service ID');
 function sql(text) {
@@ -67,3 +68,13 @@ COMMIT;
 `)));
 assert.equal(await sql("SELECT valor_total FROM public.maintenance_orders WHERE id='51000000-0000-0000-0000-000000000001';"),'120.00');
 console.log('12 simultaneous item inserts: totals are consistent.');
+
+const optionalSeed=await readFile(new URL('../../supabase/seeds/maintenance_optional.sql',import.meta.url),'utf8');
+await sql(`SELECT set_config('maintenance.seed_company_id','${company}',false);
+SELECT set_config('maintenance.seed_user_id','${user}',false);
+SELECT set_config('maintenance.seed_vehicle_id','${vehicle}',false);
+`+optionalSeed);
+assert.equal(await sql(`SELECT count(*) FROM public.maintenance_orders WHERE company_id='${company}' AND observacoes='OPTIONAL_SEED_STAGE_1';`),'5');
+assert.equal(await sql(`SELECT count(*) FROM public.maintenance_plans WHERE company_id='${company}';`),'2');
+assert.equal(await sql(`SELECT count(*) FROM public.maintenance_partners WHERE company_id='${company}' AND razao_social LIKE 'DEMONSTRAÇÃO%';`),'3');
+console.log('Optional seed verified: 3 partners, 5 orders, 2 plans in explicitly chosen company.');

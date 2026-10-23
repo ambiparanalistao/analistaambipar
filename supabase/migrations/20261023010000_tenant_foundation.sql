@@ -121,6 +121,8 @@ BEGIN
     EXECUTE format('CREATE POLICY maintenance_company_select ON public.%I AS RESTRICTIVE FOR SELECT TO authenticated USING (company_id IS NULL OR maintenance_private.can_access_company(company_id))',t);
     EXECUTE format('CREATE POLICY maintenance_company_insert ON public.%I AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (company_id IS NULL OR maintenance_private.can_access_company(company_id,true))',t);
     EXECUTE format('CREATE POLICY maintenance_company_update ON public.%I AS RESTRICTIVE FOR UPDATE TO authenticated USING (company_id IS NULL OR maintenance_private.can_access_company(company_id,true)) WITH CHECK (company_id IS NULL OR maintenance_private.can_access_company(company_id,true))',t);
+    -- Existing vehicle UPDATE policy has only WITH CHECK; add an explicit scoped USING.
+    EXECUTE format('CREATE POLICY maintenance_company_update_allow ON public.%I FOR UPDATE TO authenticated USING (company_id IS NOT NULL AND maintenance_private.can_access_company(company_id,true)) WITH CHECK (company_id IS NOT NULL AND maintenance_private.can_access_company(company_id,true))',t);
     EXECUTE format('CREATE POLICY maintenance_company_delete ON public.%I AS RESTRICTIVE FOR DELETE TO authenticated USING (company_id IS NULL OR maintenance_private.can_access_company(company_id,true))',t);
   END LOOP;
 END $$;
