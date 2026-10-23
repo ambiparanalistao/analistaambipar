@@ -72,6 +72,10 @@ export interface MaintenanceRows {
     sla_medio_dias: number | null;
   };
   maintenance_orders: {
+    version: number;
+    km_abertura: number | null;
+    decisao_por: string | null;
+    decisao_em: string | null;
     id: string;
     company_id: string;
     created_at: string;
@@ -123,6 +127,7 @@ export interface MaintenanceRows {
     updated_at: string;
     created_by: string;
     order_id: string;
+    dados: Json | null;
     tipo_evento: "mudanca_status" | "mensagem" | "anexo" | "chegada" | "saida" | "aprovacao" | "comentario";
     status_anterior: Enums['order_status'] | null;
     status_novo: Enums['order_status'] | null;
@@ -466,6 +471,7 @@ export type MaintenanceDatabase = {
     } };
     Views: Record<string, never>;
     Functions: {
+      maintenance_order_command: { Args:{target_company:string;command:string;body:Json};Returns:Json };
       maintenance_partner_metrics: { Args: { target_company:string; target_partner:string }; Returns:{total_os:number;custo_medio:number|null}[] };
       maintenance_partner_cities: { Args:{target_company:string}; Returns:{cidade:string}[] };
     };

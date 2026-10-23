@@ -1,3 +1,4 @@
+import {persistFleetVehicle} from '../services/fleetPersistence';
 import React, { useState, useEffect } from 'react';
 import { 
   Truck, 
@@ -413,7 +414,7 @@ export function resolveMessageTags(templateText, vehicle) {
     .replace(/{HORA_ATUAL}/g, horaStr);
 }
 
-export default function VehiclesModule({ user, onNavigateDrivers }) {
+export default function VehiclesModule({ user, companyId, onNavigateDrivers }) {
   const [viewMode, setViewMode] = useState('list'); // 'list' ou 'form'
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' ou 'table'
   const [searchTerm, setSearchTerm] = useState('');
@@ -421,6 +422,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [fleetSaving,setFleetSaving]=useState(false);
 
   // Estado para a Central de Despacho WhatsApp CCO (Tela Completa)
   const [dispatchVehicle, setDispatchVehicle] = useState(null);
@@ -539,7 +541,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
         .order('placa', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        setVehicles(data);
+        setVehicles(previous=>data.map(row=>({...previous.find(v=>v.id===row.id),...row})));
       }
     } catch (err) {
       console.warn('Tabela veiculos pendente no Supabase:', err);
@@ -638,6 +640,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
 
   const handleSubmitForm = async (e) => {
     e.preventDefault();
+    if(fleetSaving)return;
 
     const formattedPlaca = formData.placa.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!formattedPlaca || formattedPlaca.length < 7) {
@@ -657,6 +660,20 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       nivel_tanque_percent: formData.nivel_tanque_percent ? parseInt(formData.nivel_tanque_percent, 10) : 80
     };
 
+    if (isSupabaseConfigured && supabase && !user?.id?.startsWith('demo')) {
+      setFleetSaving(true);
+      setFeedback({type:'info',text:'Salvando veículo…'});
+      try {
+        const savedVehicle=await persistFleetVehicle(payload,editingId,user?.id,companyId);
+        setVehicles(previous=>editingId?previous.map(v=>v.id===editingId?savedVehicle:v):[savedVehicle,...previous]);
+      } catch(error) {
+        setFeedback({type:'error',text:'Veículo não salvo: '+error.message});
+        return;
+      } finally { setFleetSaving(false); }
+    } else {
+      const localVehicle={...payload,id:editingId||'VEI-'+Date.now(),created_at:new Date().toISOString()};
+      setVehicles(previous=>editingId?previous.map(v=>v.id===editingId?localVehicle:v):[localVehicle,...previous]);
+    }
     // Sincroniza imediatamente o motorista com o Quadro de Motoristas
     if (payload.motorista_vinculado && payload.motorista_vinculado !== 'Não vinculado') {
       syncDriverFromVehicle({
@@ -667,47 +684,30 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       });
     }
 
-    if (editingId) {
-      const updatedList = vehicles.map(v => v.id === editingId ? { ...payload, id: editingId } : v);
-      setVehicles(updatedList);
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('veiculos').update(payload).eq('id', editingId).then();
-      }
-      setFeedback({ type: 'success', text: `Veículo placa ${formattedPlaca} atualizado com sucesso!` });
-    } else {
-      const newVehicle = {
-        ...payload,
-        id: `VEI-${Date.now().toString().slice(-6)}`,
-        created_at: new Date().toISOString()
-      };
-      setVehicles([newVehicle, ...vehicles]);
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('veiculos').insert([{ user_id: user?.id, ...payload }]).then();
-      }
-      setFeedback({ type: 'success', text: `Veículo placa ${formattedPlaca} homologado na frota Ambipar!` });
-    }
-
+    setFeedback({type:'success',text:'Veículo placa '+formattedPlaca+' salvo com sucesso!'});
     setViewMode('list');
     setTimeout(() => setFeedback(null), 4000);
   };
 
-  const handleQuickStatusChange = (vehicleId, newStatus) => {
-    const updated = vehicles.map(v => v.id === vehicleId ? { ...v, status: newStatus } : v);
-    setVehicles(updated);
-    if (isSupabaseConfigured && supabase) {
-      supabase.from('veiculos').update({ status: newStatus }).eq('id', vehicleId).then();
+  const handleQuickStatusChange = async (vehicleId,newStatus) => {
+    if(isSupabaseConfigured&&supabase&&!user?.id?.startsWith('demo')&&/^[0-9a-f-]{36}$/i.test(vehicleId)){
+      let query=supabase.from('veiculos').update({status:newStatus}).eq('id',vehicleId);
+      if(companyId)query=query.eq('company_id',companyId);
+      const result=await query.select().single();
+      if(result.error){setFeedback({type:'error',text:'Status não alterado: '+result.error.message});return;}
     }
+    setVehicles(previous=>previous.map(v=>v.id===vehicleId?{...v,status:newStatus}:v));
   };
-
-  const handleDeleteVehicle = (vehicleId, placa) => {
-    if (window.confirm(`Confirma a exclusão do veículo placa ${placa} da frota ativa?`)) {
-      setVehicles(vehicles.filter(v => v.id !== vehicleId));
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('veiculos').delete().eq('id', vehicleId).then();
-      }
-      setFeedback({ type: 'info', text: `Veículo placa ${placa} removido da frota.` });
-      setTimeout(() => setFeedback(null), 3000);
+  const handleDeleteVehicle = async (vehicleId,placa) => {
+    if(!window.confirm('Confirma a exclusão do veículo placa '+placa+'?'))return;
+    if(isSupabaseConfigured&&supabase&&!user?.id?.startsWith('demo')&&/^[0-9a-f-]{36}$/i.test(vehicleId)){
+      let query=supabase.from('veiculos').delete().eq('id',vehicleId);
+      if(companyId)query=query.eq('company_id',companyId);
+      const result=await query.select('id');
+      if(result.error||!result.data?.length){setFeedback({type:'error',text:result.error?.code==='23503'?'Este veículo possui OS ou vínculos e não pode ser excluído.':result.error?.message||'Veículo não removido: verifique o acesso e as OS vinculadas.'});return;}
     }
+    setVehicles(previous=>previous.filter(v=>v.id!==vehicleId));
+    setFeedback({type:'info',text:'Veículo placa '+placa+' removido.'});
   };
 
   const getWhatsAppLink = (phoneStr) => {
@@ -876,7 +876,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 Cancelar
               </button>
               <button
-                type="submit"
+                type="submit" disabled={fleetSaving}
                 className="btn-primary btn-icon-text"
               >
                 <Save size={16} />
@@ -1255,7 +1255,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
               Cancelar
             </button>
             <button
-              type="submit"
+              type="submit" disabled={fleetSaving}
               className="btn-primary btn-icon-text"
             >
               <Save size={18} />

@@ -1,3 +1,4 @@
+import {orderPermissions} from '../utils/orderValidation';
 import {useEffect,useState} from 'react';
 import {supabase} from '../lib/supabaseClient';
 import {maintenanceRole,readableRole,writableRole} from '../utils/partnerValidation';
@@ -18,5 +19,5 @@ export default function useMaintenanceAccess(user){
  }fetchAccess();return()=>{cancelled=true;controller.abort();};},[user?.id,revision]);
  const membership=state.memberships.find(m=>m.company_id===companyId),role=membership?.roleName;
  function selectCompany(id){if(!state.memberships.some(m=>m.company_id===id&&readableRole(m.roleName)))return;setCompanyId(id);try{localStorage.setItem('maintenance_company_'+user.id,id);}catch{/* Optional preference. */}}
- return {...state,companyId,membership,role,canRead:readableRole(role),canWrite:writableRole(role),selectCompany,reload:()=>setRevision(v=>v+1)};
+ return {...state,orderPermissions:orderPermissions(role),companyId,membership,role,canRead:readableRole(role),canWrite:writableRole(role),selectCompany,reload:()=>setRevision(v=>v+1)};
 }

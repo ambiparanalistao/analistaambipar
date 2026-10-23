@@ -43,7 +43,7 @@ test('cadastro valida obrigatórios e salva endereço manual',async({page})=>{
  await boot(page);await page.goto('/manutencao/oficinas?acao=nova');const module=page.locator('.mp-module');
  await module.getByRole('button',{name:'Salvar parceiro'}).click();await expect(module.getByText('Informe a razão social.')).toBeVisible();
  for(const [name,value]of Object.entries({razao_social:'Nova Oficina Ltda',nome_fantasia:'Nova Oficina',cnpj_cpf:'11222333000181',telefone:'11987654321',cep:'01001000',logradouro:'Praça da Sé',numero:'20',bairro:'Sé',cidade:'São Paulo',estado:'SP'}))await module.locator('[name="'+name+'"]').fill(value);
- await module.getByRole('button',{name:'Salvar parceiro'}).click();await expect(module.getByRole('heading',{name:'Nova Oficina',exact:true})).toBeVisible();await expect(module.getByRole('button',{name:'Nova OS',exact:true})).toBeDisabled();
+ await module.getByRole('button',{name:'Salvar parceiro'}).click();await expect(module.getByRole('heading',{name:'Nova Oficina',exact:true})).toBeVisible();await expect(module.getByRole('button',{name:'Nova OS',exact:true})).toBeEnabled();
 });
 test('supervisor somente leitura e bloqueio de URL de edição',async({page})=>{
  await boot(page,'supervisor');await page.goto('/manutencao/oficinas');const module=page.locator('.mp-module');await expect(module.getByText('Horizonte',{exact:true})).toBeVisible();await expect(module.getByRole('button',{name:'Novo parceiro'})).toHaveCount(0);
