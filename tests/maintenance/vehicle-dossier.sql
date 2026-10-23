@@ -59,4 +59,15 @@ SELECT stage4_test.denied($q$SELECT public.maintenance_order_command('14000000-0
 SELECT stage4_test.act('release','{"vehicle_id":"34000000-0000-4000-8000-000000000002","kind":"trip","reference":"trip-1"}');
 SELECT stage4_test.assert(jsonb_array_length(stage4_test.act('events','{"vehicle_id":"34000000-0000-4000-8000-000000000001"}'))>=4,'permanent history contains preferences, binding, report and order');
 SELECT stage4_test.assert(NOT has_function_privilege('anon','public.maintenance_vehicle_command(uuid,text,jsonb)','EXECUTE'),'anonymous RPC denied');
+SELECT stage4_test.denied($q$SELECT stage4_test.act('unbind','{"vehicle_id":"34000000-0000-4000-8000-000000000001","user_id":"24000000-0000-4000-8000-000000000005"}')$q$);
+SELECT set_config('request.jwt.claim.sub','24000000-0000-4000-8000-000000000001',true);
+SELECT stage4_test.act('unbind','{"vehicle_id":"34000000-0000-4000-8000-000000000001","user_id":"24000000-0000-4000-8000-000000000005"}');
+SELECT set_config('request.jwt.claim.sub','24000000-0000-4000-8000-000000000005',true);
+SELECT stage4_test.assert(stage4_test.act('driver')->'vehicle'='null'::jsonb,'unbound driver loses access');
+RESET ROLE;
+INSERT INTO public.maintenance_vehicle_events(company_id,vehicle_id,occurred_at,kind,description,snapshot,source_key) SELECT '14000000-0000-4000-8000-000000000001','34000000-0000-4000-8000-000000000001','2020-01-01T10:00:00Z','chegada','Paginated fixture','{}','pagination/'||n FROM generate_series(1,101)n;
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','24000000-0000-4000-8000-000000000001',true);
+SELECT stage4_test.assert(jsonb_array_length(stage4_test.act('events','{"vehicle_id":"34000000-0000-4000-8000-000000000001","kind":"chegada","start":"2020-01-01","end":"2020-01-01","page":1}'))=100,'filtered first page');
+SELECT stage4_test.assert(jsonb_array_length(stage4_test.act('events','{"vehicle_id":"34000000-0000-4000-8000-000000000001","kind":"chegada","start":"2020-01-01","end":"2020-01-01","page":2}'))=1,'filtered second page');
 ROLLBACK;

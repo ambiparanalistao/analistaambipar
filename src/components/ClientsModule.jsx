@@ -347,7 +347,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
     }
 
     const allocationRef=editingId||crypto.randomUUID();
-    if(formData.veiculo_alocado_placa){try{await allocateVehicle(companyId,formData.veiculo_alocado_placa,'client',allocationRef);}catch(e){setFeedback({type:'error',text:e.message});return;}}
+    if(formData.veiculo_alocado_placa&&(!editingId||formData.veiculo_alocado_placa!==clients.find(c=>c.id===editingId)?.veiculo_alocado_placa)){try{await allocateVehicle(companyId,formData.veiculo_alocado_placa,'client',allocationRef);}catch(e){setFeedback({type:'error',text:e.message});return;}}
     const routeName = formData.rota_nome?.trim() || 
       (formData.origem && formData.destino ? `${formData.origem} ⇄ ${formData.destino}` : '');
 

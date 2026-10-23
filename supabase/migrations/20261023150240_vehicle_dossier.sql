@@ -149,6 +149,12 @@ BEGIN
   IF EXISTS(SELECT 1 FROM unnest(partners||coalesce(ARRAY[chosen],'{}')) x WHERE x IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.maintenance_partners WHERE id=x AND company_id=c AND status='ativo')) THEN RAISE EXCEPTION 'Selecione oficinas ativas da empresa.';END IF;
   INSERT INTO public.maintenance_vehicle_preferences(company_id,vehicle_id,default_partner_id,preferred_partner_ids,updated_by) VALUES(c,v.id,chosen,partners,actor) ON CONFLICT(company_id,vehicle_id) DO UPDATE SET default_partner_id=excluded.default_partner_id,preferred_partner_ids=excluded.preferred_partner_ids,updated_by=actor,updated_at=clock_timestamp();RETURN '{}'::jsonb;
  END IF;
+ IF action='unbind' THEN
+  IF r NOT IN ('admin_geral','admin_empresa') THEN RAISE EXCEPTION 'Somente administrador desvincula logins.' USING ERRCODE='42501';END IF;
+  DELETE FROM public.maintenance_driver_bindings b WHERE b.company_id=c AND b.vehicle_id=v.id AND b.user_id=(payload->>'user_id')::uuid RETURNING to_jsonb(b) INTO data;
+  IF data IS NULL THEN RAISE EXCEPTION 'Vínculo não encontrado ou alterado. Atualize os cadastros.';END IF;
+  INSERT INTO public.maintenance_vehicle_events(company_id,vehicle_id,occurred_at,actor_id,kind,description,snapshot,source_key) VALUES(c,v.id,clock_timestamp(),actor,'vinculo_motorista','Acesso do motorista desvinculado',data,'unbind/'||gen_random_uuid());RETURN '{}'::jsonb;
+ END IF;
  IF action='bind' THEN
   IF r NOT IN ('admin_geral','admin_empresa') OR NOT EXISTS(SELECT 1 FROM public.company_members WHERE company_id=c AND user_id=(payload->>'user_id')::uuid AND ativo AND maintenance_role='motorista') THEN RAISE EXCEPTION 'Administrador e login de motorista da empresa são necessários.' USING ERRCODE='42501';END IF;
   INSERT INTO public.maintenance_driver_bindings(company_id,user_id,driver_id,vehicle_id,updated_by) VALUES(c,(payload->>'user_id')::uuid,(payload->>'driver_id')::uuid,v.id,actor) ON CONFLICT(company_id,user_id) DO UPDATE SET driver_id=excluded.driver_id,vehicle_id=excluded.vehicle_id,updated_at=clock_timestamp(),updated_by=actor;
