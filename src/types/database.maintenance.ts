@@ -486,6 +486,7 @@ export type MaintenanceDatabase = {
       maintenance_vehicle_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_order_command: { Args:{target_company:string;command:string;body:Json};Returns:Json };
       maintenance_partner_metrics: { Args: { target_company:string; target_partner:string }; Returns:{total_os:number;custo_medio:number|null}[] };
+      maintenance_partner_approval_notice: {Args:{target_company:string;command:'claim'|'finish';body?:Json};Returns:Json};
       maintenance_partner_registration: {Args:{invite:string;command:'info'|'submit';body?:Json};Returns:Json};
       maintenance_partner_requests_command: {Args:{target_company:string;command:'link'|'rotate'|'revoke'|'list'|'detail'|'approve'|'reject';body?:Json};Returns:Json};
       maintenance_partner_cities: { Args:{target_company:string}; Returns:{cidade:string}[] };
@@ -535,3 +536,6 @@ export interface MaintenanceRows {
 export interface MaintenanceInserts {maintenance_branches:never;maintenance_analytics_audit:never;}
 
 export interface MaintenanceInserts {maintenance_partner_requests:never;maintenance_partner_request_audit:never;}
+
+export interface MaintenanceRows {maintenance_partner_approval_notices:{request_id:string;company_id:string;partner_id:string;status:'pending'|'sending'|'accepted'|'failed'|'unknown'|'unavailable';phone:string|null;body:string;attempts:number;claimed_at:string|null;provider_message_id:string|null;error_message:string|null;created_at:string;updated_at:string;accepted_at:string|null};}
+export interface MaintenanceInserts {maintenance_partner_approval_notices:never;}

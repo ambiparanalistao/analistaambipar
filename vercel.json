@@ -2,6 +2,9 @@
   "functions": {
     "api/evolution.js": {
       "maxDuration": 60
+    },
+    "api/partner-approval.js": {
+      "maxDuration": 120
     }
   },
   "rewrites": [
