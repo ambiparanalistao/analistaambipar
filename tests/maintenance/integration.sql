@@ -53,6 +53,10 @@ SELECT maintenance_test.expect_error($cmd$INSERT INTO public.maintenance_partner
 SELECT maintenance_test.expect_error($cmd$UPDATE public.maintenance_partners SET company_id='10000000-0000-0000-0000-000000000002' WHERE id='40000000-0000-0000-0000-000000000001'$cmd$,'42501');
 SELECT maintenance_test.expect_error($cmd$INSERT INTO public.maintenance_orders(company_id,vehicle_id,partner_id,descricao_problema) VALUES('10000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000002','40000000-0000-0000-0000-000000000001','Cross-company vehicle')$cmd$,'23503');
 SELECT maintenance_test.expect_error($cmd$INSERT INTO public.maintenance_order_items(company_id,order_id,tipo,descricao,quantidade,valor_unitario) VALUES('10000000-0000-0000-0000-000000000001','50000000-0000-0000-0000-000000000002','peca','Cross-company order',1,10)$cmd$,'23503');
+SELECT current_user,auth.uid(),maintenance_private.can_access_company('10000000-0000-0000-0000-000000000001',true) AS can_write;
+SELECT policyname,cmd,permissive,qual,with_check FROM pg_policies WHERE tablename='veiculos';
+UPDATE public.veiculos SET observacoes='fixture update check' WHERE id='30000000-0000-0000-0000-000000000001' RETURNING id,company_id,status;
+SELECT id,vehicle_id,company_id,status FROM public.maintenance_orders;
 SELECT maintenance_test.expect_error($cmd$UPDATE public.veiculos SET status='Em Viagem' WHERE id='30000000-0000-0000-0000-000000000001'$cmd$,'23514');
 SELECT maintenance_test.expect_error($cmd$UPDATE public.veiculos SET status='Disponível' WHERE id='30000000-0000-0000-0000-000000000001'$cmd$,'23514');
 SELECT maintenance_test.expect_error($cmd$INSERT INTO public.maintenance_order_timeline(company_id,order_id,tipo_evento,status_novo,descricao,usuario_id) VALUES('10000000-0000-0000-0000-000000000001','50000000-0000-0000-0000-000000000001','mudanca_status','encerrada','fake','20000000-0000-0000-0000-000000000001')$cmd$,'42501');

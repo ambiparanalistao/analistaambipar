@@ -37,7 +37,6 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressPct, setProgressPct] = useState(0);
 
-  if (!isOpen) return null;
 
   const handleFileChange = async (e) => {
     const selected = e.target.files?.[0];
@@ -181,6 +180,9 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
       }
     }, 250);
   };
+
+  // Keep all hooks unconditional when the modal opens or closes.
+  if (!isOpen) return null;
 
   return (
     <div className="fuel-modal-backdrop animate-fade-in" style={{ zIndex: 9999 }}>
