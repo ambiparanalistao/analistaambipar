@@ -72,6 +72,7 @@ export interface MaintenanceRows {
     sla_medio_dias: number | null;
   };
   maintenance_orders: {
+    responsavel_id: string|null;
     version: number;
     km_abertura: number | null;
     decisao_por: string | null;
@@ -171,6 +172,7 @@ export interface MaintenanceRows {
     fotos: string[];
   };
   maintenance_messages: {
+    situacao:'preparada'|'confirmada'|'registrada';assunto:string|null;destinatario:string|null;efetivada_em:string|null;request_id:string|null;
     id: string;
     company_id: string;
     created_at: string;
@@ -213,6 +215,7 @@ export interface MaintenanceRows {
     enviado_por: string;
   };
   maintenance_message_templates: {
+    version:number;
     id: string;
     company_id: string;
     created_at: string;
@@ -224,6 +227,7 @@ export interface MaintenanceRows {
     ativo: boolean;
   };
   maintenance_settings: {
+    version:number;cobranca_ativa:boolean;cobranca_statuses:Enums['order_status'][];
     id: string;
     company_id: string;
     created_at: string;
@@ -456,7 +460,7 @@ export interface MaintenanceInserts {
 }
 
 type Immutable = 'id' | 'company_id' | 'created_at' | 'created_by';
-type AppendOnly = 'maintenance_vehicle_events'|'maintenance_vehicle_preferences'|'maintenance_driver_bindings'|'maintenance_allocations'| 'maintenance_order_timeline' | 'maintenance_messages' | 'maintenance_partner_audit' | 'maintenance_partner_attachments';
+type AppendOnly = 'maintenance_notifications'|'maintenance_communication_audit'| 'maintenance_vehicle_events'|'maintenance_vehicle_preferences'|'maintenance_driver_bindings'|'maintenance_allocations'| 'maintenance_order_timeline' | 'maintenance_messages' | 'maintenance_partner_audit' | 'maintenance_partner_attachments';
 export type MaintenanceUpdate<T extends keyof MaintenanceInserts> =
   T extends AppendOnly ? never : Partial<Omit<MaintenanceInserts[T], Immutable | (T extends 'maintenance_orders' ? 'vehicle_id' | 'partner_id' | 'data_abertura' : never)>>;
 export type TableName = keyof MaintenanceRows;
@@ -471,6 +475,7 @@ export type MaintenanceDatabase = {
     } };
     Views: Record<string, never>;
     Functions: {
+      maintenance_communication_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_vehicle_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_order_command: { Args:{target_company:string;command:string;body:Json};Returns:Json };
       maintenance_partner_metrics: { Args: { target_company:string; target_partner:string }; Returns:{total_os:number;custo_medio:number|null}[] };
@@ -497,3 +502,11 @@ export interface MaintenanceRows {
  maintenance_allocations:{company_id:string;kind:'trip'|'client';reference:string;vehicle_id:string;active:boolean;updated_at:string;updated_by:string};
 }
 export interface MaintenanceInserts {maintenance_vehicle_preferences:never;maintenance_driver_bindings:never;maintenance_vehicle_events:never;maintenance_allocations:never;}
+
+export interface MaintenanceRows {
+ maintenance_notifications:{id:string;company_id:string;order_id:string;user_id:string;titulo:string;baseline_em:string;created_at:string;updated_at:string;read_at:string|null;resolved_at:string|null;next_reminder_at:string;reminder_count:number};
+ maintenance_communication_audit:{id:string;company_id:string;entity:string;entity_id:string;action:string;actor_id:string;occurred_at:string;before_data:Json|null;after_data:Json|null};
+}
+export interface MaintenanceInserts {maintenance_notifications:never;maintenance_communication_audit:never;}
+// Phase 2 contract only. No active route, token issuance, table or public permission.
+export interface FuturePartnerPortalGrant { companyId:string;orderId:string;partnerId:string;tokenHash:string;expiresAt:string;revokedAt:string|null;capabilities:('update_status'|'upload_quote'|'upload_photo')[]; }
