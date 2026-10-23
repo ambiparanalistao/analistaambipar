@@ -1,3 +1,4 @@
+import {PARTNER_TYPES} from '../utils/partnerValidation';
 import {supabase} from '../lib/supabaseClient';
 import {partnerPayload,validatePartner,validateAttachment,FILE_TYPES} from '../utils/partnerValidation';
 const checked = result => {if(result.error) {const e=result.error;throw new Error(e.code==='23505'?'CPF/CNPJ já cadastrado nesta empresa.':e.code==='42501'?'Seu perfil não tem permissão para esta operação.':e.message||'Não foi possível acessar os dados.');}return result;};
@@ -5,7 +6,8 @@ export async function listPartners(company,filters,page=1,limit=20,signal){
  let q=supabase.from('maintenance_partners').select('*',{count:'exact'}).eq('company_id',company);
  const term=filters.search.replace(/[^\p{L}\p{N} ]/gu,'').trim().slice(0,100);
  if(term)q=q.or('nome_fantasia.ilike.%'+term+'%,razao_social.ilike.%'+term+'%,cnpj_cpf.ilike.%'+term+'%');
- for(const k of ['tipo','cidade','status'])if(filters[k])q=q.eq(k,filters[k]);
+ if(filters.tipo)q=q.or('tipo.eq.'+filters.tipo+',onboarding_profile->tipos_oficina.cs.'+JSON.stringify([PARTNER_TYPES[filters.tipo]]));
+ for(const k of ['cidade','status'])if(filters[k])q=q.eq(k,filters[k]);
  if(filters.nota)q=q.gte('avaliacao_interna',Number(filters.nota));
  q=q.order('nome_fantasia',{nullsFirst:false}).order('razao_social').order('id').range((page-1)*limit,page*limit-1);
  if(signal)q=q.abortSignal(signal);return checked(await q);
