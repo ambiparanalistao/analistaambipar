@@ -3,6 +3,8 @@
  * Realiza disparos de mensagens WhatsApp 100% via API (sem abrir Web ou App)
  */
 
+import { supabase } from '../lib/supabaseClient';
+
 export const EVOLUTION_STORAGE_KEYS = {
   SERVER_URL: 'ambipar_evolution_url',
   API_KEY: 'ambipar_evolution_key',
@@ -10,9 +12,9 @@ export const EVOLUTION_STORAGE_KEYS = {
 };
 
 export const DEFAULT_EVOLUTION_SETTINGS = {
-  serverUrl: (typeof window !== 'undefined' && localStorage.getItem(EVOLUTION_STORAGE_KEYS.SERVER_URL)) || 'http://localhost:8080',
-  apiKey: (typeof window !== 'undefined' && localStorage.getItem(EVOLUTION_STORAGE_KEYS.API_KEY)) || 'ambipar_evolution_secret_key',
-  instanceName: (typeof window !== 'undefined' && localStorage.getItem(EVOLUTION_STORAGE_KEYS.INSTANCE_NAME)) || 'ambipar-cco'
+  serverUrl: (typeof window !== 'undefined' && localStorage.getItem(EVOLUTION_STORAGE_KEYS.SERVER_URL)) || 'https://evolutionapi.vps11334.panel.icontainer.net',
+  apiKey: (typeof window !== 'undefined' && localStorage.getItem(EVOLUTION_STORAGE_KEYS.API_KEY)) || '',
+  instanceName: (typeof window !== 'undefined' && localStorage.getItem(EVOLUTION_STORAGE_KEYS.INSTANCE_NAME)) || 'analistalogistica'
 };
 
 /**
@@ -33,7 +35,7 @@ export function getEvolutionSettings() {
 export function saveEvolutionSettings(settings) {
   if (typeof window === 'undefined') return;
   if (settings.serverUrl) localStorage.setItem(EVOLUTION_STORAGE_KEYS.SERVER_URL, settings.serverUrl.replace(/\/+$/, ''));
-  if (settings.apiKey) localStorage.setItem(EVOLUTION_STORAGE_KEYS.API_KEY, settings.apiKey.trim());
+  if (settings.apiKey !== undefined) localStorage.setItem(EVOLUTION_STORAGE_KEYS.API_KEY, settings.apiKey.trim());
   if (settings.instanceName) localStorage.setItem(EVOLUTION_STORAGE_KEYS.INSTANCE_NAME, settings.instanceName.trim());
 }
 
@@ -53,13 +55,13 @@ export function formatPhoneNumberE164(phone) {
 
 /**
  * Disparo Direto de Mensagem de Texto via Evolution API
- * Endpoint: POST /message/sendText/{instance}
- * Não abre WhatsApp Web nem aplicativo móvel.
+ * Endpoint: POST /message/sendText/{instance} ou POST /api/evolution
+ * STRICT REQUIREMENT: Não abre WhatsApp Web nem aplicativo móvel sob nenhuma hipótese.
  */
 export async function sendEvolutionMessage({ phone, text, overrideSettings = null }) {
   const settings = overrideSettings || getEvolutionSettings();
-  const baseUrl = settings.serverUrl.replace(/\/+$/, '');
-  const instance = settings.instanceName;
+  const baseUrl = (settings.serverUrl || DEFAULT_EVOLUTION_SETTINGS.serverUrl).replace(/\/+$/, '');
+  const instance = settings.instanceName || DEFAULT_EVOLUTION_SETTINGS.instanceName;
   const formattedNumber = formatPhoneNumberE164(phone);
 
   if (!formattedNumber || formattedNumber.length < 10) {
@@ -70,6 +72,50 @@ export async function sendEvolutionMessage({ phone, text, overrideSettings = nul
     throw new Error('O conteúdo da mensagem não pode estar vazio.');
   }
 
+  // 1. Tentar primeiro via backend /api/evolution (caso as credenciais de servidor estejam na Vercel)
+  try {
+    let authHeader = 'Bearer anonymous';
+    try {
+      if (supabase) {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session?.access_token) {
+          authHeader = 'Bearer ' + data.session.access_token;
+        }
+      }
+    } catch {}
+
+    const backendController = new AbortController();
+    const backendTimeout = setTimeout(() => backendController.abort(), 12000);
+
+    const backendResponse = await fetch('/api/evolution', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      body: JSON.stringify({
+        action: 'sendText',
+        number: formattedNumber,
+        text: text
+      }),
+      signal: backendController.signal
+    });
+    clearTimeout(backendTimeout);
+
+    if (backendResponse.ok) {
+      const data = await backendResponse.json();
+      return {
+        success: true,
+        messageId: data?.key?.id || data?.id || `EVO-${Date.now().toString().slice(-6)}`,
+        data,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      };
+    }
+  } catch (backendError) {
+    console.debug('Tentativa via /api/evolution contornada, executando endpoint direto:', backendError);
+  }
+
+  // 2. Disparo direto para o servidor da Evolution API
   const endpoint = `${baseUrl}/message/sendText/${instance}`;
   const payload = {
     number: formattedNumber,
@@ -78,16 +124,20 @@ export async function sendEvolutionMessage({ phone, text, overrideSettings = nul
     delay: 1000
   };
 
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (settings.apiKey) {
+    headers['apikey'] = settings.apiKey;
+  }
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
 
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'apikey': settings.apiKey,
-        'Content-Type': 'application/json'
-      },
+      headers,
       body: JSON.stringify(payload),
       signal: controller.signal
     });
