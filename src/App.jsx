@@ -368,6 +368,7 @@ export default function App() {
                 )}
                 {currentModule === 'frotas' && (
                   <VehiclesModule 
+                    companyId={maintenanceAccess.companyId}
                     user={session.user} 
                     onNavigateDrivers={() => handleSelectModule('motoristas')}
                   />
