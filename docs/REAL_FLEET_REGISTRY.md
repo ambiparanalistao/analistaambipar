@@ -13,3 +13,5 @@ A migração adiciona os campos reais de contato, vencimentos e prefixo usados n
 ESG sem medições, custos mensais sem lançamentos e auditoria de abastecimento sem anomalias reais mostram estado vazio. O atalho de sessão demonstrativa foi removido. Exemplos em testes isolados não são enviados ao banco de produção.
 
 Verificação: testes de matching, SQL de persistência/isolaçao/exclusão/documento e navegador (exclusão com recarregamento, falha por vínculo, preenchimento da OS). Os testes não enviam mensagens reais.
+
+Configuração operacional: MOPP é exibido com validade indeterminada em cards, tabela e formulário. Datas históricas permanecem no banco, mas não são exigidas, alteradas pelo formulário nem usadas em alertas. A solicitação de validades pelo WhatsApp exclui MOPP e mantém os demais documentos. Isso não presume a existência do certificado: o número cadastrado é preservado e a ausência é indicada.
