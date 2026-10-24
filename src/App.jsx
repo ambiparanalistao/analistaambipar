@@ -25,6 +25,8 @@ import FuelModule from './components/FuelModule';
 import AuthCard from './components/AuthCard';
 import SupabaseConfigModal from './components/SupabaseConfigModal';
 import ComplianceAuditModule from './components/ComplianceAuditModule';
+import EscalaModule from './components/EscalaModule';
+import RotasModule from './components/RotasModule';
 import ErrorBoundary from './components/ErrorBoundary';
 import AutomationModule from './components/AutomationModule';
 import MaintenanceModule from './components/maintenance/MaintenanceModule';
@@ -38,6 +40,8 @@ export const MODULE_ROUTES = {
   driver_maintenance: '/motorista/manutencao',
   automacao: '/automacao',
   dashboard: '/dashboard',
+  escala: '/escala',
+  rotas: '/rotas',
   auditoria_vencimentos: '/auditoria-vencimentos',
   frotas: '/frotas',
   motoristas: '/motoristas',
@@ -59,6 +63,12 @@ export const PATH_TO_MODULE = {
   '/automacao': 'automacao',
   '/': 'dashboard',
   '/dashboard': 'dashboard',
+  '/escala': 'escala',
+  '/escalas': 'escala',
+  '/despacho': 'escala',
+  '/rotas': 'rotas',
+  '/rota': 'rotas',
+  '/roteirizacao': 'rotas',
   '/auditoria-vencimentos': 'auditoria_vencimentos',
   '/vencimentos': 'auditoria_vencimentos',
   '/auditoria': 'auditoria_vencimentos',
@@ -157,6 +167,14 @@ export default function App() {
   const moduleInfo = {
     ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.id,{title:'Manutenção · '+p.label,subtitle:'Gestão de manutenção e oficinas parceiras'}])),
     automacao: { title: 'Automação · Conexão WhatsApp', subtitle: 'Autenticação, status e reconexão da instância Evolution API' },
+    escala: { 
+      title: 'Escala Operacional & Despacho CCO', 
+      subtitle: 'Alocação diária de motoristas homologados e veículos a circuitos com múltiplos clientes e endereços' 
+    },
+    rotas: { 
+      title: 'Central de Rotas & Circuitos Logísticos RJ', 
+      subtitle: 'Corredores homologados, sequenciamento de paradas e cálculo de distâncias' 
+    },
     dashboard: { 
       title: 'Torre de Controle Operacional', 
       subtitle: 'Painel Geral de Operações, KPIs Consolidados e Monitoramento de Frota & Resíduos' 
@@ -362,6 +380,8 @@ export default function App() {
             <main className="stage-content-body" id="stage-content-body">
               <ErrorBoundary>
                 {currentModule === 'auditoria_vencimentos' && <ComplianceAuditModule />}
+                {currentModule === 'escala' && <EscalaModule user={session.user} onNavigateRotas={() => handleSelectModule('rotas')} />}
+                {currentModule === 'rotas' && <RotasModule user={session.user} onNavigateEscala={() => handleSelectModule('escala')} />}
                 {currentModule.startsWith('maintenance_') && <MaintenanceModule access={maintenanceAccess} page={currentModule} />}
                 {currentModule === 'dashboard' && (
                   <LogisticsDashboard 
