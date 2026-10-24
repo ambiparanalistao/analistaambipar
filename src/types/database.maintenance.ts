@@ -489,6 +489,8 @@ export type MaintenanceDatabase = {
     } };
     Views: Record<string, never>;
     Functions: {
+      driver_maintenance_gateway:{Args:{server_key:string;command:string;body:Json};Returns:Json};
+      driver_maintenance_admin:{Args:{target_company:string;command:string;body?:Json};Returns:Json};
       maintenance_partner_delete: {Args:{target_company:string;target_partner:string;expected_version:number};Returns:Json};
       driver_toxicology_request:{Args:{target_company:string;command:'claim'|'finish';body?:Json};Returns:Json};
       maintenance_plan_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
@@ -557,3 +559,10 @@ export interface MaintenanceInserts {maintenance_order_dispatches:never;}
 
 export interface MaintenanceRows {driver_toxicology_requests:{id:string;company_id:string;driver_id:string;request_id:string;actor_id:string;phone:string;content:string;status:'sending'|'accepted'|'failed'|'unknown';claim_token:string|null;claimed_at:string;attempts:number;provider_message_id:string|null;error_message:string|null;created_at:string;updated_at:string};}
 export interface MaintenanceInserts {driver_toxicology_requests:never;}
+
+export interface MaintenanceRows {
+ maintenance_driver_reports:{id:string;company_id:string;request_id:string;protocol:string;driver_id:string|null;vehicle_id:string|null;driver_name:string;vehicle_plate:string;km:number;defects:string;severity:'leve'|'media'|'urgente';status:'nova'|'analise'|'pendente'|'resolvida'|'cancelada';feedback:string;version:number;created_at:string;updated_at:string;resolved_at:string|null;updated_by:string|null;vehicle_snapshot:Json;partner_types:string[];ack_status:string;ack_token:string|null;ack_started_at:string|null;ack_message_id:string|null};
+ maintenance_driver_report_events:{id:string;company_id:string;report_id:string;actor_id:string|null;created_at:string;action:string;message:string};
+ maintenance_driver_report_dispatches:{id:string;company_id:string;report_id:string;partner_id:string;status:string;claim_token:string|null;started_at:string|null;updated_at:string;attempts:number;message_id:string|null;error_message:string|null};
+}
+export interface MaintenanceInserts {maintenance_driver_reports:never;maintenance_driver_report_events:never;maintenance_driver_report_dispatches:never;}
