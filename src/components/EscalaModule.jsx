@@ -24,7 +24,12 @@ import {
   Navigation,
   Sparkles,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  ArrowLeft,
+  Fuel,
+  FileText,
+  Check,
+  X
 } from 'lucide-react';
 import { 
   AUDITED_RJ_ROUTES, 
@@ -33,7 +38,11 @@ import {
 } from '../data/auditedClientsRoutesData';
 import { AUDITED_VEHICLES, AUDITED_DRIVERS } from '../data/auditedAmbiparData';
 
-export default function EscalaModule({ user }) {
+export default function EscalaModule({ user, onNavigateRotas }) {
+  // Controle de Visualização em Tela Inteira: 'list' (Quadro Geral), 'form' (Montar Escala Tela Cheia), 'romaneio' (Ficha de Despacho Tela Cheia)
+  const [viewMode, setViewMode] = useState('list');
+  const [selectedRomaneio, setSelectedRomaneio] = useState(null);
+
   const [schedules, setSchedules] = useState(() => {
     try {
       const saved = localStorage.getItem('ambipar_real_schedules');
@@ -46,11 +55,9 @@ export default function EscalaModule({ user }) {
   const [dateFilter, setDateFilter] = useState('2026-10-24');
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedScheduleView, setSelectedScheduleView] = useState(null);
 
-  // Formulário de Nova Escala
-  const [newSchedule, setNewSchedule] = useState({
+  // Formulário de Nova Escala (em Tela Inteira)
+  const defaultScheduleState = {
     data_escala: '2026-10-24',
     turno: 'Manhã (06:00 às 15:00)',
     rota_id: AUDITED_RJ_ROUTES[0].id,
@@ -70,13 +77,15 @@ export default function EscalaModule({ user }) {
       status: 'Programado',
       horario: '08:00'
     }))
-  });
+  };
 
-  // Atualiza rota no form e recarrega os múltiplos endereços automaticamente
+  const [formData, setFormData] = useState(defaultScheduleState);
+
+  // Ao trocar a rota no formulário de tela cheia, carrega o itinerário correspondente
   const handleSelectRouteInForm = (routeId) => {
     const r = AUDITED_RJ_ROUTES.find(x => x.id === routeId);
     if (!r) return;
-    setNewSchedule(prev => ({
+    setFormData(prev => ({
       ...prev,
       rota_id: r.id,
       rota_nome: r.nome,
@@ -104,9 +113,9 @@ export default function EscalaModule({ user }) {
     }
   };
 
-  // Adiciona nova parada dinâmica à escala
+  // Adiciona nova parada dinâmica no formulário
   const handleAddStopToForm = () => {
-    setNewSchedule(prev => ({
+    setFormData(prev => ({
       ...prev,
       paradas: [
         ...prev.paradas,
@@ -121,31 +130,31 @@ export default function EscalaModule({ user }) {
     }));
   };
 
-  // Remove parada do form
+  // Remove parada do formulário
   const handleRemoveStopFromForm = (idx) => {
-    if (newSchedule.paradas.length <= 1) return;
-    const updated = newSchedule.paradas.filter((_, i) => i !== idx).map((p, i) => ({
+    if (formData.paradas.length <= 1) return;
+    const updated = formData.paradas.filter((_, i) => i !== idx).map((p, i) => ({
       ...p,
       ordem: i + 1
     }));
-    setNewSchedule(prev => ({ ...prev, paradas: updated }));
+    setFormData(prev => ({ ...prev, paradas: updated }));
   };
 
-  // Submissão do formulário
-  const handleCreateSchedule = (e) => {
+  // Salvar Escala (Tela Cheia)
+  const handleSaveSchedule = (e) => {
     e.preventDefault();
     const created = {
-      ...newSchedule,
+      ...formData,
       id: `ESC-${Date.now()}`,
       status: 'Programada',
-      paradas_total: newSchedule.paradas.length,
+      paradas_total: formData.paradas.length,
       parada_atual: 1,
       progresso_percentual: 0
     };
 
     const updated = [created, ...schedules];
     saveSchedules(updated);
-    setShowCreateModal(false);
+    setViewMode('list');
   };
 
   // Concluir Parada na Escala
@@ -157,7 +166,6 @@ export default function EscalaModule({ user }) {
       const newStatus = isFinished ? 'Concluída' : 'Em Rota';
       const pct = Math.round((nextStop / s.paradas_total) * 100);
 
-      // Marca a parada atual como concluída
       const updatedParadas = s.paradas.map((p, i) => {
         if (i < nextStop - 1 || isFinished) return { ...p, status: 'Concluído' };
         if (i === nextStop - 1) return { ...p, status: 'Em Atendimento' };
@@ -213,6 +221,500 @@ export default function EscalaModule({ user }) {
   const paradasHoje = schedules.filter(s => s.data_escala === '2026-10-24').reduce((acc, curr) => acc + (curr.paradas_total || 0), 0);
   const kmHoje = schedules.filter(s => s.data_escala === '2026-10-24').reduce((acc, curr) => acc + (curr.distancia_prevista_km || 0), 0);
 
+  // =========================================================================
+  // MODO 1: TELA INTEIRA DE ROMANEIO / FICHA DE DESPACHO
+  // =========================================================================
+  if (viewMode === 'romaneio' && selectedRomaneio) {
+    return (
+      <div className="escala-romaneio-fullscreen animate-fade-in" style={{ padding: '0.5rem 0' }}>
+        {/* Barra Superior de Ações */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <button
+            type="button"
+            className="btn-secondary btn-icon-text"
+            onClick={() => setViewMode('list')}
+          >
+            <ArrowLeft size={16} />
+            <span>Voltar ao Quadro de Escalas</span>
+          </button>
+
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              type="button"
+              className="btn-secondary btn-icon-text"
+              onClick={() => window.print()}
+            >
+              <Printer size={16} />
+              <span>Imprimir Ficha de Despacho</span>
+            </button>
+            <button
+              type="button"
+              className="btn-primary btn-icon-text"
+              onClick={() => handleSendWhatsApp(selectedRomaneio)}
+              style={{ background: '#25D366', borderColor: '#25D366', color: '#070b12', fontWeight: 700 }}
+            >
+              <Send size={16} />
+              <span>Enviar no WhatsApp</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Folha de Romaneio em Tela Cheia */}
+        <div className="card-panel" style={{ background: '#0e1524', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '2.5rem', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid var(--accent-emerald)', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
+            <div>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-emerald)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                AMBIPAR ENVIRONMENT SOLUTIONS • UNIDADE DUQUE DE CAXIAS
+              </span>
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0.2rem 0', color: 'var(--text-main)' }}>
+                Ficha Oficial de Despacho & Escala Diária CCO
+              </h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.85rem' }}>
+                Ordem de Serviço Logística • Centro de Controle Operacional (CCO)
+              </p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>ID da Escala:</span>
+              <code style={{ fontSize: '1rem', color: 'var(--accent-cyan)', fontWeight: 800 }}>{selectedRomaneio.id}</code>
+              <div style={{ marginTop: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-emerald-light)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                  {selectedRomaneio.status}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Dados do Despacho */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', background: 'rgba(7, 11, 18, 0.6)', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.75rem', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Data da Operação:</span>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>{selectedRomaneio.data_escala}</strong>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Turno CCO:</span>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>{selectedRomaneio.turno}</strong>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Veículo & Placa:</span>
+              <strong style={{ fontSize: '1rem', color: 'var(--accent-cyan)' }}>{selectedRomaneio.veiculo_placa}</strong>
+              <small style={{ display: 'block', color: 'var(--text-muted)' }}>{selectedRomaneio.veiculo_modelo}</small>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Motorista Escalado:</span>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--accent-emerald)' }}>{selectedRomaneio.motorista_nome}</strong>
+              <small style={{ display: 'block', color: 'var(--text-muted)' }}>{selectedRomaneio.motorista_cnh}</small>
+            </div>
+          </div>
+
+          {/* Tabela do Itinerário de Clientes */}
+          <div style={{ marginBottom: '1.75rem' }}>
+            <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <MapPin size={18} style={{ color: 'var(--accent-emerald)' }} />
+              <span>Itinerário de Paradas e Clientes no Dia ({selectedRomaneio.paradas?.length} locais)</span>
+            </h4>
+
+            <table className="operational-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '60px' }}>Ordem</th>
+                  <th>Cliente / Ponto de Atendimento</th>
+                  <th>Endereço Completo de Coleta</th>
+                  <th>Horário Previsto</th>
+                  <th>Situação CCO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedRomaneio.paradas?.map((p, idx) => (
+                  <tr key={idx}>
+                    <td>
+                      <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--accent-emerald)', color: '#070b12', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>
+                        {p.ordem}
+                      </span>
+                    </td>
+                    <td><strong>{p.cliente}</strong></td>
+                    <td><small>{p.endereco || '—'}</small></td>
+                    <td><span className="date-tag">{p.horario || 'Programado'}</span></td>
+                    <td>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: p.status === 'Concluído' ? 'var(--accent-emerald)' : 'var(--accent-cyan)' }}>
+                        {p.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Instruções CCO */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '1rem 1.25rem', borderRadius: '8px', borderLeft: '4px solid var(--accent-cyan)', marginBottom: '2rem' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>
+              Instruções Especiais de Segurança e Operação:
+            </span>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-main)' }}>
+              {selectedRomaneio.instrucoes_especiais || 'Conferir crachá de acesso industrial, utilizar todos os EPIs obrigatórios (capacete, óculos, botina e luvas) e emitir MTR SINIR antes de deixar a portaria do cliente.'}
+            </p>
+          </div>
+
+          {/* Assinaturas */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', paddingTop: '2rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ borderBottom: '1px solid var(--text-muted)', width: '80%', margin: '0 auto 0.5rem' }}></div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: 700 }}>
+                {selectedRomaneio.motorista_nome}
+              </span>
+              <small style={{ display: 'block', color: 'var(--text-muted)' }}>Condutor Responsável / CCO</small>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ borderBottom: '1px solid var(--text-muted)', width: '80%', margin: '0 auto 0.5rem' }}></div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: 700 }}>
+                Analista de Logística CCO
+              </span>
+              <small style={{ display: 'block', color: 'var(--text-muted)' }}>Ambipar Logistics & Operações RJ</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // MODO 2: TELA INTEIRA DE CADASTRO / MONTAGEM DE ESCALA (SEM POP-UP!)
+  // =========================================================================
+  if (viewMode === 'form') {
+    return (
+      <div className="escala-form-fullscreen animate-fade-in" style={{ padding: '0.5rem 0' }}>
+        {/* Top Header da Tela Cheia */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                onClick={() => setViewMode('list')}
+              >
+                <ArrowLeft size={14} />
+                <span>Voltar ao Quadro</span>
+              </button>
+              <span style={{ fontSize: '0.75rem', color: 'var(--accent-emerald)', fontWeight: 800, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                CCO • DESPACHO OPERACIONAL
+              </span>
+            </div>
+            <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+              Montar Nova Escala de Despacho em Tela Cheia
+            </h2>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.85rem' }}>
+              Vincule veículo homologado, motorista habilitado com MOPP e itinerário diário de múltiplos clientes e endereços.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setViewMode('list')}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn-primary btn-icon-text"
+              onClick={handleSaveSchedule}
+              style={{ background: 'var(--accent-emerald)', borderColor: 'var(--accent-emerald)', color: '#070b12', fontWeight: 700 }}
+            >
+              <Check size={16} />
+              <span>Confirmar & Despachar Escala</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Layout Dividido em Duas Colunas Amplas */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(450px, 1.4fr)', gap: '1.5rem' }}>
+          {/* Coluna 1: Parâmetros da Escala, Veículo e Motorista */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div className="card-panel" style={{ background: '#0e1524' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Clock size={18} />
+                <span>1. Data, Turno e Rota Homologada</span>
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                    Data da Escala:
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.data_escala}
+                    onChange={(e) => setFormData({ ...formData, data_escala: e.target.value })}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                    Turno de Atendimento:
+                  </label>
+                  <select
+                    value={formData.turno}
+                    onChange={(e) => setFormData({ ...formData, turno: e.target.value })}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
+                  >
+                    <option value="Manhã (06:00 às 15:00)">Manhã (06:00 às 15:00)</option>
+                    <option value="Manhã (07:00 às 16:00)">Manhã (07:00 às 16:00)</option>
+                    <option value="Tarde (13:00 às 22:00)">Tarde (13:00 às 22:00)</option>
+                    <option value="Noturno Especial (22:00 às 06:00)">Noturno Especial (22:00 às 06:00)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                  Rota / Circuito Pré-Programado:
+                </label>
+                <select
+                  value={formData.rota_id}
+                  onChange={(e) => handleSelectRouteInForm(e.target.value)}
+                  style={{ width: '100%', padding: '0.75rem 0.85rem', background: '#070b12', border: '1px solid rgba(6, 182, 212, 0.4)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem', fontWeight: 700 }}
+                >
+                  {AUDITED_RJ_ROUTES.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.codigo} - {r.nome} ({r.distancia_km} km • {r.pontos_parada.length} paradas)
+                    </option>
+                  ))}
+                </select>
+                <small style={{ color: 'var(--accent-cyan)', display: 'block', marginTop: '0.35rem' }}>
+                  💡 Ao selecionar a rota, os clientes e endereços de paradas são carregados ao lado automaticamente.
+                </small>
+              </div>
+            </div>
+
+            {/* Veículo e Motorista */}
+            <div className="card-panel" style={{ background: '#0e1524' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-emerald)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Truck size={18} />
+                <span>2. Alocação de Veículo & Condutor</span>
+              </h3>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                  Veículo da Frota (21 Unidades Homologadas DCX / Vale):
+                </label>
+                <select
+                  value={formData.veiculo_placa}
+                  onChange={(e) => {
+                    const v = AUDITED_VEHICLES.find(x => x.placa === e.target.value);
+                    setFormData({
+                      ...formData,
+                      veiculo_placa: e.target.value,
+                      veiculo_modelo: v ? `${v.tipo} (${v.marca_modelo})` : formData.veiculo_modelo
+                    });
+                  }}
+                  style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
+                >
+                  {AUDITED_VEHICLES.map(v => (
+                    <option key={v.placa} value={v.placa} disabled={v.status === 'Bloqueado'}>
+                      {v.placa} • {v.tipo} ({v.marca_modelo}) [{v.status}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                  Motorista (Quadro Homologado MOPP):
+                </label>
+                <select
+                  value={formData.motorista_nome}
+                  onChange={(e) => {
+                    const m = AUDITED_DRIVERS.find(x => x.nome === e.target.value);
+                    setFormData({
+                      ...formData,
+                      motorista_nome: e.target.value,
+                      motorista_telefone: m?.telefone || formData.motorista_telefone,
+                      motorista_cnh: m ? `Cat. ${m.categoria_cnh} (MOPP ${m.status_mopp})` : formData.motorista_cnh
+                    });
+                  }}
+                  style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
+                >
+                  {AUDITED_DRIVERS.map(d => (
+                    <option key={d.id} value={d.nome}>
+                      {d.nome} (Cat. {d.categoria_cnh} • MOPP {d.status_mopp})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                  Instruções Especiais CCO / Despacho:
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Ex: Entrar pela Doca 14 na Amazon; apresentar crachá no TIG Guaíba; verificar lona de contenção."
+                  value={formData.instrucoes_especiais}
+                  onChange={(e) => setFormData({ ...formData, instruções_especiais: e.target.value })}
+                  style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem', resize: 'vertical' }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Coluna 2: Construtor Amplo de Múltiplos Clientes e Paradas no Dia */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="card-panel" style={{ background: '#0e1524', height: '100%' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '0.85rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <MapPin size={18} style={{ color: 'var(--accent-amber)' }} />
+                    <span>Itinerário de Clientes & Paradas no Mesmo Dia ({formData.paradas.length} locais)</span>
+                  </h3>
+                  <small style={{ color: 'var(--text-muted)' }}>O caminhão percorrerá estes clientes sequencialmente neste turno</small>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn-secondary btn-icon-text"
+                  onClick={handleAddStopToForm}
+                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                >
+                  <Plus size={14} />
+                  <span>Adicionar Cliente / Parada</span>
+                </button>
+              </div>
+
+              {/* Lista Ampla de Paradas */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', maxHeight: '550px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                {formData.paradas.map((p, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: 'rgba(7, 11, 18, 0.6)',
+                      border: '1px solid rgba(255, 255, 255, 0.06)',
+                      borderRadius: '8px',
+                      padding: '0.85rem 1rem'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: idx === 0 ? 'var(--accent-emerald)' : (idx === formData.paradas.length - 1 ? 'var(--accent-cyan)' : 'var(--accent-amber)'),
+                          color: '#070b12',
+                          fontWeight: 800,
+                          fontSize: '0.75rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {p.ordem}
+                        </span>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                          {idx === 0 ? 'Origem / Saída da Base' : (idx === formData.paradas.length - 1 ? 'Destino Final / Retorno' : `Parada #${p.ordem} (Cliente RJ)`)}
+                        </span>
+                      </div>
+
+                      {formData.paradas.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStopFromForm(idx)}
+                          style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
+                          title="Remover esta parada"
+                        >
+                          <X size={14} />
+                          <span>Remover</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.6fr 90px', gap: '0.65rem' }}>
+                      <div>
+                        <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>Nome do Cliente / Local:</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ex: Inter Japan Botafogo"
+                          value={p.cliente}
+                          onChange={(e) => {
+                            const updated = [...formData.paradas];
+                            updated[idx].cliente = e.target.value;
+                            setFormData({ ...formData, paradas: updated });
+                          }}
+                          style={{ width: '100%', padding: '0.5rem 0.65rem', background: '#0e1524', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '0.82rem' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>Endereço Completo:</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ex: Rua General Polidoro, 74 - Botafogo"
+                          value={p.endereco}
+                          onChange={(e) => {
+                            const updated = [...formData.paradas];
+                            updated[idx].endereco = e.target.value;
+                            setFormData({ ...formData, paradas: updated });
+                          }}
+                          style={{ width: '100%', padding: '0.5rem 0.65rem', background: '#0e1524', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '0.82rem' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>Horário:</label>
+                        <input
+                          type="text"
+                          placeholder="08:30"
+                          value={p.horario}
+                          onChange={(e) => {
+                            const updated = [...formData.paradas];
+                            updated[idx].horario = e.target.value;
+                            setFormData({ ...formData, paradas: updated });
+                          }}
+                          style={{ width: '100%', padding: '0.5rem 0.65rem', background: '#0e1524', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '0.82rem', textAlign: 'center' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Resumo da Operação */}
+              <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1.5rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Distância Prevista:</span>
+                    <strong style={{ fontSize: '1rem', color: 'var(--accent-emerald)' }}>{formData.distancia_prevista_km} km</strong>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Total de Paradas:</span>
+                    <strong style={{ fontSize: '1rem', color: 'var(--accent-cyan)' }}>{formData.paradas.length} clientes/locais</strong>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn-primary btn-icon-text"
+                  onClick={handleSaveSchedule}
+                  style={{ background: 'var(--accent-emerald)', borderColor: 'var(--accent-emerald)', color: '#070b12', fontWeight: 700 }}
+                >
+                  <Check size={16} />
+                  <span>Confirmar & Despachar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // MODO 3: QUADRO GERAL DE ESCALAS (TELA CHEIA NATIVA)
+  // =========================================================================
   return (
     <div className="escala-module animate-fade-in" style={{ padding: '0.5rem 0' }}>
       {/* Banner Principal */}
@@ -231,11 +733,14 @@ export default function EscalaModule({ user }) {
         <button 
           type="button" 
           className="btn-primary btn-icon-text"
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setFormData(defaultScheduleState);
+            setViewMode('form');
+          }}
           style={{ background: 'var(--accent-emerald)', borderColor: 'var(--accent-emerald)', color: '#070b12', fontWeight: 700 }}
         >
           <Plus size={16} />
-          <span>Nova Escala de Despacho</span>
+          <span>Nova Escala de Despacho (Tela Inteira)</span>
         </button>
       </div>
 
@@ -382,7 +887,7 @@ export default function EscalaModule({ user }) {
           <div className="card-panel" style={{ textAlign: 'center', padding: '3rem' }}>
             <Calendar size={36} style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }} />
             <p style={{ fontWeight: 600, color: 'var(--text-main)' }}>Nenhuma escala encontrada com os filtros selecionados.</p>
-            <small style={{ color: 'var(--text-muted)' }}>Clique no botão "Nova Escala de Despacho" para programar viagens do dia.</small>
+            <small style={{ color: 'var(--text-muted)' }}>Clique no botão "Nova Escala de Despacho" para programar viagens do dia em tela cheia.</small>
           </div>
         ) : (
           filteredSchedules.map((item) => {
@@ -443,6 +948,20 @@ export default function EscalaModule({ user }) {
                       {isEmRota && <span className="live-dot" style={{ width: '6px', height: '6px' }}></span>}
                       <span>{item.status}</span>
                     </span>
+
+                    <button
+                      type="button"
+                      className="btn-secondary btn-icon-text"
+                      onClick={() => {
+                        setSelectedRomaneio(item);
+                        setViewMode('romaneio');
+                      }}
+                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}
+                      title="Visualizar Ficha de Despacho e Romaneio em Tela Cheia"
+                    >
+                      <FileText size={13} />
+                      <span>Romaneio CCO</span>
+                    </button>
 
                     <button
                       type="button"
@@ -577,247 +1096,6 @@ export default function EscalaModule({ user }) {
           })
         )}
       </div>
-
-      {/* Modal de Criação de Escala Operacional */}
-      {showCreateModal && (
-        <div className="modal-backdrop animate-fade-in" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="modal-container" style={{ background: '#0e1524', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '14px', width: '100%', maxWidth: '720px', maxHeight: '90vh', overflowY: 'auto', padding: '1.75rem', boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.85rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
-                  Montar Nova Escala Operacional CCO
-                </h3>
-                <small style={{ color: 'var(--text-muted)' }}>Vincule motorista homologado, caminhão liberado e circuito de múltiplos clientes</small>
-              </div>
-              <button 
-                type="button" 
-                onClick={() => setShowCreateModal(false)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSchedule}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                    Data da Escala
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={newSchedule.data_escala}
-                    onChange={(e) => setNewSchedule({ ...newSchedule, data_escala: e.target.value })}
-                    style={{ width: '100%', padding: '0.55rem 0.75rem', background: 'rgba(15, 23, 42, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                    Turno de Atendimento
-                  </label>
-                  <select
-                    value={newSchedule.turno}
-                    onChange={(e) => setNewSchedule({ ...newSchedule, turno: e.target.value })}
-                    style={{ width: '100%', padding: '0.55rem 0.75rem', background: '#0f172a', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff' }}
-                  >
-                    <option value="Manhã (06:00 às 15:00)">Manhã (06:00 às 15:00)</option>
-                    <option value="Manhã (07:00 às 16:00)">Manhã (07:00 às 16:00)</option>
-                    <option value="Tarde (13:00 às 22:00)">Tarde (13:00 às 22:00)</option>
-                    <option value="Noturno Especial (22:00 às 06:00)">Noturno Especial (22:00 às 06:00)</option>
-                  </select>
-                </div>
-
-                {/* Seleção da Rota Homologada */}
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                    Selecione a Rota (Carrega múltiplos clientes e endereços automaticamente):
-                  </label>
-                  <select
-                    value={newSchedule.rota_id}
-                    onChange={(e) => handleSelectRouteInForm(e.target.value)}
-                    style={{ width: '100%', padding: '0.65rem 0.75rem', background: '#0f172a', border: '1px solid rgba(6, 182, 212, 0.4)', borderRadius: '6px', color: '#fff', fontWeight: 600 }}
-                  >
-                    {AUDITED_RJ_ROUTES.map(r => (
-                      <option key={r.id} value={r.id}>
-                        {r.codigo} - {r.nome} ({r.distancia_km} km • {r.pontos_parada.length} paradas)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Seleção de Veículo Real */}
-                <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                    Veículo Homologado (Frota DCX / Vale):
-                  </label>
-                  <select
-                    value={newSchedule.veiculo_placa}
-                    onChange={(e) => {
-                      const v = AUDITED_VEHICLES.find(x => x.placa === e.target.value);
-                      setNewSchedule({
-                        ...newSchedule,
-                        veiculo_placa: e.target.value,
-                        veiculo_modelo: v ? `${v.tipo} (${v.marca_modelo})` : newSchedule.veiculo_modelo
-                      });
-                    }}
-                    style={{ width: '100%', padding: '0.55rem 0.75rem', background: '#0f172a', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff' }}
-                  >
-                    {AUDITED_VEHICLES.map(v => (
-                      <option key={v.placa} value={v.placa} disabled={v.status === 'Bloqueado'}>
-                        {v.placa} - {v.tipo} ({v.marca_modelo}) [{v.status}]
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Seleção de Motorista Real */}
-                <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                    Motorista (Quadro Homologado MOPP):
-                  </label>
-                  <select
-                    value={newSchedule.motorista_nome}
-                    onChange={(e) => {
-                      const m = AUDITED_DRIVERS.find(x => x.nome === e.target.value);
-                      setNewSchedule({
-                        ...newSchedule,
-                        motorista_nome: e.target.value,
-                        motorista_telefone: m?.telefone || newSchedule.motorista_telefone,
-                        motorista_cnh: m ? `Cat. ${m.categoria_cnh} (MOPP ${m.status_mopp})` : newSchedule.motorista_cnh
-                      });
-                    }}
-                    style={{ width: '100%', padding: '0.55rem 0.75rem', background: '#0f172a', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff' }}
-                  >
-                    {AUDITED_DRIVERS.map(d => (
-                      <option key={d.id} value={d.nome}>
-                        {d.nome} (Cat. {d.categoria_cnh} • MOPP {d.status_mopp})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Endereços e Paradas na Rota do Dia */}
-              <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-emerald)' }}>
-                    Endereços de Paradas Vinculados à Rota ({newSchedule.paradas.length} locais):
-                  </label>
-                  <button
-                    type="button"
-                    className="btn-secondary btn-icon-text"
-                    onClick={handleAddStopToForm}
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
-                  >
-                    <Plus size={14} />
-                    <span>Adicionar Cliente / Parada</span>
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                  {newSchedule.paradas.map((p, pIdx) => (
-                    <div 
-                      key={pIdx}
-                      style={{
-                        background: 'rgba(15, 23, 42, 0.6)',
-                        padding: '0.65rem 0.85rem',
-                        borderRadius: '6px',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}
-                    >
-                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-cyan)', width: '25px' }}>
-                        #{p.ordem}
-                      </span>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Nome do Cliente"
-                        value={p.cliente}
-                        onChange={(e) => {
-                          const updated = [...newSchedule.paradas];
-                          updated[pIdx].cliente = e.target.value;
-                          setNewSchedule({ ...newSchedule, paradas: updated });
-                        }}
-                        style={{ flex: 1, padding: '0.4rem 0.6rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '0.8rem' }}
-                      />
-                      <input
-                        type="text"
-                        required
-                        placeholder="Endereço Completo"
-                        value={p.endereco}
-                        onChange={(e) => {
-                          const updated = [...newSchedule.paradas];
-                          updated[pIdx].endereco = e.target.value;
-                          setNewSchedule({ ...newSchedule, paradas: updated });
-                        }}
-                        style={{ flex: 1.5, padding: '0.4rem 0.6rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '0.8rem' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Horário (Ex: 09:30)"
-                        value={p.horario}
-                        onChange={(e) => {
-                          const updated = [...newSchedule.paradas];
-                          updated[pIdx].horario = e.target.value;
-                          setNewSchedule({ ...newSchedule, paradas: updated });
-                        }}
-                        style={{ width: '80px', padding: '0.4rem 0.6rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '0.8rem' }}
-                      />
-                      {newSchedule.paradas.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveStopFromForm(pIdx)}
-                          style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '0.8rem' }}
-                          title="Remover parada"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Instruções CCO */}
-              <div style={{ marginTop: '1rem' }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                  Instruções Especiais CCO / Romaneio
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Ex: Pegar crachá de acesso no TIG Guaíba; verificar travas da caixa compactadora na Amazon."
-                  value={newSchedule.instrucoes_especiais}
-                  onChange={(e) => setNewSchedule({ ...newSchedule, instrucoes_especiais: e.target.value })}
-                  style={{ width: '100%', padding: '0.55rem 0.75rem', background: 'rgba(15, 23, 42, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', resize: 'vertical' }}
-                />
-              </div>
-
-              {/* Botões do Rodapé */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{ background: 'var(--accent-emerald)', borderColor: 'var(--accent-emerald)', color: '#070b12', fontWeight: 700 }}
-                >
-                  Confirmar Escala de Despacho
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
