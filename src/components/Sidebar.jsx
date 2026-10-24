@@ -42,6 +42,12 @@ export default function Sidebar({
           icon: LayoutDashboard
         },
         {
+          id: 'auditoria_vencimentos',
+          label: 'Auditoria & Vencimentos 2026',
+          icon: ShieldAlert,
+          badge: '3 Alertas'
+        },
+        {
           id: 'frotas',
           label: 'Gestão de Frotas & Veículos',
           icon: Truck
@@ -175,8 +181,22 @@ export default function Sidebar({
                         <Icon size={18} />
                       </div>
                       {!isCollapsed && (
-                        <div className="nav-label-box">
+                        <div className="nav-label-box" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                           <span className="nav-label-text">{item.label}</span>
+                          {item.badge && (
+                            <span style={{
+                              fontSize: '0.62rem',
+                              fontWeight: 800,
+                              background: '#ef4444',
+                              color: '#ffffff',
+                              padding: '2px 6px',
+                              borderRadius: '8px',
+                              marginLeft: 'auto',
+                              boxShadow: '0 0 8px rgba(239, 68, 68, 0.4)'
+                            }}>
+                              {item.badge}
+                            </span>
+                          )}
                         </div>
                       )}
                     </button>
