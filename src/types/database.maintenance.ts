@@ -100,6 +100,8 @@ export interface MaintenanceRows {
     km_saida: number | null;
     horimetro: number | null;
     data_abertura: string;
+    prazo_entrega_dias?: number | null;
+    prazo_base_aprovacao_em?: string | null;
     previsao_entrega: string | null;
     data_entrada_oficina: string | null;
     data_saida_oficina: string | null;
@@ -541,3 +543,6 @@ export interface MaintenanceInserts {maintenance_partner_requests:never;maintena
 
 export interface MaintenanceRows {maintenance_partner_approval_notices:{request_id:string;company_id:string;partner_id:string;status:'pending'|'sending'|'accepted'|'failed'|'unknown'|'unavailable';phone:string|null;body:string;attempts:number;claimed_at:string|null;provider_message_id:string|null;error_message:string|null;created_at:string;updated_at:string;accepted_at:string|null};}
 export interface MaintenanceInserts {maintenance_partner_approval_notices:never;}
+
+export interface MaintenanceRows {maintenance_order_dispatches:{id:string;company_id:string;order_id:string;kind:'abertura'|'aprovacao';status:'pending'|'sending'|'accepted'|'failed'|'unknown'|'unavailable'|'obsolete';attempts:number;claimed_at:string|null;provider_message_id:string|null;error_message:string|null;created_at:string;updated_at:string};}
+export interface MaintenanceInserts {maintenance_order_dispatches:never;}
