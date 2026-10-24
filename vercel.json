@@ -5,6 +5,9 @@
     },
     "api/partner-approval.js": {
       "maxDuration": 120
+    },
+    "api/order-dispatch.js": {
+      "maxDuration": 300
     }
   },
   "rewrites": [

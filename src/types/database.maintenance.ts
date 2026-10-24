@@ -126,6 +126,7 @@ export interface MaintenanceRows {
     quantidade: number;
     valor_unitario: number;
     garantia_dias: number;
+    ncm: string|null;
   };
   maintenance_order_timeline: {
     id: string;
@@ -351,6 +352,7 @@ export interface MaintenanceInserts {
     quantidade: number;
     valor_unitario: number;
     garantia_dias?: number;
+    ncm?: string|null;
   };
   maintenance_order_timeline: {
     id?: string;
@@ -545,7 +547,7 @@ export interface MaintenanceInserts {maintenance_partner_requests:never;maintena
 export interface MaintenanceRows {maintenance_partner_approval_notices:{request_id:string;company_id:string;partner_id:string;status:'pending'|'sending'|'accepted'|'failed'|'unknown'|'unavailable';phone:string|null;body:string;attempts:number;claimed_at:string|null;provider_message_id:string|null;error_message:string|null;created_at:string;updated_at:string;accepted_at:string|null};}
 export interface MaintenanceInserts {maintenance_partner_approval_notices:never;}
 
-export interface MaintenanceRows {maintenance_order_dispatches:{id:string;company_id:string;order_id:string;kind:'abertura'|'aprovacao';status:'pending'|'sending'|'accepted'|'failed'|'unknown'|'unavailable'|'obsolete';attempts:number;claimed_at:string|null;provider_message_id:string|null;error_message:string|null;created_at:string;updated_at:string};}
+export interface MaintenanceRows {maintenance_order_dispatches:{id:string;company_id:string;order_id:string;recipient_partner_id:string;kind:'abertura'|'aprovacao';status:'pending'|'sending'|'accepted'|'failed'|'unknown'|'unavailable'|'obsolete';attempts:number;claimed_at:string|null;provider_message_id:string|null;error_message:string|null;created_at:string;updated_at:string};}
 export interface MaintenanceInserts {maintenance_order_dispatches:never;}
 
 export interface MaintenanceRows {driver_toxicology_requests:{id:string;company_id:string;driver_id:string;request_id:string;actor_id:string;phone:string;content:string;status:'sending'|'accepted'|'failed'|'unknown';claim_token:string|null;claimed_at:string;attempts:number;provider_message_id:string|null;error_message:string|null;created_at:string;updated_at:string};}
