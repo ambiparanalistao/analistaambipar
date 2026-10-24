@@ -1,3 +1,5 @@
+import MaintenanceNotifications from './components/maintenance/communication/MaintenanceNotifications';
+import DriverMaintenancePage from './components/maintenance/driver/DriverMaintenancePage';
 import React, { useState, useEffect } from 'react';
 import { 
   Shield, 
@@ -24,10 +26,17 @@ import AuthCard from './components/AuthCard';
 import SupabaseConfigModal from './components/SupabaseConfigModal';
 import ComplianceAuditModule from './components/ComplianceAuditModule';
 import ErrorBoundary from './components/ErrorBoundary';
+import AutomationModule from './components/AutomationModule';
+import MaintenanceModule from './components/maintenance/MaintenanceModule';
+import {MAINTENANCE_PAGES} from './components/maintenance/maintenanceRoutes';
+import useMaintenanceAccess from './hooks/useMaintenanceAccess';
 import './App.css';
 
 // Mapeamento de Rotas Web para cada Módulo
 export const MODULE_ROUTES = {
+  ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.id,p.path])),
+  driver_maintenance: '/motorista/manutencao',
+  automacao: '/automacao',
   dashboard: '/dashboard',
   auditoria_vencimentos: '/auditoria-vencimentos',
   frotas: '/frotas',
@@ -44,6 +53,10 @@ export const MODULE_ROUTES = {
 };
 
 export const PATH_TO_MODULE = {
+  ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.path,p.id])),
+  '/motorista/manutencao':'driver_maintenance',
+  '/manutencao':'maintenance_partners',
+  '/automacao': 'automacao',
   '/': 'dashboard',
   '/dashboard': 'dashboard',
   '/auditoria-vencimentos': 'auditoria_vencimentos',
@@ -99,6 +112,12 @@ export default function App() {
   };
 
   const [currentModule, setCurrentModule] = useState(getInitialModule);
+  const maintenanceAccess = useMaintenanceAccess(session?.user);
+  useEffect(()=>{
+    if(!currentModule.startsWith('maintenance_'))return;
+    const compact=()=>{if(window.matchMedia('(max-width:760px)').matches)setIsSidebarCollapsed(true);};
+    compact();window.addEventListener('resize',compact);return()=>window.removeEventListener('resize',compact);
+  },[currentModule]);
 
   useEffect(() => {
     // Se o Supabase não estiver configurado com credenciais, para o loading
@@ -134,23 +153,13 @@ export default function App() {
     setSession(null);
   };
 
-  const handleDemoAccess = () => {
-    setSession({
-      user: {
-        id: 'demo-analista-ambipar',
-        email: 'carlos.eduardo@ambipar.com',
-        user_metadata: {
-          full_name: 'Carlos Eduardo Dos Santos'
-        }
-      }
-    });
-  };
-
   // Nomes e descrições dos módulos para o cabeçalho superior
   const moduleInfo = {
+    ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.id,{title:'Manutenção · '+p.label,subtitle:'Gestão de manutenção e oficinas parceiras'}])),
+    automacao: { title: 'Automação · Conexão WhatsApp', subtitle: 'Autenticação, status e reconexão da instância Evolution API' },
     dashboard: { 
       title: 'Torre de Controle Operacional', 
-      subtitle: 'Painel Geral de Operações, KPIs Consolidados e Monitoramento do Banco de Dados' 
+      subtitle: 'Painel Geral de Operações, KPIs Consolidados e Monitoramento de Frota & Resíduos' 
     },
     auditoria_vencimentos: { 
       title: 'Auditoria de Vencimentos & Ativos 2026', 
@@ -286,11 +295,10 @@ export default function App() {
           <main className="main-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <AuthCard 
               onOpenConfig={() => setShowConfigModal(true)}
-              onDemoAccess={handleDemoAccess}
             />
           </main>
         </>
-      ) : (
+      ) : maintenanceAccess.loading ? <p role="status">Verificando acesso…</p> : maintenanceAccess.error ? <div role="alert">{maintenanceAccess.error}<button onClick={maintenanceAccess.reload}>Tentar novamente</button><button onClick={handleLogout}>Sair</button></div> : (maintenanceAccess.memberships.some(m=>m.roleName==='motorista')&&!maintenanceAccess.canRead)||currentModule==='driver_maintenance' ? <DriverMaintenancePage access={maintenanceAccess} onLogout={handleLogout}/> : (
         /* Layout Principal do Analista de Logística com Sidebar Lateral */
         <div className="dashboard-app-layout" id="authenticated-layout">
           {/* Sidebar Lateral Expansível */}
@@ -303,10 +311,11 @@ export default function App() {
             onLogout={handleLogout}
             onOpenConfig={() => setShowConfigModal(true)}
             isSupabaseOnline={isSupabaseConfigured}
+            maintenanceAccess={maintenanceAccess}
           />
 
           {/* Área Principal de Conteúdo */}
-          <div className={`main-stage-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+          <div className={`main-stage-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${currentModule.startsWith('maintenance_') ? 'maintenance-stage' : ''}`}>
             {/* Top Bar da Dashboard */}
             <header className="stage-topbar" id="stage-topbar">
               <div className="topbar-breadcrumb">
@@ -320,12 +329,10 @@ export default function App() {
                 </span>
                 <ChevronRight size={14} className="breadcrumb-separator" />
                 <span className="breadcrumb-current">{moduleInfo[currentModule]?.title}</span>
-                <span className="breadcrumb-route-tag" style={{ marginLeft: '0.65rem', fontSize: '0.72rem', color: 'var(--accent-emerald)', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                  {MODULE_ROUTES[currentModule] || '/dashboard'}
-                </span>
               </div>
 
               <div className="topbar-actions">
+                {maintenanceAccess.canRead&&<MaintenanceNotifications key={maintenanceAccess.companyId} access={maintenanceAccess}/>}
                 <div className="live-status-chip">
                   <span className="pulse-green"></span>
                   <span>Operação Ativa</span>
@@ -335,7 +342,7 @@ export default function App() {
                   type="button"
                   className="topbar-icon-btn"
                   onClick={() => setShowConfigModal(true)}
-                  title="Configurações Supabase (.env)"
+                  title="Configurações do Sistema"
                 >
                   <Settings size={18} />
                 </button>
@@ -355,6 +362,7 @@ export default function App() {
             <main className="stage-content-body" id="stage-content-body">
               <ErrorBoundary>
                 {currentModule === 'auditoria_vencimentos' && <ComplianceAuditModule />}
+                {currentModule.startsWith('maintenance_') && <MaintenanceModule access={maintenanceAccess} page={currentModule} />}
                 {currentModule === 'dashboard' && (
                   <LogisticsDashboard 
                     user={session.user} 
@@ -362,22 +370,26 @@ export default function App() {
                   />
                 )}
                 {currentModule === 'frotas' && (
-                  <VehiclesModule 
+                  <VehiclesModule key={maintenanceAccess.companyId}
+                    companyId={maintenanceAccess.companyId}
+                    maintenanceAccess={maintenanceAccess}
                     user={session.user} 
                     onNavigateDrivers={() => handleSelectModule('motoristas')}
                   />
                 )}
                 {currentModule === 'motoristas' && (
-                  <DriversModule 
+                  <DriversModule key={maintenanceAccess.companyId}
+                    maintenanceAccess={maintenanceAccess}
                     user={session.user} 
                     onNavigateVehicles={() => handleSelectModule('frotas')}
                   />
                 )}
-                {currentModule === 'viagens' && <TripsModule user={session.user} />}
-                {currentModule === 'combustivel' && <FuelModule user={session.user} initialView="dashboard" onNavigateModule={handleSelectModule} />}
-                {currentModule === 'simulador_autonomia' && <FuelModule user={session.user} initialView="simulator" onNavigateModule={handleSelectModule} />}
+                {currentModule === 'viagens' && <TripsModule companyId={maintenanceAccess.companyId} user={session.user} />}
+                {currentModule === 'combustivel' && <FuelModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId} user={session.user} initialView="dashboard" onNavigateModule={handleSelectModule} />}
+                {currentModule === 'simulador_autonomia' && <FuelModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId} user={session.user} initialView="simulator" onNavigateModule={handleSelectModule} />}
                 {currentModule === 'clientes' && (
                   <ClientsModule 
+                    companyId={maintenanceAccess.companyId}
                     user={session.user} 
                     onNavigateTrips={() => handleSelectModule('viagens')}
                     onNavigateFleet={() => handleSelectModule('frotas')}
@@ -386,8 +398,9 @@ export default function App() {
                 {currentModule === 'mtr' && <MtrModule user={session.user} />}
                 {currentModule === 'calculadora_frete' && <FreightCarbonCalculator onNavigateMtr={() => handleSelectModule('mtr')} />}
                 {currentModule === 'antt_formulas' && <AnttFormulasModule />}
-                {currentModule === 'ocorrencias' && <OcorrenciasModule />}
+                {currentModule === 'ocorrencias' && <OcorrenciasModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId}/>}
                 {currentModule === 'esg' && <EsgModule />}
+                {currentModule === 'automacao' && <AutomationModule user={session.user} />}
               </ErrorBoundary>
             </main>
           </div>

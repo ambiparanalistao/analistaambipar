@@ -1,4 +1,6 @@
-import React from 'react';
+import PreventiveIndicator from './maintenance/plans/PreventiveIndicator';
+import React,{useState} from 'react';
+import {MAINTENANCE_PAGES} from './maintenance/maintenanceRoutes';
 import { 
   LayoutDashboard, 
   Truck, 
@@ -16,7 +18,8 @@ import {
   Route,
   Building2,
   Fuel,
-  Compass
+  Compass,
+  Wifi, Wrench
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -27,12 +30,14 @@ export default function Sidebar({
   user, 
   onLogout,
   onOpenConfig,
-  isSupabaseOnline
+  isSupabaseOnline, maintenanceAccess
 }) {
+  const [maintenanceOpen,setMaintenanceOpen]=useState(true);
   const userInitial = user?.email ? user.email.charAt(0).toUpperCase() : 'A';
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Analista';
 
   const menuSections = [
+    { title: 'Integrações', items: [{ id: 'automacao', label: 'Automação · WhatsApp', icon: Wifi }] },
     {
       title: 'Operação & Torre de Controle',
       items: [
@@ -157,6 +162,11 @@ export default function Sidebar({
 
       {/* Navegação dos Módulos */}
       <nav className="sidebar-nav">
+        {maintenanceAccess?.canRead&&<div className="nav-group">
+          <button type="button" className="nav-link-btn" aria-expanded={maintenanceOpen} title="Manutenção" onClick={()=>isCollapsed?onSelectModule('maintenance_partners'):setMaintenanceOpen(v=>!v)}><div className="nav-icon-box"><Wrench size={18}/></div>{!isCollapsed&&<span>Manutenção</span>}</button>
+          {!isCollapsed&&maintenanceOpen&&<ul className="nav-items-list maintenance-submenu">{MAINTENANCE_PAGES.map(p=><li key={p.id}><button type="button" className={'nav-link-btn '+(currentModule===p.id?'active':'')} onClick={()=>onSelectModule(p.id)}>{p.label}{p.id==='maintenance_plans'&&<PreventiveIndicator company={maintenanceAccess.companyId} compact/>}</button></li>)}</ul>}
+        </div>}
+
         {menuSections.map((section, sIdx) => (
           <div key={sIdx} className="nav-group">
             {!isCollapsed && (
@@ -212,11 +222,11 @@ export default function Sidebar({
       <div className="sidebar-footer">
         <div 
           className={`sidebar-status-pill ${isSupabaseOnline ? 'online' : 'unconfigured'}`}
-          title={isSupabaseOnline ? 'Supabase PostgreSQL conectado' : 'Conexão Supabase pendente'}
+          title={isSupabaseOnline ? 'Servidor em Nuvem Sincronizado' : 'Conexão em Nuvem Pendente'}
         >
           <span className="pulse-dot"></span>
           {!isCollapsed && (
-            <span>{isSupabaseOnline ? 'Supabase Conectado' : 'Supabase Pendente'}</span>
+            <span>{isSupabaseOnline ? 'Servidor Conectado' : 'Sincronização Pendente'}</span>
           )}
         </div>
 
@@ -225,11 +235,11 @@ export default function Sidebar({
             type="button"
             className="sidebar-action-btn"
             onClick={onOpenConfig}
-            title="Configurar Chaves Supabase (.env)"
+            title="Configurações do Sistema"
             id="sidebar-config-keys-btn"
           >
             <Settings size={16} />
-            {!isCollapsed && <span>Chaves API</span>}
+            {!isCollapsed && <span>Configurações</span>}
           </button>
 
           <button

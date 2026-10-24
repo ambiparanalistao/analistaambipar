@@ -1,0 +1,8 @@
+BEGIN;
+CREATE INDEX portal_challenges_driver_fk ON driver_portal_private.challenges(driver_id);
+CREATE INDEX portal_invites_actor_fk ON driver_portal_private.invites(updated_by);
+CREATE INDEX portal_sessions_company_expiry ON driver_portal_private.sessions(company_id,expires_at);
+CREATE INDEX driver_report_dispatch_report_fk ON public.maintenance_driver_report_dispatches(report_id,company_id);
+CREATE INDEX driver_report_dispatch_partner_fk ON public.maintenance_driver_report_dispatches(partner_id,company_id);
+CREATE INDEX driver_report_events_report_fk ON public.maintenance_driver_report_events(report_id,company_id,created_at);
+COMMIT;

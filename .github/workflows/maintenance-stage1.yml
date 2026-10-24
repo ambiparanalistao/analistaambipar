@@ -1,0 +1,203 @@
+name: Maintenance stages 1 to 7
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'src/**'
+      - 'tests/partner*'
+      - 'tests/communication*'
+      - 'tests/plans*'
+      - 'tests/analytics*'
+      - 'tests/maintenance/**'
+      - 'tests/maintenance.types.ts'
+      - 'tsconfig.maintenance.json'
+      - '.github/workflows/maintenance-stage1.yml'
+permissions:
+  contents: read
+jobs:
+  database-and-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated_ci_only
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply schema and migrations to disposable PostgreSQL
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/bootstrap.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/schema.sql
+          for migration in supabase/migrations/20261023*.sql; do
+            if [[ "$migration" == *23050000* || "$migration" == *23060000* || "$migration" == *23061000* || "$migration" == *vehicle_dossier.sql || "$migration" == *workshop_communication.sql || "$migration" == *maintenance_branches.sql || "$migration" == *maintenance_analytics.sql || "$migration" == *preventive_context_fix.sql || "$migration" == *preventive_plans.sql || "$migration" == *preventive_schedule.sql || "$migration" == *communication_schedule.sql || "$migration" == *partner_registration.sql || "$migration" == *partner_multiple_types.sql || "$migration" == *partner_approval_notice.sql || "$migration" == *full_module_access.sql ]]; then continue; fi
+            docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < "$migration"
+          done
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/integration.sql
+      - name: Concurrency verification
+        env:
+          MAINTENANCE_TEST_CONTAINER: ${{ job.services.postgres.id }}
+        run: node tests/maintenance/concurrency.mjs
+      - name: Partner schema and access verification
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023050000_partner_registry.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/partners.sql
+      - name: OS workflow and permissions
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023060000_order_workflow.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023061000_fleet_profile_prerequisite.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/orders.sql
+      - name: Vehicle dossier and driver access
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023150240_vehicle_dossier.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/vehicle-dossier.sql
+      - name: Workshop communication and reminder permissions
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023154457_workshop_communication.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/communication.sql
+      - name: Preventive plans, alerts and permissions
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023162928_preventive_plans.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023165005_preventive_context_fix.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/plans.sql
+      - name: Analytics, reports, branches and tenant isolation
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023171122_maintenance_branches.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023171125_maintenance_analytics.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/analytics.sql
+      - name: Public partner registration and approval
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023185016_partner_registration.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023192457_partner_multiple_types.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/registration.sql
+      - name: Approval WhatsApp notices and idempotency
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023195100_partner_approval_notice.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/approval-notices.sql
+      - name: Released module access and tenant boundaries
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/full-access-seed.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023202225_full_module_access.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/full-access.sql
+      - name: Minimal registration and secure completion
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024004814_relaxed_partner_registration.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/relaxed-registration.sql
+      - name: Order delivery forecast and document dispatch
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024011714_order_workshop_delivery.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/order-delivery.sql
+      - name: Real fleet registry persistence and document privacy
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024014550_real_fleet_registry.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024020351_fleet_options_context.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024022233_order_defect_reporter.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/real-registry.sql
+      - name: Driver toxicology dispatch permissions and idempotency
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024025745_driver_toxicology_requests.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/driver-toxicology.sql
+      - name: Quote broadcast, NCM and approval delivery forecast
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024150752_quote_broadcast_ncm_delivery.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024153144_quote_selected_partner_deadline.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024153310_quote_deadline_alias_fix.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/quote-broadcast.sql
+      - name: Quote type filters and partner deletion
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024154310_partner_parts_category.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024154313_quote_type_filter_partner_delete.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024160600_quote_filter_preserve_uncertainty.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/quote-filter-delete.sql
+      - name: Driver portal identity, reports and filtered workshop dispatch
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024164351_driver_maintenance_portal.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024171010_driver_portal_indexes.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/driver-portal.sql
+      - name: Maintenance finance reconciliation, payments, reversals and document security
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024191221_maintenance_finance.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024193808_finance_order_integrity.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024194238_finance_cancelled_balance.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/finance.sql
+      - name: Install project dependencies
+        if: ${{ !cancelled() }}
+        run: npm ci
+      - name: Build
+        if: ${{ !cancelled() }}
+        run: npm run build
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: npm run lint
+      - name: Typecheck maintenance schema
+        if: ${{ !cancelled() }}
+        run: npx --yes --package typescript@5.9.3 tsc --project tsconfig.maintenance.json
+      - name: Existing API regression tests
+        if: ${{ !cancelled() }}
+        run: node --test tests/driver-portal.test.js tests/driver-report-dispatch.test.js tests/driver-reports.test.js tests/driver-toxicology.test.js tests/evolution.test.js tests/partner-approval.test.js tests/order-dispatch.test.js
+      - name: Partner form validation
+        if: ${{ !cancelled() }}
+        run: node --test tests/finance.test.js tests/quote-filters.test.js tests/driver-validity-request.test.js tests/registry-matching.test.js tests/partner-validation.test.js tests/orders-validation.test.js tests/occurrence-validation.test.js tests/communication.test.js tests/plans.test.js tests/analytics.test.js tests/registration.test.js
+      - name: Install isolated browser tools
+        if: ${{ !cancelled() }}
+        run: |
+          npm install --no-save --package-lock=false --no-audit --no-fund @playwright/test@1.56.1
+          npx playwright install chromium
+      - name: Browser partner flows with isolated API fixtures
+        if: ${{ !cancelled() }}
+        env:
+          VITE_SUPABASE_URL: https://maintenance-fixture.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_fixture_key_for_tests
+        run: npx playwright test --config tests/maintenance/playwright.config.js
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: partner-browser-results
+          path: test-results/
+          if-no-files-found: ignore

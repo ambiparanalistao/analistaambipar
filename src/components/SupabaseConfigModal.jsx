@@ -49,8 +49,8 @@ export default function SupabaseConfigModal({ isOpen, onClose }) {
               <Key size={20} />
             </div>
             <div>
-              <h3>Conectar Supabase Externo</h3>
-              <p className="subtitle">Insira as chaves do seu projeto para ativar o banco e autenticação</p>
+              <h3>Conexão da Plataforma em Nuvem</h3>
+              <p className="subtitle">Gerencie o endereço e a chave de acesso do servidor corporativo</p>
             </div>
           </div>
           <button 
@@ -72,7 +72,7 @@ export default function SupabaseConfigModal({ isOpen, onClose }) {
 
           <div className="form-group">
             <label htmlFor="supabase-url-input">
-              <Globe size={15} /> URL do Projeto Supabase
+              <Globe size={15} /> Endereço do Servidor Corporativo (URL)
             </label>
             <input
               id="supabase-url-input"
@@ -82,12 +82,11 @@ export default function SupabaseConfigModal({ isOpen, onClose }) {
               onChange={(e) => setUrl(e.target.value)}
               required
             />
-            <span className="field-hint">Encontre em: Project Settings ➔ API ➔ Project URL</span>
           </div>
 
           <div className="form-group">
             <label htmlFor="supabase-key-input">
-              <Key size={15} /> Anon / Public API Key
+              <Key size={15} /> Chave de Acesso Corporativa (API Key)
             </label>
             <input
               id="supabase-key-input"
@@ -97,14 +96,13 @@ export default function SupabaseConfigModal({ isOpen, onClose }) {
               onChange={(e) => setAnonKey(e.target.value)}
               required
             />
-            <span className="field-hint">Encontre em: Project Settings ➔ API ➔ Project API keys ➔ `anon` `public`</span>
           </div>
 
           <div className="info-box">
             <ShieldCheck size={18} className="info-icon" />
             <div>
-              <strong>Armazenamento Seguro:</strong>
-              <p>As chaves também podem ser salvas no arquivo <code>.env</code> do projeto. Caso inseridas aqui, ficam salvas de forma segura no seu navegador.</p>
+              <strong>Segurança e Privacidade:</strong>
+              <p>Conexão corporativa criptografada de ponta a ponta para controle e auditoria das operações Ambipar.</p>
             </div>
           </div>
 

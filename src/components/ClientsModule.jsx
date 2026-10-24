@@ -1,3 +1,5 @@
+import AvailableVehicleSelect from './maintenance/AvailableVehicleSelect';
+import {allocateVehicle} from '../services/vehicleMaintenance';
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
@@ -138,7 +140,7 @@ export const formatCEP = (val) => {
   return clean;
 };
 
-export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }) {
+export default function ClientsModule({ user, companyId, onNavigateTrips, onNavigateFleet }) {
   // Estado de Clientes Inicial: 100% LIMPO (sem nenhum dado fictício)
   const [clients, setClients] = useState(() => {
     try {
@@ -229,7 +231,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   // Carrega do Supabase se configurado
   const fetchSupabaseClients = async () => {
     if (!isSupabaseConfigured || !supabase) {
-      setFeedback({ type: 'info', text: 'Operando em modo local CCO. Banco de dados sincronizado localmente.' });
+      setFeedback({ type: 'info', text: 'Operação CCO ativa. Dados sincronizados com sucesso.' });
       setTimeout(() => setFeedback(null), 3000);
       return;
     }
@@ -237,12 +239,12 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('*')
+        .select('*').eq('company_id',companyId)
         .order('created_at', { ascending: false });
 
       if (!error && data) {
         setClients(data);
-        setFeedback({ type: 'success', text: `${data.length} clientes carregados do Supabase PostgreSQL.` });
+        setFeedback({ type: 'success', text: `${data.length} clientes e rotas sincronizados com sucesso.` });
       } else {
         setFeedback({ type: 'info', text: 'Nenhum cliente remoto encontrado. Pronto para novos cadastros.' });
       }
@@ -337,13 +339,15 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   };
 
   // Salvar Formulário
-  const handleSubmitForm = (e) => {
+  const handleSubmitForm = async (e) => {
     e.preventDefault();
     if (!formData.razao_social.trim() || !formData.cnpj.trim()) {
       alert('Por favor informe a Razão Social e o CNPJ da empresa.');
       return;
     }
 
+    const allocationRef=editingId||crypto.randomUUID();
+    if(formData.veiculo_alocado_placa&&(!editingId||formData.veiculo_alocado_placa!==clients.find(c=>c.id===editingId)?.veiculo_alocado_placa)){try{await allocateVehicle(companyId,formData.veiculo_alocado_placa,'client',allocationRef);}catch(e){setFeedback({type:'error',text:e.message});return;}}
     const routeName = formData.rota_nome?.trim() || 
       (formData.origem && formData.destino ? `${formData.origem} ⇄ ${formData.destino}` : '');
 
@@ -366,7 +370,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
     } else {
       const newClient = {
         ...payload,
-        id: `CLI-AMB${Math.floor(100 + Math.random() * 900)}`,
+        id: allocationRef,
         created_at: new Date().toISOString()
       };
       setClients([newClient, ...clients]);
@@ -381,15 +385,19 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   };
 
   // Exclusão
-  const handleDeleteClient = (clientId, name) => {
-    if (window.confirm(`Confirma a exclusão do cliente "${name}" da carteira ativa CCO?`)) {
-      setClients(clients.filter(c => c.id !== clientId));
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('clientes').delete().eq('id', clientId).then();
-      }
-      setFeedback({ type: 'info', text: `Cliente "${name}" removido com sucesso.` });
-      setTimeout(() => setFeedback(null), 3000);
-    }
+  const handleDeleteClient = async (clientId, name) => {
+    if (!window.confirm(`Confirma a exclusão do cliente "${name}" da carteira ativa CCO?`)) return;
+    try {
+      if (!isSupabaseConfigured || !supabase || !companyId) throw new Error('Conecte-se à empresa para confirmar a exclusão.');
+      const target=clients.find(c=>c.id===clientId);
+      let found=await supabase.from('clientes').select('id').eq('company_id',companyId).eq('id',clientId);
+      if(found.error)throw found.error;
+      if(!found.data?.length&&target?.cnpj){found=await supabase.from('clientes').select('id').eq('company_id',companyId).eq('cnpj',target.cnpj).limit(2);if(found.error)throw found.error;}
+      if(found.data?.length>1)throw new Error('Há mais de um cliente com este CNPJ. Sincronize e confira o cadastro antes de excluir.');
+      if(found.data?.length){const result=await supabase.from('clientes').delete().eq('company_id',companyId).eq('id',found.data[0].id).select('id');if(result.error)throw result.error;if(!result.data?.length)throw new Error('Exclusão não confirmada pelo banco.');}
+      setClients(rows=>rows.filter(c=>c.id!==clientId));
+      setFeedback({type:'success',text:`Cliente "${name}" removido.`});
+    } catch(error){setFeedback({type:'error',text:error.code==='23503'?'O cliente possui vínculos ou histórico e não pode ser excluído.':error.message||'Não foi possível excluir o cliente.'});}
   };
 
   // Abrir Modal de Redirecionar Rota
@@ -406,8 +414,9 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
   };
 
   // Confirmar Mudança Rápida de Rota
-  const handleConfirmRedirectRoute = () => {
+  const handleConfirmRedirectRoute = async () => {
     if (!clientToRedirect) return;
+    if(clientToRedirect.veiculo_alocado_placa){try{await allocateVehicle(companyId,clientToRedirect.veiculo_alocado_placa,'client',clientToRedirect.id);}catch(e){setFeedback({type:'error',text:e.message});return;}}
 
     const updated = clients.map(c => {
       if (c.id === clientToRedirect.id) {
@@ -549,7 +558,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 className="btn-secondary btn-icon-text"
                 onClick={fetchSupabaseClients}
                 disabled={loading}
-                title="Sincronizar com banco de dados Supabase"
+                title="Atualizar lista de clientes e rotas homologadas"
               >
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                 <span>Atualizar</span>
@@ -974,13 +983,7 @@ export default function ClientsModule({ user, onNavigateTrips, onNavigateFleet }
                 </div>
 
                 <div className="input-group-custom">
-                  <label>Placa do Veículo Alocado (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: AMB-4K89"
-                    value={formData.veiculo_alocado_placa}
-                    onChange={e => setFormData({ ...formData, veiculo_alocado_placa: e.target.value.toUpperCase() })}
-                  />
+                  <AvailableVehicleSelect company={companyId} value={formData.veiculo_alocado_placa} onChange={plate=>setFormData(f=>({...f,veiculo_alocado_placa:plate}))} label="Placa do veículo alocado (opcional)"/>
                 </div>
               </div>
 

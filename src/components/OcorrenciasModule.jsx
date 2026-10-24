@@ -1,3 +1,5 @@
+import useFleetDirectory from '../hooks/useFleetDirectory';
+import {driverForVehicle} from '../utils/registryMatching';
 import React, { useState, useEffect } from 'react';
 import { 
   AlertTriangle, 
@@ -9,7 +11,8 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
-export default function OcorrenciasModule() {
+export default function OcorrenciasModule({companyId}) {
+ const directory=useFleetDirectory(companyId);
   const [incidents, setIncidents] = useState(() => {
     try {
       const saved = localStorage.getItem('ambipar_real_incidents');
@@ -190,26 +193,14 @@ export default function OcorrenciasModule() {
 
                 <div className="input-group-custom">
                   <label>Placa do Veículo</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: AMB-4K89"
-                    value={newIncident.vehiclePlate}
-                    onChange={(e) => setNewIncident({ ...newIncident, vehiclePlate: e.target.value.toUpperCase() })}
-                  />
+                  <select required aria-label="Veículo da ocorrência" value={newIncident.vehiclePlate} onChange={e=>{const v=directory.vehicles.find(v=>v.placa===e.target.value);setNewIncident({...newIncident,vehiclePlate:e.target.value,driver:driverForVehicle(v,directory.drivers)?.nome||''});}}><option value="">Selecione um veículo cadastrado</option>{directory.vehicles.map(v=><option key={v.id} value={v.placa}>{v.placa} · {v.marca_modelo}</option>)}</select>
                 </div>
               </div>
 
               <div className="grid-2-cols">
                 <div className="input-group-custom">
                   <label>Nome do Condutor</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Motorista responsável"
-                    value={newIncident.driver}
-                    onChange={(e) => setNewIncident({ ...newIncident, driver: e.target.value })}
-                  />
+                  <select required aria-label="Motorista da ocorrência" value={newIncident.driver} onChange={e=>setNewIncident({...newIncident,driver:e.target.value})}><option value="">Selecione um motorista cadastrado</option>{directory.drivers.map(d=><option key={d.id} value={d.nome}>{d.nome}</option>)}</select>
                 </div>
 
                 <div className="input-group-custom">

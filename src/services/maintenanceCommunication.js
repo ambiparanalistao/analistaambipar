@@ -1,0 +1,4 @@
+import {maintenanceLabel} from '../utils/maintenanceTerminology';
+import {supabase} from '../lib/supabaseClient';import {checked} from './maintenanceOrders';
+const reads=new Set(['context','history','config','overview','notifications']);
+export async function communicationCommand(company,command,body={}){if(!supabase||!company)throw new Error('Selecione uma empresa autenticada.');const data=checked(await supabase.rpc('maintenance_communication_command',{target_company:company,command,body}));if(['context','config'].includes(command)&&data?.templates)data.templates=data.templates.map(t=>({...t,conteudo:maintenanceLabel(t.conteudo)}));if(!reads.has(command))window.dispatchEvent(new CustomEvent('maintenance:communication-changed',{detail:{company,order:body.order_id}}));return data;}

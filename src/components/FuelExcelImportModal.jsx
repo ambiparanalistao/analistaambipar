@@ -37,7 +37,6 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressPct, setProgressPct] = useState(0);
 
-  if (!isOpen) return null;
 
   const handleFileChange = async (e) => {
     const selected = e.target.files?.[0];
@@ -181,6 +180,9 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
       }
     }, 250);
   };
+
+  // Keep all hooks unconditional when the modal opens or closes.
+  if (!isOpen) return null;
 
   return (
     <div className="fuel-modal-backdrop animate-fade-in" style={{ zIndex: 9999 }}>
@@ -613,7 +615,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
               }}>
                 <div>
                   <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff', display: 'block', marginBottom: '0.5rem' }}>
-                    Modo de Integração com o Banco de Dados:
+                    Modo de Processamento de Dados:
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: '#cbd5e1', cursor: 'pointer' }}>
