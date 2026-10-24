@@ -1,4 +1,5 @@
 BEGIN;
+SET LOCAL TIME ZONE 'America/Sao_Paulo';
 CREATE SCHEMA plan_test;
 CREATE FUNCTION plan_test.assert(ok boolean,msg text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'ASSERT: %',msg;END IF;END $$;
 CREATE FUNCTION plan_test.denied(statement text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN BEGIN EXECUTE statement;EXCEPTION WHEN OTHERS THEN RETURN;END;RAISE EXCEPTION 'Expected rejection: %',statement;END $$;

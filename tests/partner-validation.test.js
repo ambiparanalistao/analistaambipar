@@ -16,10 +16,10 @@ test('masks preserve letters and normalize contacts',()=>{
  assert.equal(maskPhone('11999991234'),'(11) 99999-1234');
  assert.equal(maskCep('01001000'),'01001-000');
 });
-test('valid partner and mandatory identity/contact/address',()=>{
+test('valid partner and mandatory identity/contact and optional address',()=>{
  assert.deepEqual(validatePartner(valid()),{});
  const errors=validatePartner({...emptyPartner(),estado:'XX',cep:'123'});
- for(const key of ['razao_social','cnpj_cpf','telefone','logradouro','numero','cidade','estado','cep'])assert.ok(errors[key]);
+ for(const key of ['razao_social','cnpj_cpf','telefone','estado','cep'])assert.ok(errors[key]);
 });
 test('block requires a reason and numeric fields are constrained',()=>{
  const errors=validatePartner({...valid(),status:'bloqueado',motivo_bloqueio:'',desconto_percentual:101,valor_hora_mao_obra:-1,prazo_pagamento_dias:1.5});

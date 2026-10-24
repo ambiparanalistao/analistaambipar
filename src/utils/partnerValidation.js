@@ -70,9 +70,9 @@ export function validatePartner(form) {
  if(!form.telefone&&!form.whatsapp)errors.telefone='Informe um telefone ou WhatsApp.';
  for(const key of ['telefone','whatsapp'])if(form[key]&&!validPhone(form[key]))errors[key]='Informe DDD e número válido.';
  if(form.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))errors.email='Informe um e-mail válido.';
- for(const key of ['logradouro','numero','bairro','cidade'])if(!String(form[key]||'').trim())errors[key]='Preencha este campo.';
- if(digits(form.cep).length!==8)errors.cep='Informe um CEP com 8 dígitos.';
- if(!/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/.test(form.estado))errors.estado='Informe uma UF válida.';
+ 
+ if(form.cep&&digits(form.cep).length!==8)errors.cep='Informe um CEP com 8 dígitos.';
+ if(form.estado&&!/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/.test(form.estado))errors.estado='Informe uma UF válida.';
  const lat=form.latitude!==''&&form.latitude!==null, lng=form.longitude!==''&&form.longitude!==null;
  if(lat!==lng)errors.latitude='Preencha latitude e longitude juntas.';
  if(lat&&(!Number.isFinite(Number(form.latitude))||Math.abs(Number(form.latitude))>90))errors.latitude='Latitude inválida.';

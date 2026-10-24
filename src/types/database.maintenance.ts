@@ -13,7 +13,7 @@ export type Enums = {
 };
 
 export interface MaintenanceRows {
-  maintenance_partner_requests: {id:string;company_id:string;request_id:string;protocol:string;cnpj:string;payload:Json;status:'pendente'|'aprovada'|'recusada';submitted_at:string;consent_version:string;reviewed_at:string|null;reviewed_by:string|null;review_note:string|null;partner_id:string|null};
+  maintenance_partner_requests: {id:string;company_id:string;request_id:string;protocol:string;cnpj:string;payload:Json;status:'pendente'|'aprovada'|'recusada';submitted_at:string;consent_version:string;reviewed_at:string|null;reviewed_by:string|null;review_note:string|null;partner_id:string|null;edit_token_hash:string|null;edit_expires_at:string|null;edit_version:number};
   maintenance_partner_request_audit: {id:string;company_id:string;request_id:string;actor_id:string|null;action:string;occurred_at:string;note:string|null};
   companies: {
     id: string;
