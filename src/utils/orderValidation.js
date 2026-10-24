@@ -13,10 +13,11 @@ export function validateOrder(f,vehicle,now=Date.now()){
  if(!ORDER_TYPES[f.tipo])e.tipo='Selecione o tipo.';if(!PRIORITIES[f.prioridade])e.prioridade='Selecione a prioridade.';
  if(!f.descricao_problema?.trim())e.descricao_problema='Descreva o problema.';
  if(f.km_abertura===''||!Number.isInteger(Number(f.km_abertura))||Number(f.km_abertura)<Math.max(0,Number(vehicle?.km_atual||0)))e.km_abertura='Informe KM inteiro igual ou superior à última leitura do veículo.';
+ if(f.prazo_entrega_dias!==undefined&&f.prazo_entrega_dias!==''&&f.prazo_entrega_dias!==null&&(!Number.isInteger(Number(f.prazo_entrega_dias))||Number(f.prazo_entrega_dias)<1||Number(f.prazo_entrega_dias)>3650))e.prazo_entrega_dias='Informe de 1 a 3650 dias corridos.';
  if(f.previsao_entrega&&(!Number.isFinite(Date.parse(f.previsao_entrega))||Date.parse(f.previsao_entrega)<now))e.previsao_entrega='Informe uma previsão futura.';return e;
 }
 export function validateAction(action,f,o,vehicle){
- const e={};if(['transition','arrival','departure','budget'].includes(action)&&!f.observacao?.trim())e.observacao='Informe uma observação.';
+ const e={};if(action==='budget'&&f.decisao==='aprovado'&&(!Number.isInteger(Number(f.prazo_entrega_dias||o.prazo_entrega_dias))||Number(f.prazo_entrega_dias||o.prazo_entrega_dias)<1||Number(f.prazo_entrega_dias||o.prazo_entrega_dias)>3650))e.prazo_entrega_dias='Informe de 1 a 3650 dias corridos após aprovação.';if(['transition','arrival','departure','budget'].includes(action)&&!f.observacao?.trim())e.observacao='Informe uma observação.';
  if(['arrival','departure'].includes(action)||['na_oficina','veiculo_retirado'].includes(f.status)){
  if(f.km===''||!Number.isInteger(Number(f.km))||Number(f.km)<Math.max(Number(vehicle?.km_atual||0),Number(o.km_abertura||0),Number(o.km_entrada||0)))e.km='KM deve ser inteiro e não pode diminuir.';}
  if(f.status==='concluido'){if(!f.servicos_executados?.trim())e.servicos_executados='Informe os serviços executados.';if(f.valor_final===''||Number(f.valor_final)!==Number(o.valor_total))e.valor_final='O valor final deve conferir com os itens do orçamento.';}
