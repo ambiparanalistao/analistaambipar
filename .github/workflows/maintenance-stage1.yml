@@ -140,6 +140,8 @@ jobs:
           PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024150752_quote_broadcast_ncm_delivery.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024153144_quote_selected_partner_deadline.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024153310_quote_deadline_alias_fix.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/quote-broadcast.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
