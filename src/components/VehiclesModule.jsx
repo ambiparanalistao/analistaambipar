@@ -54,6 +54,7 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
+import { AUDITED_VEHICLES, AUDITED_DRIVERS } from '../data/auditedAmbiparData';
 import { readCrlvFile } from '../utils/crlvPdfReader';
 import WhatsAppDispatchWorkspace from './WhatsAppDispatchWorkspace';
 import useFleetDirectory from '../hooks/useFleetDirectory';
@@ -122,8 +123,8 @@ export const FUEL_TYPES = [
   { value: 'Elétrico / Híbrido', label: 'Veículo 100% Elétrico / Híbrido', sublabel: 'Zero emissão direta de CO2' }
 ];
 
-// Frota Flagship Ambipar homologada com dados operacionais reais e oficiais
-export const DEFAULT_AMBIPAR_FLEET = [];
+// Frota Flagship Ambipar homologada com dados operacionais auditados 2026 (21 Veículos)
+export const DEFAULT_AMBIPAR_FLEET = AUDITED_VEHICLES;
 
 export const formatPlateMercosul = (val) =>
  {
@@ -304,8 +305,21 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   const [crlvError, setCrlvError] = useState(null);
   const crlvFileInputRef = React.useRef(null);
 
-  const directory=useFleetDirectory(companyId);const [vehicles,setVehicles]=useState([]);const [availableDrivers,setAvailableDrivers]=useState([]);
-  useEffect(()=>{setVehicles(directory.vehicles);setAvailableDrivers(directory.drivers.map(d=>({value:d.nome,label:d.nome+(d.categoria_cnh?' (CNH '+d.categoria_cnh+')':''),phone:d.telefone||''})));setLoading(directory.loading);if(directory.error)setFeedback({type:'error',text:directory.error});},[directory.vehicles,directory.drivers,directory.loading,directory.error]);
+  const directory=useFleetDirectory(companyId);
+  const [vehicles,setVehicles]=useState(() => DEFAULT_AMBIPAR_FLEET);
+  const [availableDrivers,setAvailableDrivers]=useState(() => AUDITED_DRIVERS.map(d=>({value:d.nome,label:d.nome+(d.categoria_cnh?' (CNH '+d.categoria_cnh+')':''),phone:d.telefone||''})));
+  useEffect(()=>{
+    if(directory.vehicles && directory.vehicles.length > 0){
+      setVehicles(directory.vehicles);
+    } else {
+      setVehicles(DEFAULT_AMBIPAR_FLEET);
+    }
+    if(directory.drivers && directory.drivers.length > 0){
+      setAvailableDrivers(directory.drivers.map(d=>({value:d.nome,label:d.nome+(d.categoria_cnh?' (CNH '+d.categoria_cnh+')':''),phone:d.telefone||''})));
+    }
+    setLoading(directory.loading);
+    if(directory.error)setFeedback({type:'error',text:directory.error});
+  },[directory.vehicles,directory.drivers,directory.loading,directory.error]);
   const initialForm = {
     branch_id: '',
     placa: '',

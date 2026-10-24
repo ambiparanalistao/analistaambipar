@@ -28,6 +28,7 @@ import {
   List
 } from 'lucide-react';
 import PremiumSelect from './PremiumSelect';
+import { AUDITED_DRIVERS, AUDITED_VEHICLES } from '../data/auditedAmbiparData';
 import useFleetDirectory from '../hooks/useFleetDirectory';
 import {saveDriver,deleteRegistryRecord,updateRegistryStatus} from '../services/fleetDirectory';
 
@@ -48,7 +49,7 @@ export const STATUS_OPTIONS = [
   }
 ];
 
-export const DEFAULT_FLEET = [];
+export const DEFAULT_FLEET = AUDITED_VEHICLES.map(v => ({ placa: v.placa, modelo: `${v.tipo} (${v.marca_modelo})` }));
 
 export const CNH_CATEGORIES = [
   {
@@ -187,8 +188,8 @@ export default function DriversModule({ user, maintenanceAccess }) {
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' (Cards Operacionais VIP) ou 'table' (Tabela Executiva)
   const [editingId, setEditingId] = useState(null);
 
-  // Motoristas consolidados sincronizados automaticamente com a frota
-  const [drivers, setDrivers] = useState([]);
+  // Motoristas consolidados sincronizados com frota e base auditada 2026
+  const [drivers, setDrivers] = useState(() => AUDITED_DRIVERS);
 
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -198,7 +199,20 @@ export default function DriversModule({ user, maintenanceAccess }) {
   // Frotas Integradas (sincronizadas com o Módulo de Frotas)
   const company=maintenanceAccess?.companyId;const directory=useFleetDirectory(company);
   const [fleetVehicles,setFleetVehicles]=useState([]);
-  useEffect(()=>{setDrivers(directory.drivers);setFleetVehicles(directory.vehicles.map(v=>({...v,modelo:v.marca_modelo})));setLoading(directory.loading);if(directory.error)setFeedback({type:'error',text:directory.error});},[directory.drivers,directory.vehicles,directory.loading,directory.error]);
+  useEffect(()=>{
+    if(directory.drivers && directory.drivers.length > 0){
+      setDrivers(directory.drivers);
+    } else {
+      setDrivers(AUDITED_DRIVERS);
+    }
+    if(directory.vehicles && directory.vehicles.length > 0){
+      setFleetVehicles(directory.vehicles.map(v=>({...v,modelo:v.marca_modelo})));
+    } else {
+      setFleetVehicles(DEFAULT_FLEET);
+    }
+    setLoading(directory.loading);
+    if(directory.error)setFeedback({type:'error',text:directory.error});
+  },[directory.drivers,directory.vehicles,directory.loading,directory.error]);
   // Estado do Formulário Completo com Todos os Cursos
   const initialForm = {
     nome: '',
