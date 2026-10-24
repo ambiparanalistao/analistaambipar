@@ -135,6 +135,12 @@ jobs:
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024025745_driver_toxicology_requests.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/driver-toxicology.sql
+      - name: Quote broadcast, NCM and approval delivery forecast
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024150752_quote_broadcast_ncm_delivery.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/quote-broadcast.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
         run: npm ci
