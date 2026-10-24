@@ -167,7 +167,7 @@ export default function MtrModule({ user }) {
         <div className="summary-stat-box">
           <span className="stat-label">Total Real Registrado</span>
           <span className="stat-number">{totalTon} ton</span>
-          <span className="stat-sub">Massa total no banco de dados</span>
+          <span className="stat-sub">Massa total movimentada</span>
         </div>
 
         <div className="summary-stat-box danger">
@@ -186,7 +186,7 @@ export default function MtrModule({ user }) {
       {/* Tabela de Registros com Supabase */}
       <div className="card-panel">
         <div className="panel-header">
-          <h3>Registros Reais no Banco de Dados (PostgreSQL)</h3>
+          <h3>Histórico de Manifestos & Destinações Emitidas</h3>
           <span className="record-count-tag">{records.length} manifestos localizados</span>
         </div>
 
@@ -208,17 +208,17 @@ export default function MtrModule({ user }) {
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
                     <span className="spinner"></span>
-                    <p style={{ marginTop: '0.5rem', color: 'var(--text-muted)' }}>Consultando tabela registros_residuos no Supabase...</p>
+                    <p style={{ marginTop: '0.5rem', color: 'var(--text-muted)' }}>Sincronizando manifestos de transporte...</p>
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="empty-table-state">
                     <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-                      Nenhum registro de resíduo cadastrado ainda.
+                      Nenhum manifesto de transporte cadastrado ainda.
                     </p>
                     <span style={{ fontSize: '0.85rem' }}>
-                      Clique no botão "Emitir Novo MTR / Registro" acima para adicionar o primeiro registro real da sua operação.
+                      Clique no botão "Emitir Novo MTR / Registro" acima para adicionar um novo registro operacional.
                     </span>
                   </td>
                 </tr>
@@ -359,7 +359,7 @@ export default function MtrModule({ user }) {
                   className="btn-primary"
                   disabled={submitting}
                 >
-                  {submitting ? 'Gravando no Supabase...' : 'Salvar no Banco de Dados'}
+                  {submitting ? 'Emitindo Manifesto...' : 'Confirmar Emissão de MTR'}
                 </button>
               </div>
             </form>

@@ -37,98 +37,10 @@ import {
 } from '../utils/excelFuelIntegration';
 
 // Dados padrão baseados exatamente no Relatório Mensal da Ambipar (Imagem 2 do usuário)
-const INITIAL_MATRIX_DATA = [
-  {
-    categoria: 'COMBUSTIVEIS',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 31552.51, fevereiro: 23801.67, marco: 30308.25, abril: 32348.57, maio: 24055.58, junho: 33297.03, julho: 29237.10, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'LUBRIFICANTES',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 0, fevereiro: 60.47, marco: 2031.54, abril: 1032.00, maio: 403.50, junho: 2392.05, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'MAN. FROTAS - MÃO DE OBRA',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 9620.00, fevereiro: 55732.20, marco: 14558.29, abril: 6566.00, maio: 806.00, junho: 3272.50, julho: 8160.00, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'MAN FROTAS - PEÇAS',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 5489.18, fevereiro: 0, marco: 4990.20, abril: 3199.96, maio: 12693.60, junho: 11060.06, julho: 11052.77, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'PNEUS',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 0, fevereiro: 0, marco: 285.00, abril: 280.00, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'IPVA, DPVAT, LICENCIAMENTO',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'LAVAGEM DE FROTA',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 0, fevereiro: 0, marco: 2400.00, abril: 0, maio: 350.00, junho: 130.00, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'LAUDOS FROTAS - CIPP, CIVV',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 1250.00, maio: 1742.50, junho: 6115.00, julho: 405.99, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'RASTREAMENTO',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 671.00, fevereiro: 671.00, marco: 732.00, abril: 732.00, maio: 966.00, junho: 671.00, julho: 610.00, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'LOCAÇÃO DE VEÍCULOS',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'GERENCIAMENTO DE RISCO',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'PEDÁGIOS',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 2231.86, fevereiro: 256.03, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'MULTA DE TRÂNSITO',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'SERV DE TELEMETRIA',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 71.00, fevereiro: 71.00, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  },
-  {
-    categoria: 'SEGURO DE FROTAS',
-    unidade: 'DCX',
-    tipo: 'FROTA COMPLETA',
-    meses: { janeiro: 0, fevereiro: 0, marco: 0, abril: 0, maio: 0, junho: 0, julho: 0, agosto: 0, setembro: 0, outubro: 0, novembro: 0, dezembro: 0 }
-  }
-];
+const INITIAL_MATRIX_DATA=[];
+const DEMO_ROW_SIGNATURES=new Set([244996957,3108090062,259250536,1820701282,3424134468,2205476082,1912786264,3187853289,4112053187,1528303215,3369736888,1414207774,761586911,1438304639,105092215]);
+function realMatrixRows(rows){if(!Array.isArray(rows))return [];const clean=rows.filter(row=>{let n=2166136261;for(const c of JSON.stringify(row))n=Math.imul(n^c.charCodeAt(0),16777619);return !DEMO_ROW_SIGNATURES.has(n>>>0);});if(clean.length!==rows.length){try{if(!localStorage.getItem('ambipar_monthly_costs_legacy_backup'))localStorage.setItem('ambipar_monthly_costs_legacy_backup',JSON.stringify(rows));}catch{}}return clean;}
+
 
 const VEHICLE_FAMILIES = [
   'CUSTO FROTA GERAL',
@@ -156,7 +68,7 @@ export default function FuelSpreadsheetWorkspace({
   const [fleetMatrix, setFleetMatrix] = useState(() => {
     try {
       const saved = localStorage.getItem('ambipar_monthly_fleet_costs_2026');
-      return saved ? JSON.parse(saved) : INITIAL_MATRIX_DATA;
+      return saved ? realMatrixRows(JSON.parse(saved)) : INITIAL_MATRIX_DATA;
     } catch {
       return INITIAL_MATRIX_DATA;
     }

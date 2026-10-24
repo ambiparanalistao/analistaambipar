@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
-export default function AuthCard({ onOpenConfig, onDemoAccess }) {
+export default function AuthCard({ onOpenConfig }) {
   const [mode, setMode] = useState('login'); // 'login' | 'signup' | 'forgot'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -268,7 +268,7 @@ export default function AuthCard({ onOpenConfig, onDemoAccess }) {
               <span className="btn-content">
                 <span>
                   {mode === 'login' && 'Entrar na Plataforma'}
-                  {mode === 'signup' && 'Criar Conta no Supabase'}
+                  {mode === 'signup' && 'Criar Nova Conta'}
                   {mode === 'forgot' && 'Enviar E-mail de Recuperação'}
                 </span>
                 <ArrowRight size={18} />
@@ -290,20 +290,8 @@ export default function AuthCard({ onOpenConfig, onDemoAccess }) {
             </button>
           ) : (
             <div className="demo-access-container">
-              {onDemoAccess && (
-                <button
-                  type="button"
-                  className="btn-secondary btn-block demo-btn"
-                  onClick={onDemoAccess}
-                  id="quick-demo-access-btn"
-                  style={{ marginBottom: '1rem', borderStyle: 'dashed' }}
-                >
-                  <Sparkles size={16} className="text-emerald" />
-                  <span>Entrar Direto como Analista (Modo CCO)</span>
-                </button>
-              )}
               <p className="footer-note">
-                Autenticação protegida por criptografia de ponta a ponta via Supabase Auth & JWT.
+                Autenticação corporativa protegida com criptografia de ponta a ponta.
               </p>
             </div>
           )}

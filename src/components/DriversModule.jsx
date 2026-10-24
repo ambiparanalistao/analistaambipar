@@ -1,3 +1,6 @@
+import {requestDriverToxicology} from '../services/driverToxicology';
+import {driverValidityRequest} from '../utils/driverValidityRequest';
+import DriverBindingPanel from './maintenance/driver/DriverBindingPanel';
 import React, { useState, useEffect } from 'react';
 import { 
   UserCheck, 
@@ -24,9 +27,10 @@ import {
   LayoutGrid,
   List
 } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
 import { AUDITED_DRIVERS, AUDITED_VEHICLES } from '../data/auditedAmbiparData';
+import useFleetDirectory from '../hooks/useFleetDirectory';
+import {saveDriver,deleteRegistryRecord,updateRegistryStatus} from '../services/fleetDirectory';
 
 export const STATUS_OPTIONS = [
   { 
@@ -173,50 +177,42 @@ export const getCountdown = (dateStr) => {
   };
 };
 
-export default function DriversModule({ user }) {
+function ValidityRequestButton({driver,company,compact=false}){const [busy,setBusy]=useState(false),[result,setResult]=useState(null),[error,setError]=useState('');const [requestId]=useState(()=>crypto.randomUUID());const delivery=driverValidityRequest(driver);
+ async function send(){if(busy||!delivery)return;const uncertain=result?.status==='unknown';if(uncertain&&!window.confirm('O envio anterior pode ter sido recebido. Confira o WhatsApp do motorista. Deseja repetir mesmo com possibilidade de duplicação?'))return;setBusy(true);setError('');try{setResult(await requestDriverToxicology(company,driver.id,requestId,uncertain));}catch(e){setResult({status:'unknown'});setError(e.message);}finally{setBusy(false);}}
+ return <div style={{display:'flex',flexDirection:'column',gap:5,maxWidth:'100%'}}><button type="button" onClick={send} disabled={busy||!delivery||result?.status==='accepted'||result?.status==='sending'} className={compact?'table-wa-direct-btn':'btn-whatsapp-executive'} aria-label={'Solicitar toxicológico de '+driver.nome} title={delivery?'Enviar solicitação do exame toxicológico pela Evolution API':'Cadastre um telefone / WhatsApp válido.'} style={{display:'inline-flex',gap:6,alignItems:'center',whiteSpace:'normal'}}><MessageCircle size={14}/><span>{busy?'Enviando…':result?.status==='accepted'?'Aceito pela Evolution API':result?.status==='unknown'?'Conferir e tentar novamente':'Solicitar toxicológico'}</span></button>{result&&<small role="status">{result.error||({accepted:'Solicitação aceita pela Evolution API.',failed:'Falha no envio. Confira a conexão e tente novamente.',unknown:'Envio incerto. Confira o WhatsApp antes de repetir.',sending:'Já existe um envio em processamento.'}[result.status]||'Confira o resultado do envio.')}</small>}{error&&<small role="alert">{error}</small>}</div>;
+}
+
+export default function DriversModule({ user, maintenanceAccess }) {
   // Controle de visualização: 'list' (Quadro Geral) ou 'form' (Formulário Amplo na Página, sem pop-up)
   const [viewMode, setViewMode] = useState('list');
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' (Cards Operacionais VIP) ou 'table' (Tabela Executiva)
   const [editingId, setEditingId] = useState(null);
 
-  // Motoristas reais
-  const [drivers, setDrivers] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_real_drivers');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.length >= 8) return parsed;
-      }
-      return AUDITED_DRIVERS;
-    } catch {
-      return [];
-    }
-  });
+  // Motoristas consolidados sincronizados com frota e base auditada 2026
+  const [drivers, setDrivers] = useState(() => AUDITED_DRIVERS);
 
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [feedback, setFeedback] = useState(null);
 
-  // Frotas Integradas (pré-programado para alimentar o futuro Módulo de Frotas)
-  const [fleetVehicles, setFleetVehicles] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_fleet_vehicles');
-      return saved ? JSON.parse(saved) : DEFAULT_FLEET;
-    } catch {
-      return DEFAULT_FLEET;
+  // Frotas Integradas (sincronizadas com o Módulo de Frotas)
+  const company=maintenanceAccess?.companyId;const directory=useFleetDirectory(company);
+  const [fleetVehicles,setFleetVehicles]=useState([]);
+  useEffect(()=>{
+    if(directory.drivers && directory.drivers.length > 0){
+      setDrivers(directory.drivers);
+    } else {
+      setDrivers(AUDITED_DRIVERS);
     }
-  });
-
-  // Salva veículos da frota no localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_fleet_vehicles', JSON.stringify(fleetVehicles));
-    } catch (e) {
-      console.warn('Erro ao salvar veículos da frota:', e);
+    if(directory.vehicles && directory.vehicles.length > 0){
+      setFleetVehicles(directory.vehicles.map(v=>({...v,modelo:v.marca_modelo})));
+    } else {
+      setFleetVehicles(DEFAULT_FLEET);
     }
-  }, [fleetVehicles]);
-
+    setLoading(directory.loading);
+    if(directory.error)setFeedback({type:'error',text:directory.error});
+  },[directory.drivers,directory.vehicles,directory.loading,directory.error]);
   // Estado do Formulário Completo com Todos os Cursos
   const initialForm = {
     nome: '',
@@ -227,7 +223,6 @@ export default function DriversModule({ user }) {
     categoria_cnh: 'E',
     validade_cnh: '',
     mopp_numero: '',
-    validade_mopp: '',
     validade_toxicologico: '',
     validade_nr20: '',
     validade_nr35: '',
@@ -241,39 +236,8 @@ export default function DriversModule({ user }) {
   };
 
   const [formData, setFormData] = useState(initialForm);
-  // Salva no localStorage como backup persistente
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_real_drivers', JSON.stringify(drivers));
-    } catch (e) {
-      console.warn('Erro ao salvar motoristas:', e);
-    }
-  }, [drivers]);
 
-  // Busca registros do Supabase se a tabela existir
-  const fetchSupabaseDrivers = async () => {
-    if (!isSupabaseConfigured || !supabase) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('motoristas')
-        .select('*')
-        .order('nome', { ascending: true });
-
-      if (!error && data && data.length > 0) {
-        setDrivers(data);
-      }
-    } catch (err) {
-      console.warn('Tabela motoristas ainda não executada no Supabase:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSupabaseDrivers();
-  }, []);
-
+  const handleRefreshQuadro=()=>directory.reload();
   // Prepara formulário para cadastrar
   const handleOpenCreateForm = () => {
     setEditingId(null);
@@ -294,7 +258,6 @@ export default function DriversModule({ user }) {
       categoria_cnh: driver.categoria_cnh || 'E',
       validade_cnh: driver.validade_cnh || '',
       mopp_numero: driver.mopp_numero || '',
-      validade_mopp: driver.validade_mopp || '',
       validade_toxicologico: driver.validade_toxicologico || '',
       validade_nr20: driver.validade_nr20 || '',
       validade_nr35: driver.validade_nr35 || '',
@@ -310,100 +273,13 @@ export default function DriversModule({ user }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Submissão do formulário
-  const handleSubmitForm = async (e) => {
-    e.preventDefault();
-
-    // Se tiver informado uma placa, salva automaticamente na frota para o módulo de frotas
-    if (formData.veiculo_vinculado) {
-      const cleanPlate = formData.veiculo_vinculado.toUpperCase().trim();
-      const exists = fleetVehicles.some(v => v.placa === cleanPlate);
-      if (!exists && cleanPlate.length >= 7) {
-        const updatedFleet = [
-          ...fleetVehicles,
-          { placa: cleanPlate, modelo: `Equipamento Vinculado (${formData.nome})`, tipo: 'Frota Operacional' }
-        ];
-        setFleetVehicles(updatedFleet);
-        try {
-          localStorage.setItem('ambipar_fleet_vehicles', JSON.stringify(updatedFleet));
-        } catch (err) {
-          console.warn('Erro ao salvar na frota:', err);
-        }
-      }
-    }
-
-    if (editingId) {
-      // Edição
-      const updatedList = drivers.map(d => d.id === editingId ? { ...formData, id: editingId } : d);
-      setDrivers(updatedList);
-
-      if (isSupabaseConfigured && supabase) {
-        try {
-          await supabase.from('motoristas').update(formData).eq('id', editingId);
-        } catch (err) {
-          console.warn('Erro ao atualizar no Supabase:', err);
-        }
-      }
-      setFeedback({ type: 'success', text: `Motorista ${formData.nome} atualizado com sucesso!` });
-    } else {
-      // Novo Cadastro
-      const newDriver = {
-        ...formData,
-        id: `MOT-${Date.now().toString().slice(-6)}`,
-        created_at: new Date().toISOString()
-      };
-
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const { data, error } = await supabase
-            .from('motoristas')
-            .insert([{
-              user_id: user?.id,
-              ...formData
-            }])
-            .select();
-
-          if (!error && data && data.length > 0) {
-            newDriver.id = data[0].id;
-          }
-        } catch (err) {
-          console.warn('Gravação local realizada (Supabase pendente):', err);
-        }
-      }
-
-      setDrivers([newDriver, ...drivers]);
-      setFeedback({ type: 'success', text: `Motorista ${formData.nome} homologado com sucesso!` });
-    }
-
-    setViewMode('list');
-    setTimeout(() => setFeedback(null), 4000);
-  };
-
-  // Alterar Status diretamente na tabela
-  const handleChangeStatus = (id, newStatus) => {
-    const updated = drivers.map(d => d.id === id ? { ...d, status: newStatus } : d);
-    setDrivers(updated);
-
-    if (isSupabaseConfigured && supabase) {
-      supabase.from('motoristas').update({ status: newStatus }).eq('id', id).then();
-    }
-  };
-
-  // Excluir Motorista
-  const handleDeleteDriver = (id, nome) => {
-    if (window.confirm(`Tem certeza que deseja remover o cadastro do motorista ${nome}?`)) {
-      setDrivers(drivers.filter(d => d.id !== id));
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('motoristas').delete().eq('id', id).then();
-      }
-    }
-  };
-
+  const handleSubmitForm=async e=>{e.preventDefault();if(loading)return;setLoading(true);try{const saved=await saveDriver(formData,editingId,user?.id,company);setDrivers(list=>editingId?list.map(d=>d.id===editingId?saved:d):[saved,...list]);setViewMode('list');setFeedback({type:'success',text:'Motorista salvo no banco.'});}catch(e){setFeedback({type:'error',text:'Motorista não salvo: '+e.message});}finally{setLoading(false);}};
+  const handleChangeStatus=async(id,status)=>{try{const saved=await updateRegistryStatus('motoristas',id,status,company);setDrivers(rows=>rows.map(d=>d.id===id?saved:d));}catch(e){setFeedback({type:'error',text:e.message});}};
+  const handleDeleteDriver=async(id,nome)=>{if(!window.confirm('Confirma a exclusão do motorista '+nome+'?'))return;try{await deleteRegistryRecord('motoristas',id,company);setDrivers(rows=>rows.filter(d=>d.id!==id));setFeedback({type:'success',text:'Motorista excluído do banco.'});}catch(e){setFeedback({type:'error',text:e.message});}};
   // Verifica se o motorista tem alerta de conformidade em qualquer documento ou curso
   const hasComplianceAlert = (driver) => {
     const dates = [
       driver.validade_cnh,
-      driver.validade_mopp,
       driver.validade_toxicologico,
       driver.validade_nr20,
       driver.validade_nr35,
@@ -455,6 +331,8 @@ export default function DriversModule({ user }) {
 
   return (
     <div className="module-view animate-fade-in" id="drivers-module-root">
+
+      {['admin_geral','admin_empresa'].includes(maintenanceAccess?.role)&&<DriverBindingPanel access={maintenanceAccess}/>}
       {/* ============================================================== */}
       {/* CABEÇALHO DO MÓDULO */}
       {/* ============================================================== */}
@@ -466,7 +344,7 @@ export default function DriversModule({ user }) {
           </div>
           <h2>Quadro de Motoristas & Validades em Tempo Real</h2>
           <p>
-            Monitoramento de CNH, curso MOPP, exames toxicológicos e NRs com contadores automáticos de expiração e acionamento direto via WhatsApp.
+            MOPP com validade indeterminada; monitoramento de CNH, exames toxicológicos e NRs com contadores de expiração e acionamento direto via WhatsApp.
           </p>
         </div>
 
@@ -485,11 +363,11 @@ export default function DriversModule({ user }) {
               <button
                 type="button"
                 className="btn-secondary btn-icon-text"
-                onClick={fetchSupabaseDrivers}
+                onClick={handleRefreshQuadro}
                 disabled={loading}
               >
                 <RefreshCw size={16} className={loading ? 'spin-icon' : ''} />
-                <span>Sincronizar Banco</span>
+                <span>Atualizar Quadro</span>
               </button>
 
               <button
@@ -559,7 +437,7 @@ export default function DriversModule({ user }) {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Carlos Eduardo dos Santos"
+                  placeholder="Digite o nome completo do motorista"
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 />
@@ -751,23 +629,13 @@ export default function DriversModule({ user }) {
                   </div>
 
                   <div className="input-group-custom">
-                    <label>Data de Validade do Curso MOPP *</label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.validade_mopp}
-                      onChange={(e) => setFormData({ ...formData, validade_mopp: e.target.value })}
-                    />
+                    <label>Validade do Curso MOPP</label>
+                    <input type="text" aria-label="Validade do Curso MOPP" value="Validade indeterminada" readOnly/>
+
                   </div>
                 </div>
 
-                {formData.validade_mopp && (
-                  <div className={`countdown-live-banner ${getCountdown(formData.validade_mopp).badgeClass}`}>
-                    <Calendar size={15} />
-                    <strong>Curso MOPP ANTT:</strong>
-                    <span>{getCountdown(formData.validade_mopp).text}</span>
-                  </div>
-                )}
+
               </div>
 
               {/* Grid com Cursos e NRs Especializadas do Setor */}
@@ -995,7 +863,7 @@ export default function DriversModule({ user }) {
               <span className="stat-label">Alertas de Vencimento</span>
               <span className="stat-number">{alertDrivers}</span>
               <span className="stat-sub">
-                {alertDrivers > 0 ? 'CNH, MOPP ou Cursos a vencer/vencidos' : '100% dos certificados em dia'}
+                {alertDrivers > 0 ? 'CNH, toxicológico ou outros cursos a vencer/vencidos' : '100% dos certificados em dia'}
               </span>
             </div>
           </div>
@@ -1005,7 +873,7 @@ export default function DriversModule({ user }) {
             <div className="live-board-header">
               <div>
                 <h3>Quadro Operacional de Motoristas & Validades</h3>
-                <p>Gestão técnica de condutores homologados, controle de validades MOPP/NRs e acionamento direto CCO</p>
+                <p>Gestão técnica de condutores homologados, MOPP com validade indeterminada e controle de validades das NRs e acionamento direto CCO</p>
               </div>
 
               <div className="table-controls-bar">
@@ -1101,7 +969,7 @@ export default function DriversModule({ user }) {
               <div className="driver-cards-grid">
                 {filteredDrivers.map((d) => {
                   const cnhCount = getCountdown(d.validade_cnh);
-                  const moppCount = getCountdown(d.validade_mopp);
+                  const moppCount = {status:'valid',badgeClass:'badge-valid',compactText:'Validade indeterminada',formattedDate:''};
                   const toxCount = getCountdown(d.validade_toxicologico);
                   const nr20Count = getCountdown(d.validade_nr20);
                   const nr35Count = getCountdown(d.validade_nr35);
@@ -1180,6 +1048,7 @@ export default function DriversModule({ user }) {
                         )}
                       </div>
 
+                      <div style={{padding:'0 16px 12px'}}><ValidityRequestButton company={company} driver={d}/></div>
                       {/* Dossiê de Validades & Certificações (Grid 2x2 Limpo) */}
                       <div className="driver-compliance-matrix">
                         {/* 1. CNH */}
@@ -1200,9 +1069,9 @@ export default function DriversModule({ user }) {
                             <span>Curso MOPP</span>
                             <span className={`cell-badge ${moppCount.badgeClass}`}>{moppCount.compactText}</span>
                           </div>
-                          <div className="cell-data">{d.mopp_numero || 'MOPP Homologado'}</div>
+                          <div className="cell-data">{d.mopp_numero || 'Certificado não informado'}</div>
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
-                            Val: {moppCount.formattedDate || 'Não informada'}
+                            Validade indeterminada
                           </span>
                         </div>
 
@@ -1305,7 +1174,7 @@ export default function DriversModule({ user }) {
                   <tbody>
                     {filteredDrivers.map((d) => {
                       const cnhCount = getCountdown(d.validade_cnh);
-                      const moppCount = getCountdown(d.validade_mopp);
+                      const moppCount = {status:'valid',badgeClass:'badge-valid',compactText:'Validade indeterminada',formattedDate:''};
                       const toxCount = getCountdown(d.validade_toxicologico);
                       const nr20Count = getCountdown(d.validade_nr20);
                       const nr35Count = getCountdown(d.validade_nr35);
@@ -1344,6 +1213,7 @@ export default function DriversModule({ user }) {
                                   <span>Chamar no Zap</span>
                                 </a>
                               )}
+                              <ValidityRequestButton company={company} driver={d} compact/>
                             </div>
                           </td>
 
@@ -1364,11 +1234,11 @@ export default function DriversModule({ user }) {
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                               <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.82rem', color: '#f8fafc', whiteSpace: 'nowrap' }}>
-                                {d.mopp_numero || 'MOPP Homologado'}
+                                {d.mopp_numero || 'Certificado não informado'}
                               </span>
                               <span className={`table-compact-doc-chip ${moppCount.status}`}>
                                 <span className={`table-doc-dot ${moppCount.status}`}></span>
-                                <span>{moppCount.formattedDate || '—'} · {moppCount.compactText}</span>
+                                <span>{moppCount.compactText}</span>
                               </span>
                             </div>
                           </td>

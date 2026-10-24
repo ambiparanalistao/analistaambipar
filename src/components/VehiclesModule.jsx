@@ -1,3 +1,6 @@
+import FleetBranchField from './maintenance/analytics/FleetBranchField';
+import VehicleMaintenancePanel from './maintenance/vehicles/VehicleMaintenancePanel';
+import {persistFleetVehicle} from '../services/fleetPersistence';
 import React, { useState, useEffect } from 'react';
 import { 
   Truck, 
@@ -36,11 +39,27 @@ import {
   List,
   Clock,
   Shield,
-  CheckSquare
+  CheckSquare,
+  FileText,
+  Upload,
+  X,
+  Filter,
+  TrendingUp,
+  BarChart3,
+  ChevronRight,
+  Copy,
+  Send,
+  Smartphone,
+  SendHorizontal
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
 import { AUDITED_VEHICLES, AUDITED_DRIVERS } from '../data/auditedAmbiparData';
+import { readCrlvFile } from '../utils/crlvPdfReader';
+import WhatsAppDispatchWorkspace from './WhatsAppDispatchWorkspace';
+import useFleetDirectory from '../hooks/useFleetDirectory';
+import {deleteRegistryRecord,updateRegistryStatus,registryChanged} from '../services/fleetDirectory';
+import {driverForVehicle} from '../utils/registryMatching';
 
 export const VEHICLE_STATUS_OPTIONS = [
   { 
@@ -107,7 +126,8 @@ export const FUEL_TYPES = [
 // Frota Flagship Ambipar homologada com dados operacionais auditados 2026 (21 Veículos)
 export const DEFAULT_AMBIPAR_FLEET = AUDITED_VEHICLES;
 
-export const formatPlateMercosul = (val) => {
+export const formatPlateMercosul = (val) =>
+ {
   if (!val) return '—';
   const clean = String(val).toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (clean.length === 7) {
@@ -168,7 +188,104 @@ export const getCountdown = (dateStr) => {
   };
 };
 
-export default function VehiclesModule({ user, onNavigateDrivers }) {
+/* ============================================================== */
+/* GATILHOS FUNCIONAIS & VARIÁVEIS DINÂMICAS PARA WHATSAPP CCO    */
+/* ============================================================== */
+export const DYNAMIC_TRIGGERS = [
+  { tag: '{MOTORISTA}', label: 'Motorista', desc: 'Nome do condutor titular alocado' },
+  { tag: '{PLACA}', label: 'Placa', desc: 'Placa Mercosul do veículo' },
+  { tag: '{PREFIXO}', label: 'Prefixo', desc: 'Prefixo operacional da frota' },
+  { tag: '{MARCA_MODELO}', label: 'Modelo', desc: 'Marca, tração e modelo do caminhão' },
+  { tag: '{KM_ATUAL}', label: 'KM Atual', desc: 'Odômetro informado no cadastro' },
+  { tag: '{PROXIMA_REVISAO}', label: 'Próxima Revisão', desc: 'KM da próxima parada preventiva' },
+  { tag: '{TIPO_CARGA}', label: 'Carga', desc: 'Tipo de carga homologada' },
+  { tag: '{COMBUSTIVEL}', label: 'Combustível', desc: 'Diesel S10 / Biodiesel B100' },
+  { tag: '{STATUS_CCO}', label: 'Status', desc: 'Status operacional no pátio ou rota' },
+  { tag: '{HORA_ATUAL}', label: 'Hora CCO', desc: 'Horário do registro' }
+];
+
+/* ============================================================== */
+/* MODELOS PRÉ-DEFINIDOS DE MENSAGENS OPERACIONAIS (TEMPLATES CCO) */
+/* ============================================================== */
+export const WHATSAPP_TEMPLATES = [
+  {
+    id: 'escala',
+    category: 'Escala & Carregamento',
+    badge: 'Prioritário',
+    title: 'Ordem de Carregamento & Escala Imediata',
+    description: 'Convocação para apresentação na base e início de rota',
+    template: 'Olá, {MOTORISTA}! Aqui é a Torre de Operações CCO Ambipar.\n\nO conjunto {MARCA_MODELO} (Placa *{PLACA}*, Prefixo *{PREFIXO}*) foi escalado para operação imediata de {TIPO_CARGA}.\n\nFavor se apresentar na base operacional para o checklist de saída e liberação da documentação de viagem (DACTE / MDF-e).\n\nTorre de Controle Ambipar CCO • {HORA_ATUAL}'
+  },
+  {
+    id: 'revisao',
+    category: 'Manutenção Preventiva',
+    badge: 'Oficina',
+    title: 'Alerta de Revisão Preventiva por Odômetro',
+    description: 'Notificação de aproximação do limite de quilometragem',
+    template: 'Olá, {MOTORISTA}! Gestão de Manutenção de Frotas Ambipar informando:\n\nIdentificamos pelo odômetro cadastrado que o veículo *{PLACA}* atingiu *{KM_ATUAL} km*. A próxima revisão preventiva está programada para *{PROXIMA_REVISAO} km*.\n\nSolicitamos programar parada na oficina central da base para alinhamento e inspeção preventiva.\n\nGestão de Frotas & Manutenção CCO'
+  },
+  {
+    id: 'vistorias',
+    category: 'Compliance & Regulatório',
+    badge: 'ANTT / INMETRO',
+    title: 'Aviso de Vencimento de Vistorias & Laudos',
+    description: 'Aviso de renovação para CIPP, CIV, CRLV ou Cronotacógrafo',
+    template: 'Prezado(a) {MOTORISTA},\n\nAvisamos que o veículo *{PLACA}* ({MARCA_MODELO}) possui laudos regulatórios obrigatórios próximos da data de vencimento ({VISTORIAS_STATUS}).\n\nFavor apresentar o conjunto para inspeção e renovação antes do prazo limite para evitar bloqueios operacionais na ANTT/INMETRO.\n\nCompliance & Segurança Veicular Ambipar'
+  },
+  {
+    id: 'checklist',
+    category: 'Segurança & PAE',
+    badge: 'Emergência',
+    title: 'Checklist 360º & Prontidão Ambiental PAE',
+    description: 'Inspeção preventiva de itens Hazmat e segurança',
+    template: 'Olá, {MOTORISTA}! Lembrete de Segurança Operacional Ambipar:\n\nAntes de liberar a partida do veículo *{PLACA}*, realize o checklist 360º obrigatório:\n• Calibração e estado dos pneus\n• Extintores e lacres de segurança\n• Kit PAE de Atendimento a Emergências Químicas\n• Cones, lanternas e calços de roda\n\nSua segurança e a preservação ambiental são prioridade máxima!'
+  },
+  {
+    id: 'posicao',
+    category: 'Torre de Controle CCO',
+    badge: 'Monitoramento',
+    title: 'Solicitação de Posição & Status de Viagem',
+    description: 'Confirmação de rota, trânsito e descanso da Lei 13.103',
+    template: 'Olá, {MOTORISTA}! Torre de Controle Ambipar CCO em contato.\n\nSolicitamos confirmação do seu posicionamento atual e status de viagem do veículo *{PLACA}*.\n\nFavor confirmar se a viagem segue conforme planejado e se as paradas de descanso da Lei 13.103 estão sendo cumpridas.\n\nTorre de Controle 24h Ambipar'
+  },
+  {
+    id: 'combustivel',
+    category: 'Eficiência Energética',
+    badge: 'Combustível',
+    title: 'Comprovante de Abastecimento & Odômetro',
+    description: 'Solicitação de foto do comprovante e km da bomba',
+    template: 'Olá, {MOTORISTA}! Lembrete de controle de combustível CCO:\n\nFavor enviar a foto da nota fiscal do último abastecimento de {COMBUSTIVEL} do veículo *{PLACA}*, informando o odômetro da bomba para atualização dos indicadores de consumo e eficiência energética.\n\nObrigado pela colaboração!'
+  }
+];
+
+export function resolveMessageTags(templateText, vehicle) {
+  if (!templateText) return '';
+  const now = new Date();
+  const horaStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  const vistorias = [];
+  if (vehicle?.validade_crlv) vistorias.push(`CRLV: ${vehicle.validade_crlv}`);
+  if (vehicle?.validade_cipp) vistorias.push(`CIPP: ${vehicle.validade_cipp}`);
+  if (vehicle?.validade_civ) vistorias.push(`CIV: ${vehicle.validade_civ}`);
+  if (vehicle?.validade_cronotacografo) vistorias.push(`Tacógrafo: ${vehicle.validade_cronotacografo}`);
+  const vistoriasStr = vistorias.length > 0 ? vistorias.slice(0, 2).join(', ') : 'CRLV e CIPP em monitoramento';
+
+  return templateText
+    .replace(/{MOTORISTA}/g, vehicle?.motorista_vinculado || 'Condutor')
+    .replace(/{PLACA}/g, vehicle?.placa || 'Sem placa')
+    .replace(/{PREFIXO}/g, vehicle?.prefixo || 'Frota')
+    .replace(/{MARCA_MODELO}/g, vehicle?.marca_modelo || vehicle?.tipo || 'Caminhão')
+    .replace(/{TIPO_CARGA}/g, vehicle?.tipo_carga || 'Não informado')
+    .replace(/{COMBUSTIVEL}/g, vehicle?.combustivel || 'Não informado')
+    .replace(/{KM_ATUAL}/g, vehicle?.km_atual ? Number(vehicle.km_atual).toLocaleString('pt-BR') : '—')
+    .replace(/{PROXIMA_REVISAO}/g, vehicle?.proxima_revisao_km ? Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR') : '—')
+    .replace(/{STATUS_CCO}/g, vehicle?.status || 'Não informado')
+    .replace(/{VISTORIAS_STATUS}/g, vistoriasStr)
+    .replace(/{HORA_ATUAL}/g, horaStr);
+}
+
+export default function VehiclesModule({ user, companyId, maintenanceAccess, onNavigateDrivers }) {
+  const [maintenanceVehicle,setMaintenanceVehicle]=useState(null);
   const [viewMode, setViewMode] = useState('list'); // 'list' ou 'form'
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' ou 'table'
   const [searchTerm, setSearchTerm] = useState('');
@@ -176,51 +293,41 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [fleetSaving,setFleetSaving]=useState(false);
 
-  // Inicializa veículos a partir do localStorage ou da frota flagship Ambipar
-  const [vehicles, setVehicles] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_real_vehicles');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.length > 0) {
-          // Remove resquício de teste inválido digitado com placa numérica '32342322'
-          const filtered = parsed.filter(v => v.placa !== '32342322' && v.marca_modelo !== 'errsszxfdrs');
-          if (filtered.length >= 15) return filtered;
-        }
-      }
-      return DEFAULT_AMBIPAR_FLEET;
-    } catch {
-      return DEFAULT_AMBIPAR_FLEET;
+  // Estado para a Central de Despacho WhatsApp CCO (Tela Completa)
+  const [dispatchVehicle, setDispatchVehicle] = useState(null);
+
+  // Estados para importação automática via CRLV-e (Processamento em RAM)
+  const [crlvLoading, setCrlvLoading] = useState(false);
+  const [crlvProgress, setCrlvProgress] = useState('');
+  const [crlvSuccess, setCrlvSuccess] = useState(null);
+  const [crlvError, setCrlvError] = useState(null);
+  const crlvFileInputRef = React.useRef(null);
+
+  const directory=useFleetDirectory(companyId);
+  const [vehicles,setVehicles]=useState(() => DEFAULT_AMBIPAR_FLEET);
+  const [availableDrivers,setAvailableDrivers]=useState(() => AUDITED_DRIVERS.map(d=>({value:d.nome,label:d.nome+(d.categoria_cnh?' (CNH '+d.categoria_cnh+')':''),phone:d.telefone||''})));
+  useEffect(()=>{
+    if(directory.vehicles && directory.vehicles.length > 0){
+      setVehicles(directory.vehicles);
+    } else {
+      setVehicles(DEFAULT_AMBIPAR_FLEET);
     }
-  });
-
-  // Lista de motoristas cadastrados para vinculação
-  const [availableDrivers, setAvailableDrivers] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_real_drivers');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const list = parsed && parsed.length > 0 ? parsed : AUDITED_DRIVERS;
-        return list.map(d => ({ 
-          value: d.nome, 
-          label: `${d.nome} (CNH ${d.categoria_cnh || 'E'})`,
-          phone: d.telefone || ''
-        }));
-      }
-      return [];
-    } catch {
-      return [];
+    if(directory.drivers && directory.drivers.length > 0){
+      setAvailableDrivers(directory.drivers.map(d=>({value:d.nome,label:d.nome+(d.categoria_cnh?' (CNH '+d.categoria_cnh+')':''),phone:d.telefone||''})));
     }
-  });
-
+    setLoading(directory.loading);
+    if(directory.error)setFeedback({type:'error',text:directory.error});
+  },[directory.vehicles,directory.drivers,directory.loading,directory.error]);
   const initialForm = {
+    branch_id: '',
     placa: '',
     prefixo: 'AMB-',
     tipo: 'Carreta Tanque Químico (Inox 316L)',
     marca_modelo: '',
-    ano_fabricacao: new Date().getFullYear(),
-    ano_modelo: new Date().getFullYear(),
+    ano_fabricacao: '',
+    ano_modelo: '',
     chassi: '',
     renavam: '',
     capacidade_peso_ton: '',
@@ -242,44 +349,14 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
 
   const [formData, setFormData] = useState(initialForm);
 
-  // Persistência no localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_real_vehicles', JSON.stringify(vehicles));
-      const platesList = vehicles.map(v => ({
-        placa: v.placa,
-        modelo: `${v.placa} - ${v.marca_modelo || v.tipo}`,
-        tipo: v.tipo
-      }));
-      localStorage.setItem('ambipar_fleet_vehicles', JSON.stringify(platesList));
-    } catch (e) {
-      console.warn('Erro ao salvar veículos:', e);
-    }
-  }, [vehicles]);
-
-  // Sincronização Supabase
-  const fetchSupabaseVehicles = async () => {
-    if (!isSupabaseConfigured || !supabase) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('veiculos')
-        .select('*')
-        .order('placa', { ascending: true });
-
-      if (!error && data && data.length > 0) {
-        setVehicles(data);
-      }
-    } catch (err) {
-      console.warn('Tabela veiculos pendente no Supabase:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchSupabaseVehicles=()=>directory.reload();
 
   const handleOpenCreateForm = () => {
     setEditingId(null);
     setFormData(initialForm);
+    setCrlvSuccess(null);
+    setCrlvError(null);
+    setCrlvProgress('');
     setViewMode('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -290,16 +367,83 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       ...vehicle,
       capacidade_peso_ton: vehicle.capacidade_peso_ton || '',
       capacidade_volume_m3: vehicle.capacidade_volume_m3 || '',
-      km_atual: vehicle.km_atual || '',
+      km_atual: vehicle.km_atual ?? '',
       proxima_revisao_km: vehicle.proxima_revisao_km || ''
     });
+    setCrlvSuccess(null);
+    setCrlvError(null);
+    setCrlvProgress('');
     setViewMode('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  /**
+   * Processa o CRLV (PDF ou Imagem) 100% em memória RAM
+   * O documento NÃO é armazenado, apenas os campos são extraídos e aplicados
+   */
+  const handleCrlvFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCrlvLoading(true);
+    setCrlvProgress('Lendo CRLV em memória RAM...');
+    setCrlvError(null);
+    setCrlvSuccess(null);
+
+    try {
+      const data = await readCrlvFile(file, (msg) => {
+        setCrlvProgress(msg);
+      });
+
+      const extractedCount = [
+        data.placa, data.renavam, data.chassi, data.marca_modelo, 
+        data.ano_fabricacao, data.capacidade_peso_ton, data.validade_crlv
+      ].filter(Boolean).length;
+
+      if (extractedCount === 0) {
+        throw new Error('Não foi possível identificar dados do veículo no documento. Verifique se o arquivo enviado é um CRLV legível.');
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        placa: data.placa || prev.placa,
+        renavam: data.renavam || prev.renavam,
+        chassi: data.chassi || prev.chassi,
+        marca_modelo: data.marca_modelo || prev.marca_modelo,
+        ano_fabricacao: data.ano_fabricacao || prev.ano_fabricacao,
+        ano_modelo: data.ano_modelo || prev.ano_modelo || data.ano_fabricacao || prev.ano_fabricacao,
+        tipo: data.tipo || prev.tipo,
+        combustivel: data.combustivel || prev.combustivel,
+        capacidade_peso_ton: data.capacidade_peso_ton || prev.capacidade_peso_ton,
+        validade_crlv: data.validade_crlv || prev.validade_crlv,
+        observacoes: data.observacoes 
+          ? (prev.observacoes && !prev.observacoes.includes('CRLV') ? `${prev.observacoes} | ${data.observacoes}` : data.observacoes)
+          : prev.observacoes
+      }));
+
+      setCrlvSuccess({
+        placa: data.placa,
+        marca_modelo: data.marca_modelo,
+        renavam: data.renavam,
+        chassi: data.chassi,
+        ano: data.ano_modelo || data.ano_fabricacao,
+        validade: data.validade_crlv
+      });
+    } catch (err) {
+      console.error('Erro na extração do CRLV:', err);
+      setCrlvError(err.message || 'Falha ao processar o arquivo do CRLV.');
+    } finally {
+      setCrlvLoading(false);
+      setCrlvProgress('');
+      if (e.target) e.target.value = '';
+    }
+  };
+
   const handleSubmitForm = async (e) => {
     e.preventDefault();
+    if(fleetSaving)return;
 
+    if(formData.km_atual===''){setFeedback({type:'error',text:'Informe o odômetro real do veículo antes de salvar.'});return;}
     const formattedPlaca = formData.placa.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!formattedPlaca || formattedPlaca.length < 7) {
       alert('A Placa do veículo deve ter no mínimo 7 caracteres alfanuméricos.');
@@ -311,56 +455,31 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       placa: formattedPlaca,
       capacidade_peso_ton: formData.capacidade_peso_ton ? parseFloat(formData.capacidade_peso_ton) : null,
       capacidade_volume_m3: formData.capacidade_volume_m3 ? parseFloat(formData.capacidade_volume_m3) : null,
-      meta_consumo_kml: formData.meta_consumo_kml ? parseFloat(formData.meta_consumo_kml) : 2.40,
+      meta_consumo_kml: formData.meta_consumo_kml ? parseFloat(formData.meta_consumo_kml) : null,
       km_atual: formData.km_atual ? parseInt(formData.km_atual, 10) : 0,
-      proxima_revisao_km: formData.proxima_revisao_km ? parseInt(formData.proxima_revisao_km, 10) : 0,
+      proxima_revisao_km: formData.proxima_revisao_km ? parseInt(formData.proxima_revisao_km, 10) : null,
       velocidade_kmh: formData.velocidade_kmh ? parseInt(formData.velocidade_kmh, 10) : 0,
-      nivel_tanque_percent: formData.nivel_tanque_percent ? parseInt(formData.nivel_tanque_percent, 10) : 80
+      nivel_tanque_percent: formData.nivel_tanque_percent ? parseInt(formData.nivel_tanque_percent, 10) : null
     };
 
-    if (editingId) {
-      const updatedList = vehicles.map(v => v.id === editingId ? { ...payload, id: editingId } : v);
-      setVehicles(updatedList);
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('veiculos').update(payload).eq('id', editingId).then();
-      }
-      setFeedback({ type: 'success', text: `Veículo placa ${formattedPlaca} atualizado com sucesso!` });
-    } else {
-      const newVehicle = {
-        ...payload,
-        id: `VEI-${Date.now().toString().slice(-6)}`,
-        created_at: new Date().toISOString()
-      };
-      setVehicles([newVehicle, ...vehicles]);
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('veiculos').insert([{ user_id: user?.id, ...payload }]).then();
-      }
-      setFeedback({ type: 'success', text: `Veículo placa ${formattedPlaca} homologado na frota Ambipar!` });
-    }
-
+    if (isSupabaseConfigured && supabase && !user?.id?.startsWith('demo')) {
+      setFleetSaving(true);
+      setFeedback({type:'info',text:'Salvando veículo…'});
+      try {
+        const savedVehicle=await persistFleetVehicle(payload,editingId,user?.id,companyId);
+        setVehicles(previous=>editingId?previous.map(v=>v.id===editingId?savedVehicle:v):[savedVehicle,...previous]);
+      } catch(error) {
+        setFeedback({type:'error',text:'Veículo não salvo: '+error.message});
+        return;
+      } finally { setFleetSaving(false); }
+    } else {setFeedback({type:'error',text:'Conecte-se ao banco e selecione uma empresa para salvar.'});return;}
+    setFeedback({type:'success',text:'Veículo placa '+formattedPlaca+' salvo com sucesso!'});
     setViewMode('list');
     setTimeout(() => setFeedback(null), 4000);
   };
 
-  const handleQuickStatusChange = (vehicleId, newStatus) => {
-    const updated = vehicles.map(v => v.id === vehicleId ? { ...v, status: newStatus } : v);
-    setVehicles(updated);
-    if (isSupabaseConfigured && supabase) {
-      supabase.from('veiculos').update({ status: newStatus }).eq('id', vehicleId).then();
-    }
-  };
-
-  const handleDeleteVehicle = (vehicleId, placa) => {
-    if (window.confirm(`Confirma a exclusão do veículo placa ${placa} da frota ativa?`)) {
-      setVehicles(vehicles.filter(v => v.id !== vehicleId));
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('veiculos').delete().eq('id', vehicleId).then();
-      }
-      setFeedback({ type: 'info', text: `Veículo placa ${placa} removido da frota.` });
-      setTimeout(() => setFeedback(null), 3000);
-    }
-  };
-
+  const handleQuickStatusChange=async(id,status)=>{try{const saved=await updateRegistryStatus('veiculos',id,status,companyId);setVehicles(rows=>rows.map(v=>v.id===id?saved:v));}catch(e){setFeedback({type:'error',text:e.message});}};
+  const handleDeleteVehicle=async(id,placa)=>{if(!window.confirm('Confirma a exclusão do veículo '+placa+'?'))return;try{await deleteRegistryRecord('veiculos',id,companyId);setVehicles(rows=>rows.filter(v=>v.id!==id));setFeedback({type:'success',text:'Veículo excluído do banco.'});}catch(e){setFeedback({type:'error',text:e.message});}};
   const getWhatsAppLink = (phoneStr) => {
     if (!phoneStr) return null;
     const cleanNumber = phoneStr.replace(/\D/g, '');
@@ -368,13 +487,45 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
     return `https://wa.me/${fullNumber}`;
   };
 
-  // KPIs da Frota
+  // KPIs da Frota & Telemetria Executiva CCO
   const totalVehicles = vehicles.length;
   const availableCount = vehicles.filter(v => v.status === 'Disponível').length;
   const tripCount = vehicles.filter(v => v.status === 'Em Viagem').length;
   const maintenanceCount = vehicles.filter(v => v.status === 'Manutenção').length;
   const blockedCount = vehicles.filter(v => v.status === 'Bloqueado').length;
 
+  const readyVehiclesCount = availableCount + tripCount;
+  const readinessRate = totalVehicles > 0 
+    ? Math.round((readyVehiclesCount / totalVehicles) * 100) 
+    : 0;
+  const totalCapacityTons = vehicles.reduce((sum, v) => sum + (parseFloat(v.capacidade_peso_ton) || 0), 0);
+  const totalVolumeM3 = vehicles.reduce((sum, v) => sum + (parseFloat(v.capacidade_volume_m3) || 0), 0);
+  const totalKmRodados = vehicles.reduce((sum, v) => sum + (parseInt(v.km_atual, 10) || 0), 0);
+
+  const handleKpiCardClick = (statusTarget) => {
+    if (statusFilter === statusTarget) {
+      setStatusFilter('Todos');
+    } else {
+      setStatusFilter(statusTarget);
+    }
+  };
+
+  /* ============================================================== */
+  /* CONTROLADORES DA CENTRAL DE DESPACHO WHATSAPP CCO (WORKSPACE)   */
+  /* ============================================================== */
+  const handleOpenWhatsAppWorkspace = (vehicle) => {
+    setDispatchVehicle(vehicle);
+    setViewMode('dispatch');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCloseWhatsAppWorkspace = () => {
+    setDispatchVehicle(null);
+    setViewMode('list');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSaveDriverPhone=async(vehicleId,newPhone)=>{try{const v=vehicles.find(v=>v.id===vehicleId);const d=driverForVehicle(v,directory.drivers);if(d){const r=await supabase.from('motoristas').update({telefone:newPhone}).eq('id',d.id).eq('company_id',companyId).select('id').single();if(r.error)throw r.error;}const r=await supabase.from('veiculos').update({motorista_telefone:newPhone}).eq('id',vehicleId).eq('company_id',companyId).select().single();if(r.error)throw r.error;setVehicles(rows=>rows.map(v=>v.id===vehicleId?r.data:v));registryChanged(companyId);}catch(e){setFeedback({type:'error',text:'Telefone não salvo: '+e.message});}};
   // Filtros aplicados
   const filteredVehicles = vehicles.filter(v => {
     const s = searchTerm.toLowerCase();
@@ -390,65 +541,69 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
     return matchesSearch && matchesStatus;
   });
 
+  if(maintenanceVehicle)return <VehicleMaintenancePanel access={maintenanceAccess} vehicleId={maintenanceVehicle.id} onBack={()=>setMaintenanceVehicle(null)}/>;
   return (
     <div className="module-page-container animate-fade-in" id="vehicles-module-root">
       {/* ============================================================== */}
       {/* CABEÇALHO DO MÓDULO & TORRE DE TELEMETRIA AO VIVO              */}
       {/* ============================================================== */}
-      <div className="module-page-header">
-        <div className="module-title-area">
-          <div className="module-icon-pill forest">
-            <Truck size={24} />
-          </div>
-          <div>
-            <div className="cockpit-meta-badges">
-              <span className="esg-fleet-chip">
-                <ShieldCheck size={12} color="#10b981" />
-                <span>Conformidade ANTT & INMETRO</span>
-              </span>
-              <span className="esg-fleet-chip">
-                <Flame size={12} color="#10b981" />
-                <span>Frota Euro 6 & Descarbonização B100</span>
-              </span>
+      {viewMode !== 'dispatch' && (
+        <div className="module-page-header">
+          <div className="module-title-area">
+            <div className="module-icon-pill forest">
+              <Truck size={24} />
             </div>
-            <h2>Gestão de Frotas & Veículos Homologados</h2>
-            <p>Controle operacional de veículos, carretas, vistorias CIPP/CIV, cronotacógrafo e conformidade regulatória ANTT/INMETRO</p>
+            <div>
+              <div className="cockpit-meta-badges">
+                <span className="esg-fleet-chip">
+                  <ShieldCheck size={12} color="#10b981" />
+                  <span>Conformidade ANTT & INMETRO</span>
+                </span>
+                <span className="esg-fleet-chip">
+                  <Flame size={12} color="#10b981" />
+                  <span>Frota Euro 6 & Descarbonização B100</span>
+                </span>
+              </div>
+              <h2>Gestão de Frotas & Veículos Homologados</h2>
+              <p>Controle operacional de veículos, carretas, vistorias CIPP/CIV, cronotacógrafo e conformidade regulatória ANTT/INMETRO</p>
+            </div>
           </div>
-        </div>
 
-        <div className="module-header-actions">
-          {viewMode === 'list' ? (
-            <>
+          <div className="module-header-actions">
+            {viewMode === 'list' ? (
+              <>
+                <button
+                  type="button"
+                  className="btn-secondary btn-icon-text"
+                  onClick={fetchSupabaseVehicles}
+                  disabled={loading}
+                >
+                  <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                  <span>Atualizar Lista</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary btn-icon-text"
+                  onClick={handleOpenCreateForm}
+                  id="btn-open-create-vehicle"
+                >
+                  <Plus size={18} />
+                  <span>Homologar Novo Veículo</span>
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
                 className="btn-secondary btn-icon-text"
-                onClick={fetchSupabaseVehicles}
-                disabled={loading}
+                onClick={() => setViewMode('list')}
               >
-                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                <span>Atualizar Lista</span>
+                <ArrowLeft size={16} />
+                <span>Voltar à Lista de Frotas</span>
               </button>
-              <button
-                type="button"
-                className="btn-primary btn-icon-text"
-                onClick={handleOpenCreateForm}
-              >
-                <Plus size={18} />
-                <span>+ Homologar Novo Veículo</span>
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="btn-secondary btn-icon-text"
-              onClick={() => setViewMode('list')}
-            >
-              <ArrowLeft size={16} />
-              <span>Voltar à Lista de Frotas</span>
-            </button>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {feedback && (
         <div className={`alert alert-${feedback.type} animate-fade-in`} style={{ marginBottom: '1.25rem' }}>
@@ -476,7 +631,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 Cancelar
               </button>
               <button
-                type="submit"
+                type="submit" disabled={fleetSaving}
                 className="btn-primary btn-icon-text"
               >
                 <Save size={16} />
@@ -484,6 +639,93 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
               </button>
             </div>
           </div>
+
+          {/* ============================================================== */}
+          {/* BANNER DE IMPORTAÇÃO AUTOMÁTICA VIA CRLV-e (SEM ARMAZENAMENTO)  */}
+          {/* ============================================================== */}
+          <div className="crlv-smart-import-card animate-fade-in" id="crlv-import-banner">
+            <div className="crlv-import-left">
+              <div className="crlv-icon-wrap">
+                <FileText size={26} className="text-emerald" />
+              </div>
+              <div className="crlv-info-texts">
+                <div className="crlv-title-row">
+                  <h4>Importação Automática via CRLV-e (PDF ou Foto)</h4>
+                  <span className="crlv-badge-safe">
+                    <ShieldCheck size={13} />
+                    <span>Processamento em RAM (Não armazena documento)</span>
+                  </span>
+                </div>
+                <p className="crlv-desc">
+                  Envie o CRLV Digital do veículo para preencher automaticamente <strong>Placa, Chassi, Renavam, Marca/Modelo, Ano, Tipo e Licenciamento</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="crlv-import-actions">
+              <input
+                type="file"
+                ref={crlvFileInputRef}
+                onChange={handleCrlvFileUpload}
+                accept=".pdf,image/png,image/jpeg,image/jpg,image/webp"
+                style={{ display: 'none' }}
+                id="crlv-file-upload-input"
+              />
+
+              <button
+                type="button"
+                className="btn-primary btn-icon-text crlv-btn-upload"
+                onClick={() => crlvFileInputRef.current?.click()}
+                disabled={crlvLoading}
+                id="btn-upload-crlv"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {crlvLoading ? (
+                  <>
+                    <RefreshCw size={16} className="animate-spin" />
+                    <span>{crlvProgress || 'Lendo CRLV...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} />
+                    <span>Importar do CRLV</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Feedback de Alerta / Erro do CRLV */}
+          {crlvError && (
+            <div className="alert alert-error animate-fade-in" style={{ marginBottom: '1.25rem' }}>
+              <AlertTriangle size={18} />
+              <div>
+                <strong>Atenção na leitura do CRLV:</strong>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem' }}>{crlvError}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Feedback de Sucesso do CRLV com campos lidos */}
+          {crlvSuccess && (
+            <div className="crlv-success-banner animate-fade-in" style={{ marginBottom: '1.25rem' }}>
+              <div className="crlv-success-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <CheckCircle2 size={18} className="text-emerald" />
+                  <strong>Campos do CRLV extraídos e preenchidos automaticamente no formulário:</strong>
+                </div>
+                <span className="crlv-ephemeral-tag">Arquivo descartado da memória com segurança</span>
+              </div>
+              <div className="crlv-extracted-chips">
+                {crlvSuccess.placa && <span className="extracted-chip"><strong>Placa:</strong> {crlvSuccess.placa}</span>}
+                {crlvSuccess.marca_modelo && <span className="extracted-chip"><strong>Marca/Modelo:</strong> {crlvSuccess.marca_modelo}</span>}
+                {crlvSuccess.chassi && <span className="extracted-chip"><strong>Chassi:</strong> {crlvSuccess.chassi}</span>}
+                {crlvSuccess.renavam && <span className="extracted-chip"><strong>Renavam:</strong> {crlvSuccess.renavam}</span>}
+                {crlvSuccess.ano && <span className="extracted-chip"><strong>Ano:</strong> {crlvSuccess.ano}</span>}
+                {crlvSuccess.validade && <span className="extracted-chip"><strong>Validade CRLV:</strong> {crlvSuccess.validade}</span>}
+              </div>
+            </div>
+          )}
 
           <div className="driver-form-sections-grid">
             {/* Bloco 1: Identificação Civil & Placa */}
@@ -604,7 +846,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
 
               <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
                 <div className="input-group-custom">
-                  <label>Odômetro Registrado (Km)</label>
+                  <FleetBranchField key={companyId} company={companyId} canWrite={maintenanceAccess?.canWrite} value={formData.branch_id} onChange={value=>setFormData(f=>({...f,branch_id:value}))}/><label>Odômetro Registrado (Km)</label>
                   <input
                     type="number"
                     placeholder="Ex: 118420"
@@ -768,7 +1010,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
               Cancelar
             </button>
             <button
-              type="submit"
+              type="submit" disabled={fleetSaving}
               className="btn-primary btn-icon-text"
             >
               <Save size={18} />
@@ -776,16 +1018,100 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
             </button>
           </div>
         </form>
+      ) : viewMode === 'dispatch' && dispatchVehicle ? (
+        /* ============================================================== */
+        /* MODO 3: CENTRAL DE DESPACHO WHATSAPP CCO - TELA COMPLETA       */
+        /* ============================================================== */
+        <WhatsAppDispatchWorkspace
+          companyId={companyId}
+          vehicle={dispatchVehicle}
+          onBack={handleCloseWhatsAppWorkspace}
+          onUpdateVehiclePhone={handleSaveDriverPhone}
+        />
       ) : (
         /* ============================================================== */
         /* MODO 2: COCKPIT OPERACIONAL DA FROTA (CARDS & TABELA)          */
         /* ============================================================== */
         <>
           {/* ========================================================== */}
-          {/* 5 CARDS EXECUTIVOS DE KPIS (HORIZONTALMENTE DISTRIBUÍDOS)   */}
+          {/* COCKPIT DE TELEMETRIA & PRONTIDÃO OPERACIONAL DA FROTA     */}
+          {/* ========================================================== */}
+          <div className="fleet-readiness-widget animate-fade-in">
+            <div className="readiness-main-col">
+              <div className="readiness-header">
+                <div className="readiness-title-wrap">
+                  <span className="readiness-beacon"></span>
+                  <span className="readiness-kicker">Torre de Operações & CCO Ambipar</span>
+                </div>
+                <div className="readiness-percentage-wrap">
+                  <span className="readiness-val">{readinessRate}%</span>
+                  <span className="readiness-lbl">Prontidão da Frota</span>
+                </div>
+              </div>
+              
+              <div className="readiness-progress-track">
+                <div 
+                  className="readiness-progress-fill" 
+                  style={{ width: `${readinessRate}%` }}
+                ></div>
+              </div>
+              
+              <div className="readiness-subline">
+                <span>
+                  <strong>{readyVehiclesCount} de {totalVehicles}</strong> veículos homologados aptos para atendimento imediato ou em trânsito com carga ativa.
+                </span>
+              </div>
+            </div>
+
+            <div className="readiness-metrics-grid">
+              <div className="readiness-metric-item">
+                <div className="metric-icon-box cyan">
+                  <Gauge size={16} />
+                </div>
+                <div className="metric-info-col">
+                  <span className="metric-label">Capacidade PBTC</span>
+                  <strong className="metric-value">{totalCapacityTons.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} t</strong>
+                  <span className="metric-sublabel">Carga útil combinada</span>
+                </div>
+              </div>
+
+              <div className="readiness-metric-item">
+                <div className="metric-icon-box emerald">
+                  <Layers size={16} />
+                </div>
+                <div className="metric-info-col">
+                  <span className="metric-label">Volume de Carga</span>
+                  <strong className="metric-value">{totalVolumeM3.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} m³</strong>
+                  <span className="metric-sublabel">Tanques, silos e baús</span>
+                </div>
+              </div>
+
+              <div className="readiness-metric-item">
+                <div className="metric-icon-box purple">
+                  <TrendingUp size={16} />
+                </div>
+                <div className="metric-info-col">
+                  <span className="metric-label">Quilometragem Total</span>
+                  <strong className="metric-value">{totalKmRodados.toLocaleString('pt-BR')} km</strong>
+                  <span className="metric-sublabel">Odômetros monitorados</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================== */}
+          {/* 5 CARDS EXECUTIVOS DE KPIS INTERATIVOS (CLIQUE PARA FILTRAR)*/}
           {/* ========================================================== */}
           <div className="kpi-grid">
-            <div className="kpi-card">
+            {/* Card 1: Total */}
+            <div 
+              className={`kpi-card interactive-kpi ${statusFilter === 'Todos' ? 'kpi-active-all' : ''}`}
+              onClick={() => handleKpiCardClick('Todos')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleKpiCardClick('Todos')}
+              title="Clique para exibir todos os veículos da frota"
+            >
               <div className="kpi-top">
                 <span className="kpi-title">Frota Total Cadastrada</span>
                 <div className="kpi-icon-wrap emerald">
@@ -795,13 +1121,28 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
               <div className="kpi-main-val">
                 <span className="val-number">{totalVehicles}</span>
                 <span className="unit-suffix">veículos</span>
+                <span className="kpi-share-chip all">100% frota</span>
               </div>
               <div className="kpi-footer-status">
                 <span>Veículos & implementos ativos</span>
+                {statusFilter === 'Todos' ? (
+                  <span className="kpi-badge-selected"><Check size={10} /> Ativo</span>
+                ) : (
+                  <span className="kpi-badge-hover"><Filter size={10} /> Filtrar</span>
+                )}
               </div>
+              <div className="kpi-bottom-glow all"></div>
             </div>
 
-            <div className="kpi-card">
+            {/* Card 2: Disponíveis */}
+            <div 
+              className={`kpi-card interactive-kpi ${statusFilter === 'Disponível' ? 'kpi-active-emerald' : ''}`}
+              onClick={() => handleKpiCardClick('Disponível')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleKpiCardClick('Disponível')}
+              title="Clique para filtrar apenas veículos disponíveis no pátio"
+            >
               <div className="kpi-top">
                 <span className="kpi-title">Disponíveis no Pátio</span>
                 <div className="kpi-icon-wrap forest">
@@ -809,15 +1150,32 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 </div>
               </div>
               <div className="kpi-main-val">
-                <span className="val-number" style={{ color: '#10b981' }}>{availableCount}</span>
+                <span className="val-number text-emerald">{availableCount}</span>
                 <span className="unit-suffix">liberados</span>
+                <span className="kpi-share-chip emerald">
+                  {totalVehicles > 0 ? `${Math.round((availableCount / totalVehicles) * 100)}%` : '0%'}
+                </span>
               </div>
               <div className="kpi-footer-status">
                 <span>Prontos para escala imediata CCO</span>
+                {statusFilter === 'Disponível' ? (
+                  <span className="kpi-badge-selected emerald"><Check size={10} /> Ativo</span>
+                ) : (
+                  <span className="kpi-badge-hover"><Filter size={10} /> Filtrar</span>
+                )}
               </div>
+              <div className="kpi-bottom-glow emerald"></div>
             </div>
 
-            <div className="kpi-card">
+            {/* Card 3: Em Viagem */}
+            <div 
+              className={`kpi-card interactive-kpi ${statusFilter === 'Em Viagem' ? 'kpi-active-cyan' : ''}`}
+              onClick={() => handleKpiCardClick('Em Viagem')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleKpiCardClick('Em Viagem')}
+              title="Clique para filtrar veículos em viagem/operação"
+            >
               <div className="kpi-top">
                 <span className="kpi-title">Em Operação / Viagem</span>
                 <div className="kpi-icon-wrap cyan">
@@ -825,15 +1183,32 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 </div>
               </div>
               <div className="kpi-main-val">
-                <span className="val-number" style={{ color: '#06b6d4' }}>{tripCount}</span>
+                <span className="val-number text-cyan">{tripCount}</span>
                 <span className="unit-suffix">em rota</span>
+                <span className="kpi-share-chip cyan">
+                  {totalVehicles > 0 ? `${Math.round((tripCount / totalVehicles) * 100)}%` : '0%'}
+                </span>
               </div>
               <div className="kpi-footer-status">
                 <span>Com manifesto de viagem ativo</span>
+                {statusFilter === 'Em Viagem' ? (
+                  <span className="kpi-badge-selected cyan"><Check size={10} /> Ativo</span>
+                ) : (
+                  <span className="kpi-badge-hover"><Filter size={10} /> Filtrar</span>
+                )}
               </div>
+              <div className="kpi-bottom-glow cyan"></div>
             </div>
 
-            <div className="kpi-card">
+            {/* Card 4: Manutenção */}
+            <div 
+              className={`kpi-card interactive-kpi ${statusFilter === 'Manutenção' ? 'kpi-active-orange' : ''}`}
+              onClick={() => handleKpiCardClick('Manutenção')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleKpiCardClick('Manutenção')}
+              title="Clique para filtrar veículos em manutenção preventiva"
+            >
               <div className="kpi-top">
                 <span className="kpi-title">Manutenção Preventiva</span>
                 <div className="kpi-icon-wrap orange">
@@ -841,15 +1216,32 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 </div>
               </div>
               <div className="kpi-main-val">
-                <span className="val-number" style={{ color: '#f59e0b' }}>{maintenanceCount}</span>
+                <span className="val-number text-amber">{maintenanceCount}</span>
                 <span className="unit-suffix">em revisão</span>
+                <span className="kpi-share-chip amber">
+                  {totalVehicles > 0 ? `${Math.round((maintenanceCount / totalVehicles) * 100)}%` : '0%'}
+                </span>
               </div>
               <div className="kpi-footer-status">
-                <span>Oficina central e testes hidrostáticos</span>
+                <span>Oficina central e revisões</span>
+                {statusFilter === 'Manutenção' ? (
+                  <span className="kpi-badge-selected amber"><Check size={10} /> Ativo</span>
+                ) : (
+                  <span className="kpi-badge-hover"><Filter size={10} /> Filtrar</span>
+                )}
               </div>
+              <div className="kpi-bottom-glow orange"></div>
             </div>
 
-            <div className="kpi-card">
+            {/* Card 5: Bloqueados / Alertas */}
+            <div 
+              className={`kpi-card interactive-kpi ${statusFilter === 'Bloqueado' ? 'kpi-active-danger' : ''}`}
+              onClick={() => handleKpiCardClick('Bloqueado')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleKpiCardClick('Bloqueado')}
+              title="Clique para filtrar veículos com bloqueio ou pendência regulatória"
+            >
               <div className="kpi-top">
                 <span className="kpi-title">Bloqueados / Validade</span>
                 <div className="kpi-icon-wrap danger">
@@ -857,14 +1249,23 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                 </div>
               </div>
               <div className="kpi-main-val">
-                <span className="val-number" style={{ color: blockedCount > 0 ? '#f43f5e' : '#10b981' }}>
+                <span className={`val-number ${blockedCount > 0 ? 'text-rose' : 'text-emerald'}`}>
                   {blockedCount}
                 </span>
                 <span className="unit-suffix">{blockedCount > 0 ? 'alertas' : 'em dia'}</span>
+                <span className={`kpi-share-chip ${blockedCount > 0 ? 'rose' : 'emerald'}`}>
+                  {blockedCount > 0 ? `${blockedCount} pendente` : totalVehicles?'Sem bloqueios registrados':'Sem veículos cadastrados'}
+                </span>
               </div>
               <div className="kpi-footer-status">
                 <span>Vistorias CIPP / CIV / Tacógrafo</span>
+                {statusFilter === 'Bloqueado' ? (
+                  <span className="kpi-badge-selected rose"><Check size={10} /> Ativo</span>
+                ) : (
+                  <span className="kpi-badge-hover"><Filter size={10} /> Filtrar</span>
+                )}
               </div>
+              <div className="kpi-bottom-glow danger"></div>
             </div>
           </div>
 
@@ -872,26 +1273,61 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
           {/* BARRA DE COMANDO: BUSCA, FILTROS RÁPIDOS & LAYOUT SWITCHER */}
           {/* ========================================================== */}
           <div className="filter-panel">
-            <div className="search-bar">
-              <Search size={18} />
-              <input
-                type="text"
-                placeholder="Pesquisar por Placa (ex: AMB-4K89), Prefixo, Modelo, Rota GPS ou Motorista..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="search-bar-wrapper">
+              <div className="search-bar">
+                <Search size={18} className="search-icon-dim" />
+                <input
+                  type="text"
+                  placeholder="Pesquisar por Placa (ex: AMB-4K89), Prefixo, Modelo, Tipo ou Condutor..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  id="input-fleet-search"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    className="search-clear-btn"
+                    onClick={() => setSearchTerm('')}
+                    title="Limpar texto pesquisado"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              <div className="filter-results-counter">
+                <span>Exibindo <strong>{filteredVehicles.length}</strong> de {totalVehicles} ativos</span>
+                {(statusFilter !== 'Todos' || searchTerm) && (
+                  <button
+                    type="button"
+                    className="btn-clear-all-filters"
+                    onClick={() => { setStatusFilter('Todos'); setSearchTerm(''); }}
+                    title="Remover todos os filtros"
+                  >
+                    <X size={12} />
+                    <span>Limpar Filtros</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="filter-actions-row">
               <div className="status-chips-filter">
-                {['Todos', 'Disponível', 'Em Viagem', 'Manutenção', 'Bloqueado'].map((status) => (
+                {[
+                  { id: 'Todos', label: 'Todos', count: totalVehicles },
+                  { id: 'Disponível', label: 'Disponíveis', count: availableCount },
+                  { id: 'Em Viagem', label: 'Em Viagem', count: tripCount },
+                  { id: 'Manutenção', label: 'Manutenção', count: maintenanceCount },
+                  { id: 'Bloqueado', label: 'Bloqueados', count: blockedCount }
+                ].map((tab) => (
                   <button
-                    key={status}
+                    key={tab.id}
                     type="button"
-                    className={`status-chip-btn ${statusFilter === status ? 'active' : ''}`}
-                    onClick={() => setStatusFilter(status)}
+                    className={`status-chip-btn ${statusFilter === tab.id ? 'active' : ''}`}
+                    onClick={() => setStatusFilter(tab.id)}
                   >
-                    {status}
+                    <span>{tab.label}</span>
+                    <span className="chip-counter-badge">{tab.count}</span>
                   </button>
                 ))}
               </div>
@@ -902,6 +1338,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                   className={`view-mode-btn ${displayLayout === 'cards' ? 'active' : ''}`}
                   onClick={() => setDisplayLayout('cards')}
                   title="Visualização em Cockpit de Cards"
+                  id="btn-view-cards"
                 >
                   <LayoutGrid size={15} />
                   <span>Cockpit</span>
@@ -911,6 +1348,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                   className={`view-mode-btn ${displayLayout === 'table' ? 'active' : ''}`}
                   onClick={() => setDisplayLayout('table')}
                   title="Visualização em Tabela Executiva"
+                  id="btn-view-table"
                 >
                   <List size={15} />
                   <span>Tabela</span>
@@ -1025,7 +1463,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                       </div>
                     </div>
 
-                    {/* Motorista Alocado com WhatsApp Direto */}
+                    {/* Motorista Alocado com Central de Despacho WhatsApp */}
                     <div className="vehicle-driver-cockpit-box">
                       <div className="driver-avatar-circle-sm">
                         <UserCheck size={16} />
@@ -1036,18 +1474,17 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
                           {vehicle.motorista_vinculado || 'Nenhum condutor fixo alocado'}
                         </strong>
                       </div>
-                      {waLink && (
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-whatsapp-mini"
-                          title="Chamar motorista no WhatsApp"
-                        >
-                          <MessageCircle size={14} />
-                          <span>WhatsApp</span>
-                        </a>
-                      )}
+                      {maintenanceAccess?.canRead&&<button type="button" onClick={()=>setMaintenanceVehicle(vehicle)}>Ficha · Manutenção</button>}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenWhatsAppWorkspace(vehicle)}
+                        className="btn-whatsapp-mini"
+                        title="Abrir Central de Despacho WhatsApp CCO em Tela Completa"
+                        id={`btn-whatsapp-card-${vehicle.id}`}
+                      >
+                        <MessageCircle size={14} />
+                        <span>WhatsApp</span>
+                      </button>
                     </div>
 
                     {/* Matriz de Vistorias Regulatórias Obrigatórias (Compliance ANTT / INMETRO) */}
@@ -1222,21 +1659,21 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
 
                         {/* Condutor */}
                         <td>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <strong style={{ fontSize: '0.82rem', color: '#ffffff' }}>
                               {vehicle.motorista_vinculado || 'Não vinculado'}
                             </strong>
-                            {waLink && (
-                              <a
-                                href={waLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="table-wa-direct-btn"
-                              >
-                                <MessageCircle size={12} />
-                                <span>WhatsApp</span>
-                              </a>
-                            )}
+                            {maintenanceAccess?.canRead&&<button type="button" onClick={()=>setMaintenanceVehicle(vehicle)}>Ficha · Manutenção</button>}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenWhatsAppWorkspace(vehicle)}
+                              className="table-wa-direct-btn"
+                              title="Abrir Central de Despacho WhatsApp CCO em Tela Completa"
+                              id={`btn-whatsapp-tbl-${vehicle.id}`}
+                            >
+                              <MessageCircle size={12} />
+                              <span>WhatsApp</span>
+                            </button>
                           </div>
                         </td>
 
@@ -1303,3 +1740,4 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
     </div>
   );
 }
+
