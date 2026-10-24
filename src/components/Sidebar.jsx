@@ -50,9 +50,9 @@ export default function Sidebar({
         },
         {
           id: 'auditoria_vencimentos',
-          label: 'Auditoria & Vencimentos 2026',
+          label: 'Central de Vencimentos & CIPP',
           icon: ShieldAlert,
-          badge: '3 Alertas'
+          badge: 'Regulatório'
         },
         {
           id: 'manutencao_preventiva',

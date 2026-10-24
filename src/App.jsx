@@ -185,8 +185,8 @@ export default function App() {
       subtitle: 'Painel Geral de Operações, KPIs Consolidados e Monitoramento de Frota & Resíduos' 
     },
     auditoria_vencimentos: { 
-      title: 'Auditoria de Vencimentos & Ativos 2026', 
-      subtitle: 'Controle de 665 documentos físicos/digitais, 83 caçambas, 21 veículos e licenças regulatórias' 
+      title: 'Central de Vencimentos Regulatórios & CIPP/CIV', 
+      subtitle: 'Monitoramento preditivo de CRLV, CIV, CIPP (Produtos Perigosos), Tacógrafo Inmetro, Licenças IBAMA/INEA e CNH/MOPP' 
     },
     manutencao_preventiva: {
       title: 'Manutenção Preventiva por KM & Odômetro',
