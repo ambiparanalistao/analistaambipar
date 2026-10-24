@@ -15,3 +15,5 @@ Envios têm claim com trava, token por tentativa, estado accepted/failed/unknown
 Configuração externa: Evolution API URL/key e instância analistalogistica conectada, e WhatsApp válido no parceiro. Endpoint Evolution 2.3.7: message/sendMedia, mediatype document, fileName, mimetype XLSX e media base64. Testes usam provedor simulado; sem enviar mensagens reais a oficinas.
 
 O motorista selecionado na S.OR é identificado como relator dos defeitos do veículo. Nome e telefone do relator constam no Excel, e o nome também segue na mensagem para a oficina. O vínculo usa driver_id da própria empresa; relator ausente é informado explicitamente, sem inventar dados.
+
+Na abertura, o envio agora ocorre para todas as oficinas ativas da empresa, com registro individual. A aprovação segue somente à oficina escolhida. A solicitação pede NCM das peças quando aplicável e prazo estimado de entrega em dias corridos após aprovação. Veja docs/QUOTE_BROADCAST.md.
