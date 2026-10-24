@@ -49,7 +49,7 @@ export const WHATSAPP_TEMPLATES = [
     badge: '⚙️ Oficina',
     title: '🔧 Alerta de Revisão Preventiva por Odômetro',
     description: 'Notificação de proximidade do limite de quilometragem de revisão mecânica',
-    template: '⚙️ *GESTÃO DE MANUTENÇÃO & FROTAS AMBIPAR* 🔧\n\n👋 Olá, *{MOTORISTA}*!\n\n📊 *TELEMETRIA DE ODÔMETRO EM TEMPO REAL:*\n• 🚚 *Veículo:* *{PLACA}* ({MARCA_MODELO})\n• 📟 *Odômetro Atual:* *{KM_ATUAL}*\n• 🎯 *Limite da Próxima Revisão:* *{PROXIMA_REVISAO}*\n\n⚠️ *Aviso de Parada Preventiva:* O conjunto atingiu a faixa programada de inspeção periódica. Solicitamos programar parada na oficina central da base para alinhamento, balanceamento, troca de filtros e checagem de fluidos.\n\n🛡️ Segurança veicular é compromisso diário Ambipar! 🟢'
+    template: '⚙️ *GESTÃO DE MANUTENÇÃO & FROTAS AMBIPAR* 🔧\n\n👋 Olá, *{MOTORISTA}*!\n\n📊 *ODÔMETRO CADASTRADO:*\n• 🚚 *Veículo:* *{PLACA}* ({MARCA_MODELO})\n• 📟 *Odômetro Atual:* *{KM_ATUAL}*\n• 🎯 *Limite da Próxima Revisão:* *{PROXIMA_REVISAO}*\n\n⚠️ *Aviso de Parada Preventiva:* O conjunto atingiu a faixa programada de inspeção periódica. Solicitamos programar parada na oficina central da base para alinhamento, balanceamento, troca de filtros e checagem de fluidos.\n\n🛡️ Segurança veicular é compromisso diário Ambipar! 🟢'
   },
   {
     id: 'vistorias',
@@ -86,14 +86,14 @@ export const WHATSAPP_TEMPLATES = [
 ];
 
 export const SMART_TRIGGERS = [
-  { id: 'motorista', label: 'Motorista', tag: '{MOTORISTA}', getValue: (v) => v.motorista_vinculado || 'Condutor Titular' },
+  { id: 'motorista', label: 'Motorista', tag: '{MOTORISTA}', getValue: (v) => v.motorista_vinculado || 'Não informado' },
   { id: 'placa', label: 'Placa', tag: '{PLACA}', getValue: (v) => v.placa || 'Sem Placa' },
   { id: 'prefixo', label: 'Prefixo', tag: '{PREFIXO}', getValue: (v) => v.prefixo || 'Frota' },
   { id: 'modelo', label: 'Modelo', tag: '{MARCA_MODELO}', getValue: (v) => v.marca_modelo || v.tipo || 'Caminhão' },
   { id: 'km', label: 'KM Atual', tag: '{KM_ATUAL}', getValue: (v) => v.km_atual ? `${Number(v.km_atual).toLocaleString('pt-BR')} km` : '—' },
   { id: 'revisao', label: 'Próxima Revisão', tag: '{PROXIMA_REVISAO}', getValue: (v) => v.proxima_revisao_km ? `${Number(v.proxima_revisao_km).toLocaleString('pt-BR')} km` : '—' },
-  { id: 'carga', label: 'Carga', tag: '{TIPO_CARGA}', getValue: (v) => v.tipo_carga || 'Produtos Químicos Perigosos' },
-  { id: 'combustivel', label: 'Combustível', tag: '{COMBUSTIVEL}', getValue: (v) => v.combustivel || 'Diesel S10' },
+  { id: 'carga', label: 'Carga', tag: '{TIPO_CARGA}', getValue: (v) => v.tipo_carga || 'Não informado' },
+  { id: 'combustivel', label: 'Combustível', tag: '{COMBUSTIVEL}', getValue: (v) => v.combustivel || 'Não informado' },
   { id: 'status', label: 'Status CCO', tag: '{STATUS_CCO}', getValue: (v) => v.status || 'Disponível' },
   { id: 'hora', label: 'Hora CCO', tag: '{HORA_ATUAL}', getValue: () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }
 ];
@@ -111,12 +111,12 @@ export function resolveTemplateText(templateText, vehicle) {
   const vistoriasStr = vistorias.length > 0 ? vistorias.slice(0, 2).join(', ') : 'CRLV e CIPP em dia';
 
   return templateText
-    .replace(/{MOTORISTA}/g, vehicle?.motorista_vinculado || 'Condutor Titular')
+    .replace(/{MOTORISTA}/g, vehicle?.motorista_vinculado || 'Não informado')
     .replace(/{PLACA}/g, vehicle?.placa || 'Sem placa')
     .replace(/{PREFIXO}/g, vehicle?.prefixo || 'Frota')
     .replace(/{MARCA_MODELO}/g, vehicle?.marca_modelo || vehicle?.tipo || 'Caminhão')
-    .replace(/{TIPO_CARGA}/g, vehicle?.tipo_carga || 'Produtos Químicos Perigosos')
-    .replace(/{COMBUSTIVEL}/g, vehicle?.combustivel || 'Diesel S10')
+    .replace(/{TIPO_CARGA}/g, vehicle?.tipo_carga || 'Não informado')
+    .replace(/{COMBUSTIVEL}/g, vehicle?.combustivel || 'Não informado')
     .replace(/{KM_ATUAL}/g, vehicle?.km_atual ? Number(vehicle.km_atual).toLocaleString('pt-BR') : '—')
     .replace(/{PROXIMA_REVISAO}/g, vehicle?.proxima_revisao_km ? Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR') : '—')
     .replace(/{STATUS_CCO}/g, vehicle?.status || 'Disponível')
@@ -422,7 +422,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
             </div>
             <div className="driver-meta-info-lg">
               <span className="spacious-kicker">Motorista Titular Alocado</span>
-              <strong className="driver-name-lg">{vehicle.motorista_vinculado || 'Condutor Titular CCO'}</strong>
+              <strong className="driver-name-lg">{vehicle.motorista_vinculado || 'Motorista não informado'}</strong>
               <div className="driver-phone-input-spacious">
                 <Smartphone size={14} color="#25d366" />
                 <input
@@ -727,7 +727,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
                   <span className="online-beacon-dot"></span>
                 </div>
                 <div className="chat-header-meta">
-                  <strong>{vehicle.motorista_vinculado || 'Condutor Titular'}</strong>
+                  <strong>{vehicle.motorista_vinculado || 'Não informado'}</strong>
                   <span className="chat-status">online • Torre de Operações CCO</span>
                 </div>
               </div>

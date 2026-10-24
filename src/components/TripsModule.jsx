@@ -1,3 +1,5 @@
+import useFleetDirectory from '../hooks/useFleetDirectory';
+import {driverForVehicle} from '../utils/registryMatching';
 import AvailableVehicleSelect from './maintenance/AvailableVehicleSelect';
 import {allocateVehicle,vehicleCommand} from '../services/vehicleMaintenance';
 import React, { useState, useEffect } from 'react';
@@ -12,6 +14,7 @@ import {
 } from 'lucide-react';
 
 export default function TripsModule({ user, companyId }) {
+  const directory=useFleetDirectory(companyId);
   // Inicializa a partir de dados salvos localmente ou vazio (sem dados fictícios)
   const [trips, setTrips] = useState(() => {
     try {
@@ -235,7 +238,7 @@ export default function TripsModule({ user, companyId }) {
               {tripError&&<p role="alert">{tripError}</p>}
               <div className="grid-2-cols">
                 <div className="input-group-custom">
-                  <AvailableVehicleSelect company={companyId} required value={newTrip.vehiclePlate} onChange={plate=>setNewTrip(t=>({...t,vehiclePlate:plate}))} label="Placa do veículo disponível"/>
+                  <AvailableVehicleSelect company={companyId} required value={newTrip.vehiclePlate} onChange={plate=>{const v=directory.vehicles.find(v=>v.placa===plate);const d=driverForVehicle(v,directory.drivers);setNewTrip(t=>({...t,vehiclePlate:plate,vehicleType:v?.tipo||'',driver:d?.nome||''}));}} label="Placa do veículo disponível"/>
                 </div>
 
                 <div className="input-group-custom">
@@ -255,13 +258,7 @@ export default function TripsModule({ user, companyId }) {
 
               <div className="input-group-custom">
                 <label>Nome do Motorista Homologado (MOPP)</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Nome completo do condutor"
-                  value={newTrip.driver}
-                  onChange={(e) => setNewTrip({ ...newTrip, driver: e.target.value })}
-                />
+                <select required aria-label="Motorista da viagem" value={newTrip.driver} onChange={e=>setNewTrip({...newTrip,driver:e.target.value})}><option value="">Selecione um motorista cadastrado</option>{directory.drivers.map(d=><option key={d.id} value={d.nome}>{d.nome}</option>)}</select>
               </div>
 
               <div className="grid-2-cols">

@@ -121,6 +121,13 @@ jobs:
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024011714_order_workshop_delivery.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/order-delivery.sql
+      - name: Real fleet registry persistence and document privacy
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024014550_real_fleet_registry.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024020351_fleet_options_context.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/real-registry.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
         run: npm ci
@@ -138,7 +145,7 @@ jobs:
         run: node --test tests/evolution.test.js tests/partner-approval.test.js tests/order-dispatch.test.js
       - name: Partner form validation
         if: ${{ !cancelled() }}
-        run: node --test tests/partner-validation.test.js tests/orders-validation.test.js tests/occurrence-validation.test.js tests/communication.test.js tests/plans.test.js tests/analytics.test.js tests/registration.test.js
+        run: node --test tests/registry-matching.test.js tests/partner-validation.test.js tests/orders-validation.test.js tests/occurrence-validation.test.js tests/communication.test.js tests/plans.test.js tests/analytics.test.js tests/registration.test.js
       - name: Install isolated browser tools
         if: ${{ !cancelled() }}
         run: |

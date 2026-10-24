@@ -13,12 +13,7 @@ import {
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 export default function EsgModule() {
-  const [esgData, setEsgData] = useState([
-    { mes: 'Jan/26', emissoes_co2: 52.4, compensacao_carbono: 18.0, reciclagem: 78.5 },
-    { mes: 'Fev/26', emissoes_co2: 49.1, compensacao_carbono: 20.2, reciclagem: 81.2 },
-    { mes: 'Mar/26', emissoes_co2: 46.8, compensacao_carbono: 22.0, reciclagem: 83.0 },
-    { mes: 'Abr/26', emissoes_co2: 44.5, compensacao_carbono: 25.0, reciclagem: 85.4 }
-  ]);
+  const [esgData, setEsgData] = useState([]);
 
   return (
     <div className="module-view animate-fade-in" id="esg-module-root">
@@ -38,19 +33,19 @@ export default function EsgModule() {
       <div className="mtr-summary-cards">
         <div className="summary-stat-box forest">
           <span className="stat-label">CO₂ Evitado no Ano</span>
-          <span className="stat-number">192.8 ton</span>
+          <span className="stat-number">—</span>
           <span className="stat-sub">Via coprocessamento & reciclagem</span>
         </div>
 
         <div className="summary-stat-box cyan">
           <span className="stat-label">Taxa Média de Reciclagem</span>
-          <span className="stat-number">82.1%</span>
+          <span className="stat-number">—</span>
           <span className="stat-sub">Resíduos reaproveitados</span>
         </div>
 
         <div className="summary-stat-box emerald">
           <span className="stat-label">Créditos Verdes Ambipar</span>
-          <span className="stat-number">85.2 tCO₂e</span>
+          <span className="stat-number">—</span>
           <span className="stat-sub">Neutralização ativa</span>
         </div>
       </div>
@@ -58,7 +53,7 @@ export default function EsgModule() {
       <div className="card-panel">
         <div className="panel-header">
           <h3>Evolução Mensal das Metas de Sustentabilidade</h3>
-          <span className="badge-highlight">Série Histórica 2026</span>
+          <span className="badge-highlight">Sem medições registradas</span>
         </div>
 
         <div className="table-responsive-wrapper">
@@ -72,7 +67,7 @@ export default function EsgModule() {
                 <th>Status da Meta</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody>{!esgData.length&&<tr><td colSpan={5}>Nenhuma medição real de ESG cadastrada.</td></tr>}
               {esgData.map((row, idx) => (
                 <tr key={idx}>
                   <td><strong>{row.mes}</strong></td>

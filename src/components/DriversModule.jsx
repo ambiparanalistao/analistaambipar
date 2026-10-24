@@ -25,9 +25,10 @@ import {
   LayoutGrid,
   List
 } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
-import { getStoredOrSyncedDrivers } from '../utils/driverFleetSync';
+import useFleetDirectory from '../hooks/useFleetDirectory';
+import {saveDriver,deleteRegistryRecord,updateRegistryStatus,driverPayload} from '../services/fleetDirectory';
+import LegacyRegistryRecovery from './LegacyRegistryRecovery';
 
 export const STATUS_OPTIONS = [
   { 
@@ -46,14 +47,7 @@ export const STATUS_OPTIONS = [
   }
 ];
 
-export const DEFAULT_FLEET = [
-  { placa: 'AMB-4K89', modelo: 'Carreta Tanque Inox Químico (Volvo FH 540)' },
-  { placa: 'AMB-9T21', modelo: 'Carreta Sider Resíduos Classe I (Scania R450)' },
-  { placa: 'AMB-2M33', modelo: 'Auto-Vácuo Sucção Líquidos (Actros 2651)' },
-  { placa: 'AMB-7X10', modelo: 'Roll-on / Caçamba Estanque (Volvo VM 330)' },
-  { placa: 'AMB-5P44', modelo: 'Bitrem Graneleiro / Big Bags (DAF XF 530)' },
-  { placa: 'AMB-8L19', modelo: 'Baú Carga Perigosa Fracionada (Constellation)' }
-];
+export const DEFAULT_FLEET = [];
 
 export const CNH_CATEGORIES = [
   {
@@ -188,7 +182,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
   const [editingId, setEditingId] = useState(null);
 
   // Motoristas consolidados sincronizados automaticamente com a frota
-  const [drivers, setDrivers] = useState(() => getStoredOrSyncedDrivers());
+  const [drivers, setDrivers] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -196,24 +190,9 @@ export default function DriversModule({ user, maintenanceAccess }) {
   const [feedback, setFeedback] = useState(null);
 
   // Frotas Integradas (sincronizadas com o Módulo de Frotas)
-  const [fleetVehicles, setFleetVehicles] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_fleet_vehicles');
-      return saved ? JSON.parse(saved) : DEFAULT_FLEET;
-    } catch {
-      return DEFAULT_FLEET;
-    }
-  });
-
-  // Salva veículos da frota no localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_fleet_vehicles', JSON.stringify(fleetVehicles));
-    } catch (e) {
-      console.warn('Erro ao salvar veículos da frota:', e);
-    }
-  }, [fleetVehicles]);
-
+  const company=maintenanceAccess?.companyId;const directory=useFleetDirectory(company);
+  const [fleetVehicles,setFleetVehicles]=useState([]);
+  useEffect(()=>{setDrivers(directory.drivers);setFleetVehicles(directory.vehicles.map(v=>({...v,modelo:v.marca_modelo})));setLoading(directory.loading);if(directory.error)setFeedback({type:'error',text:directory.error});},[directory.drivers,directory.vehicles,directory.loading,directory.error]);
   // Estado do Formulário Completo com Todos os Cursos
   const initialForm = {
     nome: '',
@@ -239,79 +218,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
 
   const [formData, setFormData] = useState(initialForm);
 
-  // Salva no localStorage como backup persistente
-  useEffect(() => {
-    try {
-      if (drivers && drivers.length > 0) {
-        localStorage.setItem('ambipar_real_drivers', JSON.stringify(drivers));
-      }
-    } catch (e) {
-      console.warn('Erro ao salvar motoristas:', e);
-    }
-  }, [drivers]);
-
-  // Sincronização automática contínua quando a janela ganha foco ou altera storage
-  useEffect(() => {
-    const handleSync = () => {
-      const consolidated = getStoredOrSyncedDrivers();
-      setDrivers(consolidated);
-    };
-
-    window.addEventListener('storage', handleSync);
-    window.addEventListener('focus', handleSync);
-    return () => {
-      window.removeEventListener('storage', handleSync);
-      window.removeEventListener('focus', handleSync);
-    };
-  }, []);
-
-  // Busca registros do Supabase se a tabela existir
-  const fetchSupabaseDrivers = async () => {
-    if (!isSupabaseConfigured || !supabase) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('motoristas')
-        .select('*')
-        .order('nome', { ascending: true });
-
-      if (!error && data && data.length > 0) {
-        // Mescla drivers do Supabase com os sincronizados localmente
-        const localList = getStoredOrSyncedDrivers();
-        const mergedMap = new Map();
-        localList.forEach(d => mergedMap.set(d.nome?.toLowerCase(), d));
-        data.forEach(d => mergedMap.set(d.nome?.toLowerCase(), { ...mergedMap.get(d.nome?.toLowerCase()), ...d }));
-        const mergedArray = Array.from(mergedMap.values());
-        setDrivers(mergedArray);
-        localStorage.setItem('ambipar_real_drivers', JSON.stringify(mergedArray));
-      }
-    } catch (err) {
-      console.warn('Tabela motoristas ainda não executada no Supabase:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSupabaseDrivers();
-  }, []);
-
-  // Ação explícita de atualização e sincronização manual pelo botão
-  const handleRefreshQuadro = async () => {
-    setLoading(true);
-    const consolidated = getStoredOrSyncedDrivers();
-    setDrivers(consolidated);
-    if (isSupabaseConfigured && supabase) {
-      await fetchSupabaseDrivers();
-    }
-    setLoading(false);
-    setFeedback({
-      type: 'success',
-      text: `Quadro sincronizado com sucesso! ${consolidated.length} motorista(s) homologado(s) e vinculado(s) à frota.`
-    });
-    setTimeout(() => setFeedback(null), 4000);
-  };
-
+  const handleRefreshQuadro=()=>directory.reload();
   // Prepara formulário para cadastrar
   const handleOpenCreateForm = () => {
     setEditingId(null);
@@ -348,95 +255,9 @@ export default function DriversModule({ user, maintenanceAccess }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Submissão do formulário
-  const handleSubmitForm = async (e) => {
-    e.preventDefault();
-
-    // Se tiver informado uma placa, salva automaticamente na frota para o módulo de frotas
-    if (formData.veiculo_vinculado) {
-      const cleanPlate = formData.veiculo_vinculado.toUpperCase().trim();
-      const exists = fleetVehicles.some(v => v.placa === cleanPlate);
-      if (!exists && cleanPlate.length >= 7) {
-        const updatedFleet = [
-          ...fleetVehicles,
-          { placa: cleanPlate, modelo: `Equipamento Vinculado (${formData.nome})`, tipo: 'Frota Operacional' }
-        ];
-        setFleetVehicles(updatedFleet);
-        try {
-          localStorage.setItem('ambipar_fleet_vehicles', JSON.stringify(updatedFleet));
-        } catch (err) {
-          console.warn('Erro ao salvar na frota:', err);
-        }
-      }
-    }
-
-    if (editingId) {
-      // Edição
-      const updatedList = drivers.map(d => d.id === editingId ? { ...formData, id: editingId } : d);
-      setDrivers(updatedList);
-
-      if (isSupabaseConfigured && supabase) {
-        try {
-          await supabase.from('motoristas').update(formData).eq('id', editingId);
-        } catch (err) {
-          console.warn('Erro ao atualizar no Supabase:', err);
-        }
-      }
-      setFeedback({ type: 'success', text: `Motorista ${formData.nome} atualizado com sucesso!` });
-    } else {
-      // Novo Cadastro
-      const newDriver = {
-        ...formData,
-        id: `MOT-${Date.now().toString().slice(-6)}`,
-        created_at: new Date().toISOString()
-      };
-
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const { data, error } = await supabase
-            .from('motoristas')
-            .insert([{
-              user_id: user?.id,
-              ...formData
-            }])
-            .select();
-
-          if (!error && data && data.length > 0) {
-            newDriver.id = data[0].id;
-          }
-        } catch (err) {
-          console.warn('Gravação local realizada (Supabase pendente):', err);
-        }
-      }
-
-      setDrivers([newDriver, ...drivers]);
-      setFeedback({ type: 'success', text: `Motorista ${formData.nome} homologado com sucesso!` });
-    }
-
-    setViewMode('list');
-    setTimeout(() => setFeedback(null), 4000);
-  };
-
-  // Alterar Status diretamente na tabela
-  const handleChangeStatus = (id, newStatus) => {
-    const updated = drivers.map(d => d.id === id ? { ...d, status: newStatus } : d);
-    setDrivers(updated);
-
-    if (isSupabaseConfigured && supabase) {
-      supabase.from('motoristas').update({ status: newStatus }).eq('id', id).then();
-    }
-  };
-
-  // Excluir Motorista
-  const handleDeleteDriver = (id, nome) => {
-    if (window.confirm(`Tem certeza que deseja remover o cadastro do motorista ${nome}?`)) {
-      setDrivers(drivers.filter(d => d.id !== id));
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('motoristas').delete().eq('id', id).then();
-      }
-    }
-  };
-
+  const handleSubmitForm=async e=>{e.preventDefault();if(loading)return;setLoading(true);try{const saved=await saveDriver(formData,editingId,user?.id,company);setDrivers(list=>editingId?list.map(d=>d.id===editingId?saved:d):[saved,...list]);setViewMode('list');setFeedback({type:'success',text:'Motorista salvo no banco.'});}catch(e){setFeedback({type:'error',text:'Motorista não salvo: '+e.message});}finally{setLoading(false);}};
+  const handleChangeStatus=async(id,status)=>{try{const saved=await updateRegistryStatus('motoristas',id,status,company);setDrivers(rows=>rows.map(d=>d.id===id?saved:d));}catch(e){setFeedback({type:'error',text:e.message});}};
+  const handleDeleteDriver=async(id,nome)=>{if(!window.confirm('Confirma a exclusão do motorista '+nome+'?'))return;try{await deleteRegistryRecord('motoristas',id,company);setDrivers(rows=>rows.filter(d=>d.id!==id));setFeedback({type:'success',text:'Motorista excluído do banco.'});}catch(e){setFeedback({type:'error',text:e.message});}};
   // Verifica se o motorista tem alerta de conformidade em qualquer documento ou curso
   const hasComplianceAlert = (driver) => {
     const dates = [
@@ -493,6 +314,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
 
   return (
     <div className="module-view animate-fade-in" id="drivers-module-root">
+<LegacyRegistryRecovery records={drivers} type="drivers" onRecover={row=>{setEditingId(null);setFormData({...initialForm,...Object.fromEntries(Object.entries(driverPayload(row)).map(([k,v])=>[k,v??'']))});setViewMode('form');}}/>
       {['admin_geral','admin_empresa'].includes(maintenanceAccess?.role)&&<DriverBindingPanel access={maintenanceAccess}/>}
       {/* ============================================================== */}
       {/* CABEÇALHO DO MÓDULO */}
@@ -598,7 +420,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Carlos Eduardo dos Santos"
+                  placeholder="Digite o nome completo do motorista"
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 />

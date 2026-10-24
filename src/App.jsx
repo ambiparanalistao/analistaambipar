@@ -147,18 +147,6 @@ export default function App() {
     setSession(null);
   };
 
-  const handleDemoAccess = () => {
-    setSession({
-      user: {
-        id: 'demo-analista-ambipar',
-        email: 'carlos.eduardo@ambipar.com',
-        user_metadata: {
-          full_name: 'Carlos Eduardo Dos Santos'
-        }
-      }
-    });
-  };
-
   // Nomes e descrições dos módulos para o cabeçalho superior
   const moduleInfo = {
     ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.id,{title:'Manutenção · '+p.label,subtitle:'Gestão de manutenção e oficinas parceiras'}])),
@@ -297,7 +285,6 @@ export default function App() {
           <main className="main-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <AuthCard 
               onOpenConfig={() => setShowConfigModal(true)}
-              onDemoAccess={handleDemoAccess}
             />
           </main>
         </>
@@ -372,7 +359,7 @@ export default function App() {
                   />
                 )}
                 {currentModule === 'frotas' && (
-                  <VehiclesModule 
+                  <VehiclesModule key={maintenanceAccess.companyId}
                     companyId={maintenanceAccess.companyId}
                     maintenanceAccess={maintenanceAccess}
                     user={session.user} 
@@ -380,15 +367,15 @@ export default function App() {
                   />
                 )}
                 {currentModule === 'motoristas' && (
-                  <DriversModule 
+                  <DriversModule key={maintenanceAccess.companyId}
                     maintenanceAccess={maintenanceAccess}
                     user={session.user} 
                     onNavigateVehicles={() => handleSelectModule('frotas')}
                   />
                 )}
                 {currentModule === 'viagens' && <TripsModule companyId={maintenanceAccess.companyId} user={session.user} />}
-                {currentModule === 'combustivel' && <FuelModule user={session.user} initialView="dashboard" onNavigateModule={handleSelectModule} />}
-                {currentModule === 'simulador_autonomia' && <FuelModule user={session.user} initialView="simulator" onNavigateModule={handleSelectModule} />}
+                {currentModule === 'combustivel' && <FuelModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId} user={session.user} initialView="dashboard" onNavigateModule={handleSelectModule} />}
+                {currentModule === 'simulador_autonomia' && <FuelModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId} user={session.user} initialView="simulator" onNavigateModule={handleSelectModule} />}
                 {currentModule === 'clientes' && (
                   <ClientsModule 
                     companyId={maintenanceAccess.companyId}
@@ -400,7 +387,7 @@ export default function App() {
                 {currentModule === 'mtr' && <MtrModule user={session.user} />}
                 {currentModule === 'calculadora_frete' && <FreightCarbonCalculator onNavigateMtr={() => handleSelectModule('mtr')} />}
                 {currentModule === 'antt_formulas' && <AnttFormulasModule />}
-                {currentModule === 'ocorrencias' && <OcorrenciasModule />}
+                {currentModule === 'ocorrencias' && <OcorrenciasModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId}/>}
                 {currentModule === 'esg' && <EsgModule />}
                 {currentModule === 'automacao' && <AutomationModule user={session.user} />}
               </ErrorBoundary>
