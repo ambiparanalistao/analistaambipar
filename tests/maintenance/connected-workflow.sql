@@ -1,0 +1,26 @@
+BEGIN;
+CREATE SCHEMA delivery_test;CREATE FUNCTION delivery_test.assert(ok boolean,msg text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'ASSERT: %',msg;END IF;END $$;CREATE FUNCTION delivery_test.denied(statement text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN BEGIN EXECUTE statement;EXCEPTION WHEN OTHERS THEN RETURN;END;RAISE EXCEPTION 'Expected rejection: %',statement;END $$;GRANT USAGE ON SCHEMA delivery_test TO anon,authenticated;GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA delivery_test TO anon,authenticated;
+INSERT INTO auth.users(id,email) VALUES('2b000000-0000-4000-8000-000000000001','delivery@example.invalid');INSERT INTO public.companies(id,nome,created_by) VALUES('1b000000-0000-4000-8000-000000000001','Delivery fixture','2b000000-0000-4000-8000-000000000001'),('1b000000-0000-4000-8000-000000000002','Other fixture','2b000000-0000-4000-8000-000000000001');
+INSERT INTO public.company_members(company_id,user_id,role,maintenance_role,created_by) VALUES('1b000000-0000-4000-8000-000000000001','2b000000-0000-4000-8000-000000000001','administrador','admin_empresa','2b000000-0000-4000-8000-000000000001');
+INSERT INTO public.veiculos(id,company_id,placa,tipo,marca_modelo,km_atual,ano_fabricacao,ano_modelo,chassi,renavam) VALUES('3b000000-0000-4000-8000-000000000001','1b000000-0000-4000-8000-000000000001','EXL0001','caminhao','Volvo FH',1000,2022,2023,'9BWZZZ377VT004251','12345678901');
+SELECT set_config('request.jwt.claim.sub','2b000000-0000-4000-8000-000000000001',true);
+INSERT INTO public.maintenance_partners(id,company_id,razao_social,whatsapp,onboarding_profile) VALUES('4b000000-0000-4000-8000-000000000001','1b000000-0000-4000-8000-000000000001','Delivery workshop','11987654321','{"prazo_entrega_dias":3,"tipos_oficina":["Oficina mecânica"]}');
+
+INSERT INTO public.maintenance_partners(id,company_id,razao_social,whatsapp,status) VALUES('4b000000-0000-4000-8000-000000000002','1b000000-0000-4000-8000-000000000001','Second workshop','21987654321','ativo'),('4b000000-0000-4000-8000-000000000003','1b000000-0000-4000-8000-000000000001','No contact',NULL,'ativo'),('4b000000-0000-4000-8000-000000000004','1b000000-0000-4000-8000-000000000001','Inactive workshop','31987654321','inativo'),('4b000000-0000-4000-8000-000000000005','1b000000-0000-4000-8000-000000000002','Other company','41987654321','ativo');
+
+INSERT INTO public.motoristas(id,company_id,nome,cnh,validade_cnh,telefone,status) VALUES('6b000000-0000-4000-8000-000000000001','1b000000-0000-4000-8000-000000000001','Driver real fixture','12345678901','2030-01-01','11987654321','Disponível'),('6b000000-0000-4000-8000-000000000002','1b000000-0000-4000-8000-000000000002','Other company driver','12345678902','2030-01-01','21987654321','Disponível');
+
+INSERT INTO public.maintenance_driver_reports(id,company_id,request_id,driver_id,vehicle_id,driver_name,vehicle_plate,km,defects,severity,vehicle_snapshot) VALUES('7b000000-0000-4000-8000-000000000001','1b000000-0000-4000-8000-000000000001',gen_random_uuid(),'6b000000-0000-4000-8000-000000000001','3b000000-0000-4000-8000-000000000001','Driver fixture','EXL0001',1000,'Defeito informado pelo motorista','media','{}');
+SET LOCAL ROLE authenticated;
+SELECT set_config('delivery_test.os',public.maintenance_report_order('1b000000-0000-4000-8000-000000000001','create','{"report_id":"7b000000-0000-4000-8000-000000000001","vehicle_id":"3b000000-0000-4000-8000-000000000001","partner_id":"4b000000-0000-4000-8000-000000000001","tipo":"corretiva","prioridade":"media","km_abertura":1000}')->>'id',true);
+SELECT delivery_test.assert((SELECT count(*)=1 FROM public.maintenance_report_orders),'link created');
+SELECT delivery_test.assert((SELECT descricao_problema='Defeito informado pelo motorista' AND driver_id='6b000000-0000-4000-8000-000000000001' FROM public.maintenance_orders WHERE id=current_setting('delivery_test.os')::uuid),'original report and reporter preserved');
+SELECT delivery_test.assert(public.maintenance_report_order('1b000000-0000-4000-8000-000000000001','create','{"report_id":"7b000000-0000-4000-8000-000000000001"}')->>'id'=current_setting('delivery_test.os'),'retry is idempotent');
+SELECT delivery_test.denied($q$SELECT public.maintenance_report_order('1b000000-0000-4000-8000-000000000002','context','{"report_id":"7b000000-0000-4000-8000-000000000001"}')$q$);
+SELECT delivery_test.denied($q$SELECT public.driver_maintenance_admin('1b000000-0000-4000-8000-000000000001','status','{"id":"7b000000-0000-4000-8000-000000000001","version":2,"status":"resolvida","feedback":"not yet"}')$q$);
+SELECT public.maintenance_order_command('1b000000-0000-4000-8000-000000000001','transition',jsonb_build_object('id',current_setting('delivery_test.os'),'version',(SELECT version FROM public.maintenance_orders WHERE id=current_setting('delivery_test.os')::uuid),'status','cancelada','observacao','Canceled for new analysis'));
+SELECT delivery_test.assert((SELECT status='pendente' FROM public.maintenance_driver_reports WHERE id='7b000000-0000-4000-8000-000000000001'),'cancellation returns report to pending');
+SELECT delivery_test.assert((SELECT NOT active FROM public.maintenance_report_orders),'cancelled link inactive');
+SET LOCAL ROLE anon;
+SELECT delivery_test.denied('SELECT * FROM public.maintenance_report_orders');
+ROLLBACK;
