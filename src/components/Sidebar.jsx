@@ -55,6 +55,12 @@ export default function Sidebar({
           badge: '3 Alertas'
         },
         {
+          id: 'manutencao_preventiva',
+          label: 'Manutenção Preventiva & KM',
+          icon: Wrench,
+          badge: 'Preventiva'
+        },
+        {
           id: 'escala',
           label: 'Escala Operacional CCO',
           icon: CalendarDays
