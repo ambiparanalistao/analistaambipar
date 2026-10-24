@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
+import { AUDITED_DRIVERS, AUDITED_VEHICLES } from '../data/auditedAmbiparData';
 
 export const STATUS_OPTIONS = [
   { 
@@ -44,14 +45,7 @@ export const STATUS_OPTIONS = [
   }
 ];
 
-export const DEFAULT_FLEET = [
-  { placa: 'AMB-4K89', modelo: 'Carreta Tanque Inox Químico (Volvo FH 540)' },
-  { placa: 'AMB-9T21', modelo: 'Carreta Sider Resíduos Classe I (Scania R450)' },
-  { placa: 'AMB-2M33', modelo: 'Auto-Vácuo Sucção Líquidos (Actros 2651)' },
-  { placa: 'AMB-7X10', modelo: 'Roll-on / Caçamba Estanque (Volvo VM 330)' },
-  { placa: 'AMB-5P44', modelo: 'Bitrem Graneleiro / Big Bags (DAF XF 530)' },
-  { placa: 'AMB-8L19', modelo: 'Baú Carga Perigosa Fracionada (Constellation)' }
-];
+export const DEFAULT_FLEET = AUDITED_VEHICLES.map(v => ({ placa: v.placa, modelo: `${v.tipo} (${v.marca_modelo})` }));
 
 export const CNH_CATEGORIES = [
   {
@@ -189,7 +183,11 @@ export default function DriversModule({ user }) {
   const [drivers, setDrivers] = useState(() => {
     try {
       const saved = localStorage.getItem('ambipar_real_drivers');
-      return saved ? JSON.parse(saved) : [];
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length >= 8) return parsed;
+      }
+      return AUDITED_DRIVERS;
     } catch {
       return [];
     }

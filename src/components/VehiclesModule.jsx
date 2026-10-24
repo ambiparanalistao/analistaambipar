@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
+import { AUDITED_VEHICLES, AUDITED_DRIVERS } from '../data/auditedAmbiparData';
 
 export const VEHICLE_STATUS_OPTIONS = [
   { 
@@ -103,144 +104,8 @@ export const FUEL_TYPES = [
   { value: 'Elétrico / Híbrido', label: 'Veículo 100% Elétrico / Híbrido', sublabel: 'Zero emissão direta de CO2' }
 ];
 
-// Frota Flagship Ambipar homologada com dados operacionais reais e oficiais
-export const DEFAULT_AMBIPAR_FLEET = [
-  {
-    id: 'VEI-AMB001',
-    placa: 'AMB4K89',
-    prefixo: 'AMB-101',
-    tipo: 'Carreta Tanque Químico (Inox 316L)',
-    marca_modelo: 'Scania R540 V8 Super 6x4',
-    ano_fabricacao: 2024,
-    ano_modelo: 2024,
-    chassi: '9BSAMB540RP128901',
-    renavam: '01293847561',
-    capacidade_peso_ton: 57.0,
-    capacidade_volume_m3: 38.0,
-    tipo_carga: 'Produtos Químicos Perigosos (Hazmat)',
-    combustivel: 'Diesel S10',
-    km_atual: 118420,
-    proxima_revisao_km: 125000,
-    validade_crlv: '2027-10-31',
-    validade_cronotacografo: '2026-11-20',
-    validade_cipp: '2027-08-15',
-    validade_civ: '2027-08-15',
-    validade_fumaca_opacidade: '2027-04-10',
-    validade_seguro_ambiental: '2028-01-30',
-    motorista_vinculado: 'Carlos Eduardo Dos Santos Ferreira',
-    motorista_telefone: '(21) 99240-5610',
-    status: 'Em Viagem',
-    observacoes: 'Conjunto dedicado ao transporte de Ácido Sulfúrico a granel. Válvulas de alívio testadas e kit PAE 100% completo.'
-  },
-  {
-    id: 'VEI-AMB002',
-    placa: 'AMB7X21',
-    prefixo: 'AMB-102',
-    tipo: 'Bitrem Tanque Químico',
-    marca_modelo: 'Volvo FH 540 6x4 Globetrotter (9 Eixos)',
-    ano_fabricacao: 2023,
-    ano_modelo: 2024,
-    chassi: '9BVFH540GT9028174',
-    renavam: '09812736452',
-    capacidade_peso_ton: 74.0,
-    capacidade_volume_m3: 62.0,
-    tipo_carga: 'Combustíveis & Derivados de Petróleo',
-    combustivel: 'Diesel S10',
-    km_atual: 94100,
-    proxima_revisao_km: 100000,
-    validade_crlv: '2027-09-30',
-    validade_cronotacografo: '2027-05-18',
-    validade_cipp: '2027-06-22',
-    validade_civ: '2027-06-22',
-    validade_fumaca_opacidade: '2027-03-12',
-    validade_seguro_ambiental: '2028-02-15',
-    motorista_vinculado: 'Marcelo Silveira Rocha',
-    motorista_telefone: '(19) 98765-4321',
-    status: 'Disponível',
-    observacoes: 'Bitrem higienizado e vaporizado com laudo de desgasificação emitido. Pronto para carregamento imediato.'
-  },
-  {
-    id: 'VEI-AMB003',
-    placa: 'AMB2M33',
-    prefixo: 'AMB-103',
-    tipo: 'Caminhão Truck PBT 23t (Tanque/Baú)',
-    marca_modelo: 'Mercedes-Benz Actros 2653 6x4 Alto Vácuo',
-    ano_fabricacao: 2023,
-    ano_modelo: 2023,
-    chassi: '9BMACTR2653KL81920',
-    renavam: '04561238907',
-    capacidade_peso_ton: 26.0,
-    capacidade_volume_m3: 16.0,
-    tipo_carga: 'Resíduos Industriais Classe I (Perigosos)',
-    combustivel: 'Diesel S10',
-    km_atual: 164200,
-    proxima_revisao_km: 170000,
-    validade_crlv: '2027-11-15',
-    validade_cronotacografo: '2027-02-10',
-    validade_cipp: '2027-07-05',
-    validade_civ: '2027-07-05',
-    validade_fumaca_opacidade: '2026-12-01',
-    validade_seguro_ambiental: '2027-12-31',
-    motorista_vinculado: 'Roberto Antunes de Lima',
-    motorista_telefone: '(71) 99123-8877',
-    status: 'Em Viagem',
-    observacoes: 'Bomba de anel líquido revisada e mangotes de sucção com teste hidrostático em dia.'
-  },
-  {
-    id: 'VEI-AMB004',
-    placa: 'AMB9R10',
-    prefixo: 'AMB-104',
-    tipo: 'Carreta Sider (Carga Seca / Tambores)',
-    marca_modelo: 'DAF XF 530 6x2 Space Cab',
-    ano_fabricacao: 2022,
-    ano_modelo: 2023,
-    chassi: '9BDAFXF530SC72819',
-    renavam: '07891234560',
-    capacidade_peso_ton: 48.5,
-    capacidade_volume_m3: 90.0,
-    tipo_carga: 'Carga Geral Seca & Embalada',
-    combustivel: 'Biodiesel B100',
-    km_atual: 82500,
-    proxima_revisao_km: 85000,
-    validade_crlv: '2027-08-20',
-    validade_cronotacografo: '2027-04-14',
-    validade_cipp: '2027-05-30',
-    validade_civ: '2027-05-30',
-    validade_fumaca_opacidade: '2027-01-22',
-    validade_seguro_ambiental: '2028-03-10',
-    motorista_vinculado: 'Não vinculado',
-    motorista_telefone: '',
-    status: 'Manutenção',
-    observacoes: 'Troca preventiva de pastilhas de freio e alinhamento a laser do conjunto.'
-  },
-  {
-    id: 'VEI-AMB005',
-    placa: 'AMB5P44',
-    prefixo: 'PAE-01',
-    tipo: 'Veículo de Apoio PAE (Ambipar Response)',
-    marca_modelo: 'VW Constellation 25.360 6x2 Response 24h',
-    ano_fabricacao: 2024,
-    ano_modelo: 2024,
-    chassi: '9BWCON25360RP45612',
-    renavam: '03456789123',
-    capacidade_peso_ton: 23.0,
-    capacidade_volume_m3: 45.0,
-    tipo_carga: 'Prontidão de Emergência Ambiental',
-    combustivel: 'Diesel S10',
-    km_atual: 45300,
-    proxima_revisao_km: 60000,
-    validade_crlv: '2027-12-31',
-    validade_cronotacografo: '2027-09-10',
-    validade_cipp: '2027-11-12',
-    validade_civ: '2027-11-12',
-    validade_fumaca_opacidade: '2027-06-15',
-    validade_seguro_ambiental: '2028-06-30',
-    motorista_vinculado: 'Anderson Silva Costa',
-    motorista_telefone: '(13) 99789-0011',
-    status: 'Disponível',
-    observacoes: 'Kit Hazmat Completo Nível A/B, Skimmer para óleo, 200m de barreira de contenção fluvial.'
-  }
-];
+// Frota Flagship Ambipar homologada com dados operacionais auditados 2026 (21 Veículos)
+export const DEFAULT_AMBIPAR_FLEET = AUDITED_VEHICLES;
 
 export const formatPlateMercosul = (val) => {
   if (!val) return '—';
@@ -321,7 +186,7 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
         if (parsed && parsed.length > 0) {
           // Remove resquício de teste inválido digitado com placa numérica '32342322'
           const filtered = parsed.filter(v => v.placa !== '32342322' && v.marca_modelo !== 'errsszxfdrs');
-          if (filtered.length > 0) return filtered;
+          if (filtered.length >= 15) return filtered;
         }
       }
       return DEFAULT_AMBIPAR_FLEET;
@@ -336,7 +201,8 @@ export default function VehiclesModule({ user, onNavigateDrivers }) {
       const saved = localStorage.getItem('ambipar_real_drivers');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return parsed.map(d => ({ 
+        const list = parsed && parsed.length > 0 ? parsed : AUDITED_DRIVERS;
+        return list.map(d => ({ 
           value: d.nome, 
           label: `${d.nome} (CNH ${d.categoria_cnh || 'E'})`,
           phone: d.telefone || ''
