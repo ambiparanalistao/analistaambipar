@@ -27,8 +27,7 @@ import {
 } from 'lucide-react';
 import PremiumSelect from './PremiumSelect';
 import useFleetDirectory from '../hooks/useFleetDirectory';
-import {saveDriver,deleteRegistryRecord,updateRegistryStatus,driverPayload} from '../services/fleetDirectory';
-import LegacyRegistryRecovery from './LegacyRegistryRecovery';
+import {saveDriver,deleteRegistryRecord,updateRegistryStatus} from '../services/fleetDirectory';
 
 export const STATUS_OPTIONS = [
   { 
@@ -314,7 +313,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
 
   return (
     <div className="module-view animate-fade-in" id="drivers-module-root">
-<LegacyRegistryRecovery records={drivers} type="drivers" onRecover={row=>{setEditingId(null);setFormData({...initialForm,...Object.fromEntries(Object.entries(driverPayload(row)).map(([k,v])=>[k,v??'']))});setViewMode('form');}}/>
+
       {['admin_geral','admin_empresa'].includes(maintenanceAccess?.role)&&<DriverBindingPanel access={maintenanceAccess}/>}
       {/* ============================================================== */}
       {/* CABEÇALHO DO MÓDULO */}

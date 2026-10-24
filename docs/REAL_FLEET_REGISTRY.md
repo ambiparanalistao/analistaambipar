@@ -6,7 +6,7 @@ O formulário de OS carrega os cadastros completos e sugere o motorista associad
 
 Salvar, alterar status e excluir aguardam confirmação do banco. Erros de vínculo preservam o cadastro e são exibidos. Exclusão de cliente também aguarda confirmação remota e respeita a empresa.
 
-Dados antigos do navegador não entram nas listas operacionais. Em Motoristas e Frotas, use Revisar cadastros locais / Conferir e salvar no banco para revisar cada registro real. Exemplos conhecidos são descartados das sugestões; o backup original fica disponível para conferência. Não há importação automática. Registros já salvos não são sugeridos de novo.
+Dados antigos do navegador não entram nas listas operacionais. O aviso e os botões de recuperação local foram removidos das telas de Motoristas e Frotas.
 
 A migração adiciona os campos reais de contato, vencimentos e prefixo usados nas telas. Não apaga registros existentes. Remove os padrões true de NR20/NR35 e retira RENAVAM do snapshot de envio. O Excel de OS não inclui RENAVAM; o campo real continua no cadastro da frota.
 

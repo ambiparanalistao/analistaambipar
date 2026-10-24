@@ -59,7 +59,6 @@ import WhatsAppDispatchWorkspace from './WhatsAppDispatchWorkspace';
 import useFleetDirectory from '../hooks/useFleetDirectory';
 import {deleteRegistryRecord,updateRegistryStatus,registryChanged} from '../services/fleetDirectory';
 import {driverForVehicle} from '../utils/registryMatching';
-import LegacyRegistryRecovery from './LegacyRegistryRecovery';
 
 export const VEHICLE_STATUS_OPTIONS = [
   { 
@@ -530,7 +529,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
 
   if(maintenanceVehicle)return <VehicleMaintenancePanel access={maintenanceAccess} vehicleId={maintenanceVehicle.id} onBack={()=>setMaintenanceVehicle(null)}/>;
   return (
-    <div className="module-page-container animate-fade-in" id="vehicles-module-root"><LegacyRegistryRecovery records={vehicles} type="vehicles" onRecover={row=>{setEditingId(null);setFormData({...initialForm,...Object.fromEntries(Object.entries(row).filter(([k])=>k in initialForm).map(([k,v])=>[k,v??'']))});setViewMode('form');}}/>
+    <div className="module-page-container animate-fade-in" id="vehicles-module-root">
       {/* ============================================================== */}
       {/* CABEÇALHO DO MÓDULO & TORRE DE TELEMETRIA AO VIVO              */}
       {/* ============================================================== */}
