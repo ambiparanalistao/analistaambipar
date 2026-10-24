@@ -1,3 +1,4 @@
+import {requestDriverToxicology} from '../services/driverToxicology';
 import {driverValidityRequest} from '../utils/driverValidityRequest';
 import DriverBindingPanel from './maintenance/driver/DriverBindingPanel';
 import React, { useState, useEffect } from 'react';
@@ -175,7 +176,10 @@ export const getCountdown = (dateStr) => {
   };
 };
 
-function ValidityRequestButton({driver,compact=false}){const delivery=driverValidityRequest(driver);const label='Solicitar validades';return delivery?<a href={delivery.href} target="_blank" rel="noopener noreferrer" className={compact?'table-wa-direct-btn':'btn-whatsapp-executive'} aria-label={'Solicitar validades de '+driver.nome} title="Abre o WhatsApp com a solicitação dos cursos e exame toxicológico. Confirme o envio no WhatsApp." style={{display:'inline-flex',gap:6,alignItems:'center',maxWidth:'100%',whiteSpace:'normal'}}><Calendar size={14}/><span>{label}</span></a>:<button type="button" disabled className="btn-secondary" title="Cadastre um telefone / WhatsApp válido para solicitar as validades.">{label}</button>;}
+function ValidityRequestButton({driver,company,compact=false}){const [busy,setBusy]=useState(false),[result,setResult]=useState(null),[error,setError]=useState('');const [requestId]=useState(()=>crypto.randomUUID());const delivery=driverValidityRequest(driver);
+ async function send(){if(busy||!delivery)return;const uncertain=result?.status==='unknown';if(uncertain&&!window.confirm('O envio anterior pode ter sido recebido. Confira o WhatsApp do motorista. Deseja repetir mesmo com possibilidade de duplicação?'))return;setBusy(true);setError('');try{setResult(await requestDriverToxicology(company,driver.id,requestId,uncertain));}catch(e){setResult({status:'unknown'});setError(e.message);}finally{setBusy(false);}}
+ return <div style={{display:'flex',flexDirection:'column',gap:5,maxWidth:'100%'}}><button type="button" onClick={send} disabled={busy||!delivery||result?.status==='accepted'||result?.status==='sending'} className={compact?'table-wa-direct-btn':'btn-whatsapp-executive'} aria-label={'Solicitar toxicológico de '+driver.nome} title={delivery?'Enviar solicitação do exame toxicológico pela Evolution API':'Cadastre um telefone / WhatsApp válido.'} style={{display:'inline-flex',gap:6,alignItems:'center',whiteSpace:'normal'}}><MessageCircle size={14}/><span>{busy?'Enviando…':result?.status==='accepted'?'Aceito pela Evolution API':result?.status==='unknown'?'Conferir e tentar novamente':'Solicitar toxicológico'}</span></button>{result&&<small role="status">{result.error||({accepted:'Solicitação aceita pela Evolution API.',failed:'Falha no envio. Confira a conexão e tente novamente.',unknown:'Envio incerto. Confira o WhatsApp antes de repetir.',sending:'Já existe um envio em processamento.'}[result.status]||'Confira o resultado do envio.')}</small>}{error&&<small role="alert">{error}</small>}</div>;
+}
 
 export default function DriversModule({ user, maintenanceAccess }) {
   // Controle de visualização: 'list' (Quadro Geral) ou 'form' (Formulário Amplo na Página, sem pop-up)
@@ -1030,7 +1034,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
                         )}
                       </div>
 
-                      <div style={{padding:'0 16px 12px'}}><ValidityRequestButton driver={d}/></div>
+                      <div style={{padding:'0 16px 12px'}}><ValidityRequestButton company={company} driver={d}/></div>
                       {/* Dossiê de Validades & Certificações (Grid 2x2 Limpo) */}
                       <div className="driver-compliance-matrix">
                         {/* 1. CNH */}
@@ -1195,7 +1199,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
                                   <span>Chamar no Zap</span>
                                 </a>
                               )}
-                              <ValidityRequestButton driver={d} compact/>
+                              <ValidityRequestButton company={company} driver={d} compact/>
                             </div>
                           </td>
 

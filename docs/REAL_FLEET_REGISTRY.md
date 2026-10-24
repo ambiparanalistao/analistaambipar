@@ -14,4 +14,4 @@ ESG sem medições, custos mensais sem lançamentos e auditoria de abastecimento
 
 Verificação: testes de matching, SQL de persistência/isolaçao/exclusão/documento e navegador (exclusão com recarregamento, falha por vínculo, preenchimento da OS). Os testes não enviam mensagens reais.
 
-Configuração operacional: MOPP é exibido com validade indeterminada em cards, tabela e formulário. Datas históricas permanecem no banco, mas não são exigidas, alteradas pelo formulário nem usadas em alertas. A solicitação de validades pelo WhatsApp exclui MOPP e mantém os demais documentos. Isso não presume a existência do certificado: o número cadastrado é preservado e a ausência é indicada.
+Configuração operacional: MOPP é exibido com validade indeterminada em cards, tabela e formulário. Datas históricas permanecem no banco, mas não são exigidas, alteradas pelo formulário nem usadas em alertas. A solicitação pelo WhatsApp usa a Evolution API e pede somente a validade do exame toxicológico. Isso não presume a existência do certificado: o número cadastrado é preservado e a ausência é indicada.
