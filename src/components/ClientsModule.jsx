@@ -403,7 +403,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
     } catch(error){setFeedback({type:'error',text:error.code==='23503'?'O cliente possui vínculos ou histórico e não pode ser excluído.':error.message||'Não foi possível excluir o cliente.'});}
   };
 
-  // Abrir Modal de Redirecionar Rota
+  // Abrir Redirecionamento de Rota em Tela Cheia (SEM POP-UP)
   const handleOpenRedirectModal = (client) => {
     setClientToRedirect(client);
     setRedirectForm({
@@ -414,6 +414,13 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
       tempo_ciclo_horas: client.tempo_ciclo_horas || '',
       frequencia: client.frequencia || '3x por Semana'
     });
+    setViewMode('redirect_route');
+  };
+
+  // Abrir Dossiê em Tela Cheia (SEM POP-UP)
+  const handleOpenDossier = (client) => {
+    setSelectedClientDossier(client);
+    setViewMode('dossier');
   };
 
   // Confirmar Mudança Rápida de Rota
@@ -456,6 +463,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
     });
 
     setClientToRedirect(null);
+    setViewMode('cards');
     setTimeout(() => setFeedback(null), 4000);
   };
 
@@ -554,7 +562,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
         </div>
 
         <div className="module-header-actions">
-          {viewMode !== 'form' ? (
+          {(viewMode === 'cards' || viewMode === 'table') ? (
             <>
               <button
                 type="button"
@@ -581,10 +589,14 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
             <button
               type="button"
               className="btn-secondary btn-icon-text"
-              onClick={() => setViewMode('cards')}
+              onClick={() => {
+                setViewMode('cards');
+                setSelectedClientDossier(null);
+                setClientToRedirect(null);
+              }}
             >
               <ArrowLeft size={16} />
-              <span>Voltar ao Painel de Clientes</span>
+              <span>Voltar à Carteira de Clientes</span>
             </button>
           )}
         </div>
@@ -1158,6 +1170,361 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
             </button>
           </div>
         </form>
+      ) : (viewMode === 'dossier' && selectedClientDossier) ? (
+        <div className="client-dossier-fullscreen animate-fade-in" style={{ padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                  onClick={() => {
+                    setSelectedClientDossier(null);
+                    setViewMode('cards');
+                  }}
+                >
+                  <ArrowLeft size={14} />
+                  <span>Voltar à Lista de Clientes</span>
+                </button>
+                <span style={{ fontSize: '0.75rem', color: 'var(--accent-emerald)', fontWeight: 800, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                  DOSSIÊ TÉCNICO COMPLETO
+                </span>
+              </div>
+              <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                {selectedClientDossier.nome_fantasia || selectedClientDossier.razao_social}
+              </h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.85rem' }}>
+                {selectedClientDossier.razao_social} • CNPJ: {selectedClientDossier.cnpj} • SLA: {selectedClientDossier.tier_sla}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="btn-secondary btn-icon-text"
+                onClick={() => window.print()}
+              >
+                <Printer size={15} />
+                <span>Imprimir Ficha Cadastral</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-primary btn-icon-text"
+                onClick={() => {
+                  const client = selectedClientDossier;
+                  setSelectedClientDossier(null);
+                  handleOpenEditForm(client);
+                }}
+                style={{ background: 'var(--accent-emerald)', borderColor: 'var(--accent-emerald)', color: '#070b12', fontWeight: 700 }}
+              >
+                <Edit3 size={15} />
+                <span>Editar Cadastro Completo</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="card-panel" style={{ background: '#0e1524', padding: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
+            {/* Grid de 3 Colunas de Detalhes */}
+            <div className="dossier-details-grid">
+              {/* Coluna 1: Endereço & Polo */}
+              <div className="dossier-box">
+                <div className="dossier-box-title">
+                  <MapPin size={15} color="#10b981" />
+                  <span>Localização da Planta</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Endereço:</span>
+                  <span className="val">{selectedClientDossier.logradouro ? `${selectedClientDossier.logradouro}, ${selectedClientDossier.numero || 'S/N'}` : '—'}</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Bairro / Cidade:</span>
+                  <span className="val">{selectedClientDossier.bairro || '—'} - {selectedClientDossier.cidade || '—'} / {selectedClientDossier.uf || '—'}</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">CEP:</span>
+                  <span className="val">{selectedClientDossier.cep || '—'}</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Polo Logístico:</span>
+                  <span className="val" style={{ color: '#38bdf8' }}>{selectedClientDossier.polo_logistico || 'Polo Industrial'}</span>
+                </div>
+              </div>
+
+              {/* Coluna 2: Roteirização */}
+              <div className="dossier-box">
+                <div className="dossier-box-title">
+                  <Route size={15} color="#06b6d4" />
+                  <span>Roteirização Logística</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Rota Ativa:</span>
+                  <span className="val" style={{ color: '#ffffff', fontWeight: 600 }}>{selectedClientDossier.rota_nome || '—'}</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Distância & Ciclo:</span>
+                  <span className="val">{selectedClientDossier.distancia_km || 0} km (~{selectedClientDossier.tempo_ciclo_horas || 0}h ciclo)</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Frequência:</span>
+                  <span className="val">{selectedClientDossier.frequencia || '—'}</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Janela de Carga:</span>
+                  <span className="val">{selectedClientDossier.janela_atendimento || '—'}</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Veículo / Motorista:</span>
+                  <span className="val">{selectedClientDossier.veiculo_alocado_placa || 'Frota CCO'} • {selectedClientDossier.motorista_preferencial || 'Escala CCO'}</span>
+                </div>
+              </div>
+
+              {/* Coluna 3: Conformidade & Resíduos */}
+              <div className="dossier-box">
+                <div className="dossier-box-title">
+                  <ShieldCheck size={15} color="#f59e0b" />
+                  <span>Conformidade & Meio Ambiente</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Tipos de Resíduo:</span>
+                  <span className="val">{selectedClientDossier.classes_residuos || 'Não especificado'}</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Licença de Operação (LO):</span>
+                  <span className="val" style={{ color: '#10b981', fontWeight: 600 }}>{selectedClientDossier.licenca_ambiental_num || 'LO Homologada'}</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Validade da LO:</span>
+                  <span className="val">{selectedClientDossier.validade_licenca || 'Válida'}</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">Código IBAMA:</span>
+                  <span className="val">{selectedClientDossier.codigo_ibama || '—'}</span>
+                </div>
+                <div className="dossier-data-item">
+                  <span className="lbl">MTR / SINIR:</span>
+                  <span className="val" style={{ color: selectedClientDossier.mtr_obrigatorio ? '#10b981' : 'var(--text-muted)' }}>
+                    {selectedClientDossier.mtr_obrigatorio ? '✓ Obrigatório em toda expedição' : 'Dispensado'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Contatos & Governança */}
+            <div className="dossier-contact-bar" style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Responsável na Planta
+                  </span>
+                  <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '0.92rem' }}>
+                    {selectedClientDossier.responsavel_nome || 'Não informado'} — <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{selectedClientDossier.responsavel_cargo || 'Gestor'}</span>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {selectedClientDossier.email ? `✉ ${selectedClientDossier.email}` : ''} {selectedClientDossier.telefone ? `• ☎ ${selectedClientDossier.telefone}` : ''}
+                  </div>
+                </div>
+
+                {getWhatsAppLink(selectedClientDossier.telefone, selectedClientDossier.nome_fantasia) && (
+                  <a
+                    href={getWhatsAppLink(selectedClientDossier.telefone, selectedClientDossier.nome_fantasia)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-whatsapp-direct"
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.84rem' }}
+                  >
+                    <Phone size={15} />
+                    <span>Chamar no WhatsApp</span>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {selectedClientDossier.observacoes && (
+              <div style={{ marginTop: '1rem', padding: '0.85rem', background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                <strong style={{ color: '#f59e0b' }}>Observações Operacionais: </strong>
+                {selectedClientDossier.observacoes}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (viewMode === 'redirect_route' && clientToRedirect) ? (
+        <div className="redirect-route-fullscreen animate-fade-in" style={{ padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                  onClick={() => {
+                    setClientToRedirect(null);
+                    setViewMode('cards');
+                  }}
+                >
+                  <ArrowLeft size={14} />
+                  <span>Voltar à Lista de Clientes</span>
+                </button>
+                <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 800, background: 'rgba(6, 182, 212, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                  REDIRECIONAMENTO DE ROTA
+                </span>
+              </div>
+              <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                Direcionar Rota: {clientToRedirect.nome_fantasia || clientToRedirect.razao_social}
+              </h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.85rem' }}>
+                Altere o corredor logístico, cidades de origem/destino e frequência semanal de coletas para este cliente.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setClientToRedirect(null);
+                  setViewMode('cards');
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-primary btn-icon-text"
+                onClick={handleConfirmRedirectRoute}
+                style={{ background: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)', color: '#070b12', fontWeight: 700 }}
+              >
+                <Compass size={16} />
+                <span>Confirmar e Direcionar</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="card-panel" style={{ background: '#0e1524', padding: '1.5rem', maxWidth: '700px', margin: '0 auto' }}>
+            {registeredRoutes.length > 0 && (
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                  Selecionar Rota Homologada Existente:
+                </label>
+                <select
+                  className="styled-native-select"
+                  value={redirectForm.rota_nome}
+                  onChange={e => {
+                    const match = registeredRoutes.find(r => r.nome === e.target.value);
+                    if (match) {
+                      setRedirectForm({
+                        ...redirectForm,
+                        rota_nome: match.nome,
+                        origem: match.origem,
+                        destino: match.destino,
+                        distancia_km: match.distanciaKm,
+                        tempo_ciclo_horas: match.tempoHoras
+                      });
+                    } else {
+                      setRedirectForm({ ...redirectForm, rota_nome: e.target.value });
+                    }
+                  }}
+                >
+                  <option value="">-- Ou Digite uma Nova Rota Abaixo --</option>
+                  {registeredRoutes.map(r => (
+                    <option key={r.nome} value={r.nome}>
+                      {r.nome} ({r.distanciaKm} km | {r.origem} ➔ {r.destino})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                Nome / Identificação da Rota: *
+              </label>
+              <input
+                type="text"
+                required
+                className="styled-native-select"
+                placeholder="Ex: Corredor Paulínia ⇄ Cubatão"
+                value={redirectForm.rota_nome}
+                onChange={e => setRedirectForm({ ...redirectForm, rota_nome: e.target.value })}
+              />
+            </div>
+
+            <div className="grid-2-cols" style={{ marginBottom: '1.25rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                  Origem da Carga:
+                </label>
+                <input
+                  type="text"
+                  className="styled-native-select"
+                  placeholder="Cidade / Planta"
+                  value={redirectForm.origem}
+                  onChange={e => setRedirectForm({ ...redirectForm, origem: e.target.value })}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                  Destino da Carga:
+                </label>
+                <input
+                  type="text"
+                  className="styled-native-select"
+                  placeholder="Base Ambipar / Destinação"
+                  value={redirectForm.destino}
+                  onChange={e => setRedirectForm({ ...redirectForm, destino: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid-2-cols" style={{ marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                  Distância Total (km):
+                </label>
+                <input
+                  type="number"
+                  className="styled-native-select"
+                  placeholder="Ex: 180"
+                  value={redirectForm.distancia_km}
+                  onChange={e => setRedirectForm({ ...redirectForm, distancia_km: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                  Frequência Semanal:
+                </label>
+                <PremiumSelect
+                  value={redirectForm.frequencia}
+                  onChange={val => setRedirectForm({ ...redirectForm, frequencia: val })}
+                  options={FREQUENCY_OPTIONS}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1.25rem' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setClientToRedirect(null);
+                  setViewMode('cards');
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleConfirmRedirectRoute}
+                style={{ background: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)', color: '#070b12', fontWeight: 700 }}
+              >
+                Confirmar Redirecionamento
+              </button>
+            </div>
+          </div>
+        </div>
       ) : (
         /* ============================================================== */
         /* MODO 2: COCKPIT EXECUTIVO DE CLIENTES & ROTAS (CARDS & TABELA) */
@@ -1594,8 +1961,21 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                         <button
                           type="button"
                           className="btn-icon-action"
-                          onClick={() => setSelectedClientDossier(client)}
-                          title="Visualizar Dossiê Completo"
+                          onClick={() => handleOpenDossier(client)}
+                          title="Visualizar Dossiê em Tela Cheia"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '8px',
+                            background: 'rgba(14, 21, 36, 0.9)',
+                            border: '1px solid rgba(255, 255, 255, 0.14)',
+                            color: '#94a3b8',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
                         >
                           <Eye size={15} />
                         </button>
@@ -1605,6 +1985,19 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                           className="btn-icon-action"
                           onClick={() => handleOpenEditForm(client)}
                           title="Editar Cadastro"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '8px',
+                            background: 'rgba(14, 21, 36, 0.9)',
+                            border: '1px solid rgba(255, 255, 255, 0.14)',
+                            color: '#94a3b8',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
                         >
                           <Edit3 size={15} />
                         </button>
@@ -1614,6 +2007,19 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                           className="btn-icon-action danger"
                           onClick={() => handleDeleteClient(client.id, client.nome_fantasia || client.razao_social)}
                           title="Excluir Cliente"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '8px',
+                            background: 'rgba(14, 21, 36, 0.9)',
+                            border: '1px solid rgba(255, 255, 255, 0.14)',
+                            color: '#94a3b8',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
                         >
                           <Trash2 size={15} />
                         </button>
@@ -1705,15 +2111,17 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                               type="button"
                               className="btn-icon-action"
                               onClick={() => handleOpenRedirectModal(client)}
-                              title="Redirecionar Rota"
+                              title="Redirecionar Rota em Tela Cheia"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '6px', background: 'rgba(14, 21, 36, 0.9)', border: '1px solid rgba(255, 255, 255, 0.14)', color: '#06b6d4', cursor: 'pointer', padding: 0 }}
                             >
                               <Compass size={14} color="#06b6d4" />
                             </button>
                             <button
                               type="button"
                               className="btn-icon-action"
-                              onClick={() => setSelectedClientDossier(client)}
-                              title="Ver Dossiê"
+                              onClick={() => handleOpenDossier(client)}
+                              title="Ver Dossiê em Tela Cheia"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '6px', background: 'rgba(14, 21, 36, 0.9)', border: '1px solid rgba(255, 255, 255, 0.14)', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
                             >
                               <Eye size={14} />
                             </button>
@@ -1721,7 +2129,8 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                               type="button"
                               className="btn-icon-action"
                               onClick={() => handleOpenEditForm(client)}
-                              title="Editar"
+                              title="Editar Cadastro"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '6px', background: 'rgba(14, 21, 36, 0.9)', border: '1px solid rgba(255, 255, 255, 0.14)', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
                             >
                               <Edit3 size={14} />
                             </button>
@@ -1730,6 +2139,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                               className="btn-icon-action danger"
                               onClick={() => handleDeleteClient(client.id, client.nome_fantasia || client.razao_social)}
                               title="Excluir"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '6px', background: 'rgba(14, 21, 36, 0.9)', border: '1px solid rgba(255, 255, 255, 0.14)', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -1743,354 +2153,6 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
             </div>
           )}
         </>
-      )}
-
-      {/* ============================================================== */}
-      {/* MODAL 1: REDIRECIONAR CLIENTE A UMA NOVA ROTA (AÇÃO RÁPIDA)    */}
-      {/* ============================================================== */}
-      {clientToRedirect && (
-        <div className="modal-overlay animate-fade-in" onClick={() => setClientToRedirect(null)}>
-          <div className="modal-dialog-box" onClick={e => e.stopPropagation()} style={{ maxWidth: '640px' }}>
-            <div className="modal-header-banner">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <div className="modal-icon-glow">
-                  <Compass size={20} color="#06b6d4" />
-                </div>
-                <div>
-                  <h3 style={{ color: '#ffffff', margin: 0, fontSize: '1.15rem' }}>Direcionar Cliente à Rota Logística</h3>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>
-                    {clientToRedirect.nome_fantasia || clientToRedirect.razao_social} ({clientToRedirect.cidade}/{clientToRedirect.uf})
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setClientToRedirect(null)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="modal-body-content" style={{ padding: '1.25rem' }}>
-              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '1.1rem' }}>
-                Informe a nova rota de atendimento ou altere a frequência para este cliente:
-              </p>
-
-              {registeredRoutes.length > 0 && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
-                    Selecionar Rota Existente (Opcional)
-                  </label>
-                  <select
-                    className="styled-native-select"
-                    value={redirectForm.rota_nome}
-                    onChange={e => {
-                      const match = registeredRoutes.find(r => r.nome === e.target.value);
-                      if (match) {
-                        setRedirectForm({
-                          ...redirectForm,
-                          rota_nome: match.nome,
-                          origem: match.origem,
-                          destino: match.destino,
-                          distancia_km: match.distanciaKm,
-                          tempo_ciclo_horas: match.tempoHoras
-                        });
-                      } else {
-                        setRedirectForm({ ...redirectForm, rota_nome: e.target.value });
-                      }
-                    }}
-                  >
-                    <option value="">-- Ou Digite uma Nova Rota Abaixo --</option>
-                    {registeredRoutes.map(r => (
-                      <option key={r.nome} value={r.nome}>
-                        {r.nome} ({r.distanciaKm} km | {r.origem} ➔ {r.destino})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
-                  Nome / Identificação da Rota *
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="styled-native-select"
-                  placeholder="Ex: Corredor Paulínia ⇄ Cubatão"
-                  value={redirectForm.rota_nome}
-                  onChange={e => setRedirectForm({ ...redirectForm, rota_nome: e.target.value })}
-                />
-              </div>
-
-              <div className="grid-2-cols" style={{ marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
-                    Origem da Carga
-                  </label>
-                  <input
-                    type="text"
-                    className="styled-native-select"
-                    placeholder="Cidade / Planta"
-                    value={redirectForm.origem}
-                    onChange={e => setRedirectForm({ ...redirectForm, origem: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
-                    Destino da Carga
-                  </label>
-                  <input
-                    type="text"
-                    className="styled-native-select"
-                    placeholder="Base Ambipar / Destinação"
-                    value={redirectForm.destino}
-                    onChange={e => setRedirectForm({ ...redirectForm, destino: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid-2-cols" style={{ marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
-                    Distância (km)
-                  </label>
-                  <input
-                    type="number"
-                    className="styled-native-select"
-                    placeholder="Ex: 180"
-                    value={redirectForm.distancia_km}
-                    onChange={e => setRedirectForm({ ...redirectForm, distancia_km: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
-                    Frequência de Atendimento
-                  </label>
-                  <PremiumSelect
-                    value={redirectForm.frequencia}
-                    onChange={val => setRedirectForm({ ...redirectForm, frequencia: val })}
-                    options={FREQUENCY_OPTIONS}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-footer-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setClientToRedirect(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn-primary btn-icon-text"
-                onClick={handleConfirmRedirectRoute}
-                style={{ background: 'linear-gradient(135deg, #06b6d4, #0284c7)' }}
-              >
-                <Compass size={16} />
-                <span>Confirmar e Direcionar</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* MODAL 2: DOSSIÊ COMPLETO DO CLIENTE (FICHA TÉCNICA CCO)        */}
-      {/* ============================================================== */}
-      {selectedClientDossier && (
-        <div className="modal-overlay animate-fade-in" onClick={() => setSelectedClientDossier(null)}>
-          <div className="modal-dialog-box" onClick={e => e.stopPropagation()} style={{ maxWidth: '820px' }}>
-            <div className="modal-header-banner">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                <div className="modal-icon-glow emerald">
-                  <Building2 size={24} color="#10b981" />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <h3 style={{ color: '#ffffff', margin: 0 }}>{selectedClientDossier.nome_fantasia || selectedClientDossier.razao_social}</h3>
-                    <span className="client-tier-chip" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
-                      {selectedClientDossier.tier_sla}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>
-                    {selectedClientDossier.razao_social} • CNPJ: {selectedClientDossier.cnpj}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setSelectedClientDossier(null)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="modal-body-content" style={{ padding: '1.5rem', maxHeight: '72vh', overflowY: 'auto' }}>
-              {/* Grid de 3 Colunas de Detalhes */}
-              <div className="dossier-details-grid">
-                {/* Coluna 1: Endereço & Polo */}
-                <div className="dossier-box">
-                  <div className="dossier-box-title">
-                    <MapPin size={15} color="#10b981" />
-                    <span>Localização da Planta</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Endereço:</span>
-                    <span className="val">{selectedClientDossier.logradouro ? `${selectedClientDossier.logradouro}, ${selectedClientDossier.numero || 'S/N'}` : '—'}</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Bairro / Cidade:</span>
-                    <span className="val">{selectedClientDossier.bairro || '—'} - {selectedClientDossier.cidade || '—'} / {selectedClientDossier.uf || '—'}</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">CEP:</span>
-                    <span className="val">{selectedClientDossier.cep || '—'}</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Polo Logístico:</span>
-                    <span className="val" style={{ color: '#38bdf8' }}>{selectedClientDossier.polo_logistico || 'Polo Industrial'}</span>
-                  </div>
-                </div>
-
-                {/* Coluna 2: Roteirização */}
-                <div className="dossier-box">
-                  <div className="dossier-box-title">
-                    <Route size={15} color="#06b6d4" />
-                    <span>Roteirização Logística</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Rota Ativa:</span>
-                    <span className="val" style={{ color: '#ffffff', fontWeight: 600 }}>{selectedClientDossier.rota_nome || '—'}</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Distância & Ciclo:</span>
-                    <span className="val">{selectedClientDossier.distancia_km || 0} km (~{selectedClientDossier.tempo_ciclo_horas || 0}h ciclo)</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Frequência:</span>
-                    <span className="val">{selectedClientDossier.frequencia || '—'}</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Janela de Carga:</span>
-                    <span className="val">{selectedClientDossier.janela_atendimento || '—'}</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Veículo / Motorista:</span>
-                    <span className="val">{selectedClientDossier.veiculo_alocado_placa || 'Frota CCO'} • {selectedClientDossier.motorista_preferencial || 'Escala CCO'}</span>
-                  </div>
-                </div>
-
-                {/* Coluna 3: Conformidade & Resíduos */}
-                <div className="dossier-box">
-                  <div className="dossier-box-title">
-                    <ShieldCheck size={15} color="#f59e0b" />
-                    <span>Conformidade & Meio Ambiente</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Tipos de Resíduo:</span>
-                    <span className="val">{selectedClientDossier.classes_residuos || 'Não especificado'}</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Licença de Operação (LO):</span>
-                    <span className="val" style={{ color: '#10b981', fontWeight: 600 }}>{selectedClientDossier.licenca_ambiental_num || 'LO Homologada'}</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Validade da LO:</span>
-                    <span className="val">{selectedClientDossier.validade_licenca || 'Válida'}</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">Código IBAMA:</span>
-                    <span className="val">{selectedClientDossier.codigo_ibama || '—'}</span>
-                  </div>
-                  <div className="dossier-data-item">
-                    <span className="lbl">MTR / SINIR:</span>
-                    <span className="val" style={{ color: selectedClientDossier.mtr_obrigatorio ? '#10b981' : 'var(--text-muted)' }}>
-                      {selectedClientDossier.mtr_obrigatorio ? '✓ Obrigatório em toda expedição' : 'Dispensado'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contatos & Governança */}
-              <div className="dossier-contact-bar" style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Responsável na Planta
-                    </span>
-                    <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '0.92rem' }}>
-                      {selectedClientDossier.responsavel_nome || 'Não informado'} — <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{selectedClientDossier.responsavel_cargo || 'Gestor'}</span>
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {selectedClientDossier.email ? `✉ ${selectedClientDossier.email}` : ''} {selectedClientDossier.telefone ? `• ☎ ${selectedClientDossier.telefone}` : ''}
-                    </div>
-                  </div>
-
-                  {getWhatsAppLink(selectedClientDossier.telefone, selectedClientDossier.nome_fantasia) && (
-                    <a
-                      href={getWhatsAppLink(selectedClientDossier.telefone, selectedClientDossier.nome_fantasia)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-whatsapp-direct"
-                      style={{ padding: '0.5rem 1rem', fontSize: '0.84rem' }}
-                    >
-                      <Phone size={15} />
-                      <span>Chamar no WhatsApp</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {selectedClientDossier.observacoes && (
-                <div style={{ marginTop: '1rem', padding: '0.85rem', background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  <strong style={{ color: '#f59e0b' }}>Observações Operacionais: </strong>
-                  {selectedClientDossier.observacoes}
-                </div>
-              )}
-            </div>
-
-            <div className="modal-footer-actions" style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-              <button
-                type="button"
-                className="btn-secondary btn-icon-text"
-                onClick={() => window.print()}
-              >
-                <Printer size={15} />
-                <span>Imprimir Ficha Cadastral</span>
-              </button>
-
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setSelectedClientDossier(null)}
-                >
-                  Fechar
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary btn-icon-text"
-                  onClick={() => {
-                    const client = selectedClientDossier;
-                    setSelectedClientDossier(null);
-                    handleOpenEditForm(client);
-                  }}
-                >
-                  <Edit3 size={15} />
-                  <span>Editar Cadastro Completo</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
