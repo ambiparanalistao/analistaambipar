@@ -45,10 +45,12 @@ export default function EscalaModule({ user, onNavigateRotas }) {
 
   const [schedules, setSchedules] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_real_schedules');
-      return saved ? JSON.parse(saved) : INITIAL_SCHEDULE_DATA;
+      localStorage.removeItem('ambipar_real_schedules');
+      localStorage.removeItem('ambipar_real_schedules_v2');
+      const saved = localStorage.getItem('ambipar_user_schedules_clean_v1');
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_SCHEDULE_DATA;
+      return [];
     }
   });
 
@@ -59,30 +61,41 @@ export default function EscalaModule({ user, onNavigateRotas }) {
   // Formulário de Nova Escala (em Tela Inteira)
   const defaultScheduleState = {
     data_escala: '2026-10-24',
-    turno: 'Manhã (06:00 às 15:00)',
-    rota_id: AUDITED_RJ_ROUTES[0].id,
-    rota_nome: AUDITED_RJ_ROUTES[0].nome,
-    polo: AUDITED_RJ_ROUTES[0].polo,
-    veiculo_placa: 'RHU-6I87',
-    veiculo_modelo: 'VW 26.280 CRM Poli Duplo',
-    motorista_nome: 'Maiquel Souza da Silva',
-    motorista_telefone: '(21) 98702-0014',
-    motorista_cnh: 'Cat. AE (MOPP Válido)',
-    distancia_prevista_km: AUDITED_RJ_ROUTES[0].distancia_km,
+    turno: 'Manhã (07:00 às 16:00)',
+    rota_id: '',
+    rota_nome: '',
+    polo: 'Operações RJ',
+    veiculo_placa: '',
+    veiculo_modelo: '',
+    motorista_nome: '',
+    motorista_telefone: '',
+    motorista_cnh: '',
+    distancia_prevista_km: 0,
     instrucoes_especiais: '',
-    paradas: AUDITED_RJ_ROUTES[0].pontos_parada.map(p => ({
-      ordem: p.ordem,
-      cliente: p.nome_ponto,
-      endereco: p.endereco,
-      status: 'Programado',
-      horario: '08:00'
-    }))
+    paradas: [
+      {
+        ordem: 1,
+        cliente: 'Base Ambipar Duque de Caxias',
+        endereco: 'Rod. Washington Luís, km 114 - Duque de Caxias',
+        status: 'Programado',
+        horario: '07:00'
+      }
+    ]
   };
 
   const [formData, setFormData] = useState(defaultScheduleState);
 
   // Ao trocar a rota no formulário de tela cheia, carrega o itinerário correspondente
   const handleSelectRouteInForm = (routeId) => {
+    if (!routeId) {
+      setFormData(prev => ({
+        ...prev,
+        rota_id: '',
+        rota_nome: '',
+        distancia_prevista_km: 0
+      }));
+      return;
+    }
     const r = AUDITED_RJ_ROUTES.find(x => x.id === routeId);
     if (!r) return;
     setFormData(prev => ({
@@ -91,8 +104,8 @@ export default function EscalaModule({ user, onNavigateRotas }) {
       rota_nome: r.nome,
       polo: r.polo,
       distancia_prevista_km: r.distancia_km,
-      veiculo_placa: r.placa_sugerida || prev.veiculo_placa,
-      motorista_nome: r.motorista_sugerido || prev.motorista_nome,
+      veiculo_placa: prev.veiculo_placa || r.placa_sugerida || '',
+      motorista_nome: prev.motorista_nome || r.motorista_sugerido || '',
       paradas: r.pontos_parada.map(p => ({
         ordem: p.ordem,
         cliente: p.nome_ponto,
@@ -107,7 +120,7 @@ export default function EscalaModule({ user, onNavigateRotas }) {
   const saveSchedules = (newSchedules) => {
     setSchedules(newSchedules);
     try {
-      localStorage.setItem('ambipar_real_schedules', JSON.stringify(newSchedules));
+      localStorage.setItem('ambipar_user_schedules_clean_v1', JSON.stringify(newSchedules));
     } catch (e) {
       console.warn(e);
     }
@@ -143,6 +156,19 @@ export default function EscalaModule({ user, onNavigateRotas }) {
   // Salvar Escala (Tela Cheia)
   const handleSaveSchedule = (e) => {
     e.preventDefault();
+    if (!formData.rota_nome || !formData.rota_nome.trim()) {
+      alert('Por favor informe o nome da rota a ser executada nesta escala.');
+      return;
+    }
+    if (!formData.veiculo_placa) {
+      alert('Por favor selecione o veículo da frota a ser escalado.');
+      return;
+    }
+    if (!formData.motorista_nome) {
+      alert('Por favor selecione o motorista homologado.');
+      return;
+    }
+
     const created = {
       ...formData,
       id: `ESC-${Date.now()}`,
@@ -471,13 +497,26 @@ export default function EscalaModule({ user, onNavigateRotas }) {
 
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                  Rota / Circuito Pré-Programado:
+                  Nome da Rota / Circuito do Dia: *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Rota Coletas Zona Norte e Centro"
+                  value={formData.rota_nome}
+                  onChange={(e) => setFormData({ ...formData, rota_nome: e.target.value })}
+                  style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem', marginBottom: '0.75rem' }}
+                />
+
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                  Ou Selecione um Circuito Cadastrado (Opcional):
                 </label>
                 <select
                   value={formData.rota_id}
                   onChange={(e) => handleSelectRouteInForm(e.target.value)}
-                  style={{ width: '100%', padding: '0.75rem 0.85rem', background: '#070b12', border: '1px solid rgba(6, 182, 212, 0.4)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem', fontWeight: 700 }}
+                  style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid rgba(6, 182, 212, 0.4)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
                 >
+                  <option value="">-- Preencher rota e paradas manualmente --</option>
                   {AUDITED_RJ_ROUTES.map(r => (
                     <option key={r.id} value={r.id}>
                       {r.codigo} - {r.nome} ({r.distancia_km} km • {r.pontos_parada.length} paradas)
@@ -485,7 +524,7 @@ export default function EscalaModule({ user, onNavigateRotas }) {
                   ))}
                 </select>
                 <small style={{ color: 'var(--accent-cyan)', display: 'block', marginTop: '0.35rem' }}>
-                  💡 Ao selecionar a rota, os clientes e endereços de paradas são carregados ao lado automaticamente.
+                  💡 Se selecionar um circuito cadastrado, ele preenche os clientes e endereços automaticamente ao lado.
                 </small>
               </div>
             </div>
@@ -502,17 +541,19 @@ export default function EscalaModule({ user, onNavigateRotas }) {
                   Veículo da Frota (21 Unidades Homologadas DCX / Vale):
                 </label>
                 <select
+                  required
                   value={formData.veiculo_placa}
                   onChange={(e) => {
                     const v = AUDITED_VEHICLES.find(x => x.placa === e.target.value);
                     setFormData({
                       ...formData,
                       veiculo_placa: e.target.value,
-                      veiculo_modelo: v ? `${v.tipo} (${v.marca_modelo})` : formData.veiculo_modelo
+                      veiculo_modelo: v ? `${v.tipo} (${v.marca_modelo})` : ''
                     });
                   }}
                   style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
                 >
+                  <option value="">-- Selecione o Veículo Liberado na Frota --</option>
                   {AUDITED_VEHICLES.map(v => (
                     <option key={v.placa} value={v.placa} disabled={v.status === 'Bloqueado'}>
                       {v.placa} • {v.tipo} ({v.marca_modelo}) [{v.status}]
@@ -526,18 +567,20 @@ export default function EscalaModule({ user, onNavigateRotas }) {
                   Motorista (Quadro Homologado MOPP):
                 </label>
                 <select
+                  required
                   value={formData.motorista_nome}
                   onChange={(e) => {
                     const m = AUDITED_DRIVERS.find(x => x.nome === e.target.value);
                     setFormData({
                       ...formData,
                       motorista_nome: e.target.value,
-                      motorista_telefone: m?.telefone || formData.motorista_telefone,
-                      motorista_cnh: m ? `Cat. ${m.categoria_cnh} (MOPP ${m.status_mopp})` : formData.motorista_cnh
+                      motorista_telefone: m?.telefone || '',
+                      motorista_cnh: m ? `Cat. ${m.categoria_cnh} (MOPP ${m.status_mopp})` : ''
                     });
                   }}
                   style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
                 >
+                  <option value="">-- Selecione o Motorista Homologado MOPP --</option>
                   {AUDITED_DRIVERS.map(d => (
                     <option key={d.id} value={d.nome}>
                       {d.nome} (Cat. {d.categoria_cnh} • MOPP {d.status_mopp})
@@ -884,10 +927,28 @@ export default function EscalaModule({ user, onNavigateRotas }) {
       {/* Grid de Cards de Escala Executiva */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.25rem' }}>
         {filteredSchedules.length === 0 ? (
-          <div className="card-panel" style={{ textAlign: 'center', padding: '3rem' }}>
-            <Calendar size={36} style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }} />
-            <p style={{ fontWeight: 600, color: 'var(--text-main)' }}>Nenhuma escala encontrada com os filtros selecionados.</p>
-            <small style={{ color: 'var(--text-muted)' }}>Clique no botão "Nova Escala de Despacho" para programar viagens do dia em tela cheia.</small>
+          <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', background: 'rgba(15, 23, 42, 0.4)', border: '1px dashed rgba(255, 255, 255, 0.12)', borderRadius: '12px' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
+              <Calendar size={32} style={{ color: 'var(--accent-emerald)' }} />
+            </div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+              Nenhuma Escala Operacional Cadastrada
+            </h3>
+            <p style={{ color: 'var(--text-muted)', maxWidth: '520px', margin: '0 auto 1.5rem', fontSize: '0.88rem', lineHeight: '1.5' }}>
+              O quadro de despacho do CCO está 100% limpo. Nenhuma escala ou viagem foi pré-programada. Clique no botão abaixo para montar uma nova escala com veículo liberado, motorista e paradas do dia.
+            </p>
+            <button
+              type="button"
+              className="btn-primary btn-icon-text"
+              onClick={() => {
+                setFormData(defaultScheduleState);
+                setViewMode('form');
+              }}
+              style={{ background: 'var(--accent-emerald)', borderColor: 'var(--accent-emerald)', color: '#070b12', fontWeight: 700, padding: '0.75rem 1.6rem', fontSize: '0.9rem' }}
+            >
+              <Plus size={18} />
+              <span>+ Montar Nova Escala CCO</span>
+            </button>
           </div>
         ) : (
           filteredSchedules.map((item) => {

@@ -57,8 +57,7 @@ export default function Sidebar({
         {
           id: 'escala',
           label: 'Escala Operacional CCO',
-          icon: CalendarDays,
-          badge: 'Diária'
+          icon: CalendarDays
         },
         {
           id: 'rotas',
