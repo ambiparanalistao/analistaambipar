@@ -468,7 +468,7 @@ export interface MaintenanceInserts {
 }
 
 type Immutable = 'id' | 'company_id' | 'created_at' | 'created_by';
-type AppendOnly = 'maintenance_notifications'|'maintenance_communication_audit'| 'maintenance_vehicle_events'|'maintenance_vehicle_preferences'|'maintenance_driver_bindings'|'maintenance_allocations'| 'maintenance_order_timeline' | 'maintenance_messages' | 'maintenance_partner_audit' | 'maintenance_partner_attachments';
+type AppendOnly = 'driver_toxicology_requests'|'maintenance_notifications'|'maintenance_communication_audit'| 'maintenance_vehicle_events'|'maintenance_vehicle_preferences'|'maintenance_driver_bindings'|'maintenance_allocations'| 'maintenance_order_timeline' | 'maintenance_messages' | 'maintenance_partner_audit' | 'maintenance_partner_attachments';
 export type MaintenanceUpdate<T extends keyof MaintenanceInserts> =
   T extends AppendOnly ? never : Partial<Omit<MaintenanceInserts[T], Immutable | (T extends 'maintenance_orders' ? 'vehicle_id' | 'partner_id' | 'data_abertura' : never)>>;
 export type TableName = keyof MaintenanceRows;
@@ -483,6 +483,7 @@ export type MaintenanceDatabase = {
     } };
     Views: Record<string, never>;
     Functions: {
+      driver_toxicology_request:{Args:{target_company:string;command:'claim'|'finish';body?:Json};Returns:Json};
       maintenance_plan_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_branch_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_analytics_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
@@ -546,3 +547,6 @@ export interface MaintenanceInserts {maintenance_partner_approval_notices:never;
 
 export interface MaintenanceRows {maintenance_order_dispatches:{id:string;company_id:string;order_id:string;kind:'abertura'|'aprovacao';status:'pending'|'sending'|'accepted'|'failed'|'unknown'|'unavailable'|'obsolete';attempts:number;claimed_at:string|null;provider_message_id:string|null;error_message:string|null;created_at:string;updated_at:string};}
 export interface MaintenanceInserts {maintenance_order_dispatches:never;}
+
+export interface MaintenanceRows {driver_toxicology_requests:{id:string;company_id:string;driver_id:string;request_id:string;actor_id:string;phone:string;content:string;status:'sending'|'accepted'|'failed'|'unknown';claim_token:string|null;claimed_at:string;attempts:number;provider_message_id:string|null;error_message:string|null;created_at:string;updated_at:string};}
+export interface MaintenanceInserts {driver_toxicology_requests:never;}
