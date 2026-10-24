@@ -115,6 +115,12 @@ jobs:
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024004814_relaxed_partner_registration.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/relaxed-registration.sql
+      - name: Order delivery forecast and document dispatch
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024011714_order_workshop_delivery.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/order-delivery.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
         run: npm ci
@@ -129,7 +135,7 @@ jobs:
         run: npx --yes --package typescript@5.9.3 tsc --project tsconfig.maintenance.json
       - name: Existing API regression tests
         if: ${{ !cancelled() }}
-        run: node --test tests/evolution.test.js tests/partner-approval.test.js
+        run: node --test tests/evolution.test.js tests/partner-approval.test.js tests/order-dispatch.test.js
       - name: Partner form validation
         if: ${{ !cancelled() }}
         run: node --test tests/partner-validation.test.js tests/orders-validation.test.js tests/occurrence-validation.test.js tests/communication.test.js tests/plans.test.js tests/analytics.test.js tests/registration.test.js
