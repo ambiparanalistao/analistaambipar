@@ -1,6 +1,6 @@
 # Solicitação automática de orçamento para oficinas
 
-Na abertura de uma S.OR pela plataforma, o banco cria um registro de envio por oficina ativa da mesma empresa. A plataforma inicia automaticamente os envios pela Evolution API, em lotes limitados, com até dois envios simultâneos. Oficinas inativas ou bloqueadas não entram na nova fila. Contato ausente ou inválido fica registrado como indisponível, sem inventar destinatário. O envio pode ser acompanhado e retomado individualmente no detalhe.
+Na abertura de uma S.OR pela plataforma, o banco cria um registro de envio somente para oficinas ativas da mesma empresa que tenham pelo menos um dos tipos selecionados explicitamente marcado em tipos de oficina no cadastro. Sem filtro ou sem correspondência, não há envio. Não há fallback pelo tipo principal de cadastros antigos. A plataforma inicia automaticamente os envios pela Evolution API, em lotes limitados, com até dois envios simultâneos. Oficinas inativas ou bloqueadas não entram na nova fila. Contato ausente ou inválido fica registrado como indisponível, sem inventar destinatário. O envio pode ser acompanhado e retomado individualmente no detalhe.
 
 Cada destinatário recebe o Excel e a mensagem solicitando orçamento de peças e serviços, NCM de cada peça quando aplicável e prazo estimado de entrega em dias corridos contado após a aprovação. O NCM é informado pela oficina/analista; não é calculado ou presumido. O código é salvo como texto e preserva zeros iniciais.
 
@@ -11,3 +11,7 @@ A oficina de referência pode ser trocada pelo Admin/Analista antes dos itens, a
 Cada envio tem destinatário, tentativas, identificador do provedor, status e auditoria por empresa. Envios aceitos não são repetidos. Falhas e resultados incertos não são repetidos automaticamente; a repetição incerta exige conferir o WhatsApp. Ao aprovar, as cotações ainda pendentes tornam-se desatualizadas. Mensagens que já estiverem em trânsito no provedor podem concluir.
 
 A fila é persistida e os lotes são iniciados pela plataforma após salvar a S.OR; se a sessão ou a página forem encerradas antes de processar todos os lotes, os restantes permanecem pendentes para retomar no detalhe. Não há robô de resposta: o orçamento recebido e o prazo da oficina são registrados pelo analista. A migração não dispara mensagens históricas nem cria envios retroativos.
+
+O detalhe permite salvar filtros e enviar destinatários pendentes. Oficinas já atendidas não recebem duplicatas. Peças e acessórios é uma categoria própria. A validação ocorre novamente no banco a cada envio, inclusive tentativas individuais.
+
+Excluir oficina exige confirmação e versão atual do registro. O cadastro recebe uma marca permanente de exclusão e sai da listagem e dos futuros envios. A operação é auditada; S.OR, mensagens e documentos anteriores permanecem vinculados ao histórico. Uma edição comum não pode reativar o cadastro excluído.

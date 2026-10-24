@@ -3,7 +3,7 @@ import {supabase} from '../lib/supabaseClient';
 import {partnerPayload,validatePartner,validateAttachment,FILE_TYPES} from '../utils/partnerValidation';
 const checked = result => {if(result.error) {const e=result.error;throw new Error(e.code==='23505'?'CPF/CNPJ já cadastrado nesta empresa.':e.code==='42501'?'Seu perfil não tem permissão para esta operação.':e.message||'Não foi possível acessar os dados.');}return result;};
 export async function listPartners(company,filters,page=1,limit=20,signal){
- let q=supabase.from('maintenance_partners').select('*',{count:'exact'}).eq('company_id',company);
+ let q=supabase.from('maintenance_partners').select('*',{count:'exact'}).eq('company_id',company).is('deleted_at',null);
  const term=filters.search.replace(/[^\p{L}\p{N} ]/gu,'').trim().slice(0,100);
  if(term)q=q.or('nome_fantasia.ilike.%'+term+'%,razao_social.ilike.%'+term+'%,cnpj_cpf.ilike.%'+term+'%');
  if(filters.tipo)q=q.or('tipo.eq.'+filters.tipo+',onboarding_profile->tipos_oficina.cs.'+JSON.stringify([PARTNER_TYPES[filters.tipo]]));
@@ -15,7 +15,7 @@ export async function listPartners(company,filters,page=1,limit=20,signal){
 export async function partnerCities(company){return checked(await supabase.rpc('maintenance_partner_cities',{target_company:company})).data||[];}
 export async function partnerDetail(company,id){
  const results=await Promise.all([
- supabase.from('maintenance_partners').select('*').eq('company_id',company).eq('id',id).single(),
+ supabase.from('maintenance_partners').select('*').eq('company_id',company).eq('id',id).is('deleted_at',null).single(),
  supabase.rpc('maintenance_partner_metrics',{target_company:company,target_partner:id}),
  supabase.from('maintenance_orders').select('id,numero,status,data_abertura,valor_total').eq('company_id',company).eq('partner_id',id).order('data_abertura',{ascending:false}).limit(5),
  supabase.from('maintenance_partner_attachments').select('*').eq('company_id',company).eq('partner_id',id).order('created_at',{ascending:false}),
@@ -39,3 +39,5 @@ export async function uploadPartnerFile(company,id,file,categoria){
 function assertPath(company,id,file){if(!file.object_path.startsWith(company+'/partners/'+id+'/'))throw new Error('Anexo inválido.');}
 export async function downloadPartnerFile(company,id,file){assertPath(company,id,file);return checked(await supabase.storage.from('maintenance').createSignedUrl(file.object_path,60,{download:file.nome})).data.signedUrl;}
 export async function removePartnerFile(company,id,file){assertPath(company,id,file);checked(await supabase.storage.from('maintenance').remove([file.object_path]));checked(await supabase.from('maintenance_partner_attachments').delete().eq('company_id',company).eq('partner_id',id).eq('id',file.id));}
+
+export async function deletePartner(company,partner){const r=checked(await supabase.rpc('maintenance_partner_delete',{target_company:company,target_partner:partner.id,expected_version:partner.version})).data;if(!r?.deleted)throw new Error('Exclusão não confirmada pelo banco.');return r;}
