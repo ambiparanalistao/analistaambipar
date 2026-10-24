@@ -21,7 +21,7 @@ export function createOrderDispatchHandler({env=process.env,fetcher=fetch,workbo
  }
  if(body.kind!=='abertura'||body.dispatchId)return res.status(200).json(await sendOne(body.dispatchId));
  const before=await rpc('list',{id:body.id,kind:'abertura'});const pending=(before.rows||[]).filter(d=>d.status==='pending').slice(0,6);const results=[];let cursor=0;await Promise.all(Array.from({length:Math.min(2,pending.length)},async()=>{while(cursor<pending.length){const row=pending[cursor++];try{results.push({id:row.id,...await sendOne(row.id)});}catch(e){results.push({id:row.id,status:'failed',error:e.status?e.message:'Não foi possível confirmar este envio.'});}}}));
- const after=await rpc('list',{id:body.id,kind:'abertura'});const counts={total:after.rows.length};for(const row of after.rows)counts[row.status]=(counts[row.status]||0)+1;const remaining=counts.pending||0;return res.status(200).json({status:counts.total>0&&counts.accepted===counts.total?'accepted':'partial',counts,remaining,results,error:counts.total?'':'Nenhuma oficina ativa foi registrada para esta solicitação.'});
+ const after=await rpc('list',{id:body.id,kind:'abertura'});const counts={total:after.rows.length};for(const row of after.rows)counts[row.status]=(counts[row.status]||0)+1;const remaining=counts.pending||0;return res.status(200).json({status:counts.total>0&&counts.accepted===counts.total?'accepted':'partial',counts,remaining,results,error:counts.total?'':'Nenhuma oficina ativa tem um dos tipos selecionados marcado no cadastro. Sem filtro marcado, nenhum envio é realizado.'});
  }catch(e){return res.status(e.status||500).json({error:e.status?e.message:'Não foi possível enviar a S.OR. Atualize antes de repetir.'});}
 };}
 export default createOrderDispatchHandler();
