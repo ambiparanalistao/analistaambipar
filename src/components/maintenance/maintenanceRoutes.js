@@ -7,5 +7,6 @@ export const MAINTENANCE_PAGES=[
  {id:'maintenance_occurrences',path:'/manutencao/ocorrencias',label:'Ocorrências'},
  {id:'maintenance_communication',path:'/manutencao/comunicacao',label:'Comunicação'},
  {id:'maintenance_finance',path:'/manutencao/financeiro',label:'Financeiro'},
+ {id:'maintenance_operations',path:'/manutencao/controles',label:'Controle da Frota'},
  {id:'maintenance_reports',path:'/manutencao/relatorios',label:'Relatórios'},
 ];

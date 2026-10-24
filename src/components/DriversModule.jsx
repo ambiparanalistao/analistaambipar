@@ -28,7 +28,7 @@ import {
   List
 } from 'lucide-react';
 import PremiumSelect from './PremiumSelect';
-import { AUDITED_DRIVERS, AUDITED_VEHICLES } from '../data/auditedAmbiparData';
+import { AUDITED_VEHICLES } from '../data/auditedAmbiparData';
 import useFleetDirectory from '../hooks/useFleetDirectory';
 import {saveDriver,deleteRegistryRecord,updateRegistryStatus} from '../services/fleetDirectory';
 
@@ -188,8 +188,8 @@ export default function DriversModule({ user, maintenanceAccess }) {
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' (Cards Operacionais VIP) ou 'table' (Tabela Executiva)
   const [editingId, setEditingId] = useState(null);
 
-  // Motoristas consolidados sincronizados com frota e base auditada 2026
-  const [drivers, setDrivers] = useState(() => AUDITED_DRIVERS);
+  // Cadastros operacionais vêm exclusivamente do banco da empresa.
+  const [drivers, setDrivers] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -203,12 +203,12 @@ export default function DriversModule({ user, maintenanceAccess }) {
     if(directory.drivers && directory.drivers.length > 0){
       setDrivers(directory.drivers);
     } else {
-      setDrivers(AUDITED_DRIVERS);
+      setDrivers([]);
     }
     if(directory.vehicles && directory.vehicles.length > 0){
       setFleetVehicles(directory.vehicles.map(v=>({...v,modelo:v.marca_modelo})));
     } else {
-      setFleetVehicles(DEFAULT_FLEET);
+      setFleetVehicles([]);
     }
     setLoading(directory.loading);
     if(directory.error)setFeedback({type:'error',text:directory.error});
