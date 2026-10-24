@@ -29,7 +29,7 @@ Criação, edição, conferência, reabertura, pagamento, estorno, cancelamento 
 
 Todas as tabelas têm RLS e acesso de leitura por empresa. Cliente anônimo não tem acesso. Escritas diretas são revogadas; uma RPC pública SECURITY INVOKER chama implementação privada com validação de usuário e perfil. A liberação geral de módulos já existente continua sendo respeitada. Admin/Analista gerenciam; Supervisor/Operador sem liberação geral consultam os valores existentes, conforme decisão anterior do projeto. O portal público dos motoristas não recebe acesso a este financeiro.
 
-A view de saldos é SECURITY INVOKER, mantendo RLS também no acesso direto. Índices cobrem chaves e buscas. Operações financeiras travam a S.OR e a nota, serializando conferências, pagamentos e cancelamentos. Versão otimista evita gravações desatualizadas. Identificadores idempotentes protegem criação de notas, pagamentos e estornos contra repetição após perda de resposta. Não há alteração no valor do orçamento pela rotina financeira.
+A view de saldos é SECURITY INVOKER, mantendo RLS também no acesso direto. Índices cobrem chaves e buscas. Operações financeiras travam a S.OR e a nota, serializando conferências, pagamentos e cancelamentos. Versão otimista evita gravações desatualizadas. Identificadores idempotentes protegem criação de notas, pagamentos e estornos contra repetição após perda de resposta. Não há alteração no valor do orçamento pela rotina financeira. Um trigger adicional impede cancelar a S.OR ou trocar sua oficina enquanto houver notas financeiras ativas. O encerramento operacional permanece permitido e as parcelas continuam acompanhadas no financeiro.
 
 ## Verificação
 
