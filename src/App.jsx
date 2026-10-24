@@ -27,6 +27,7 @@ import SupabaseConfigModal from './components/SupabaseConfigModal';
 import ComplianceAuditModule from './components/ComplianceAuditModule';
 import EscalaModule from './components/EscalaModule';
 import RotasModule from './components/RotasModule';
+import PreventiveMaintenanceModule from './components/PreventiveMaintenanceModule';
 import ErrorBoundary from './components/ErrorBoundary';
 import AutomationModule from './components/AutomationModule';
 import MaintenanceModule from './components/maintenance/MaintenanceModule';
@@ -43,6 +44,7 @@ export const MODULE_ROUTES = {
   escala: '/escala',
   rotas: '/rotas',
   auditoria_vencimentos: '/auditoria-vencimentos',
+  manutencao_preventiva: '/manutencao-preventiva',
   frotas: '/frotas',
   motoristas: '/motoristas',
   viagens: '/viagens',
@@ -70,6 +72,9 @@ export const PATH_TO_MODULE = {
   '/rota': 'rotas',
   '/roteirizacao': 'rotas',
   '/auditoria-vencimentos': 'auditoria_vencimentos',
+  '/manutencao-preventiva': 'manutencao_preventiva',
+  '/preventiva': 'manutencao_preventiva',
+  '/odometro': 'manutencao_preventiva',
   '/vencimentos': 'auditoria_vencimentos',
   '/auditoria': 'auditoria_vencimentos',
   '/documentos': 'auditoria_vencimentos',
@@ -182,6 +187,10 @@ export default function App() {
     auditoria_vencimentos: { 
       title: 'Auditoria de Vencimentos & Ativos 2026', 
       subtitle: 'Controle de 665 documentos físicos/digitais, 83 caçambas, 21 veículos e licenças regulatórias' 
+    },
+    manutencao_preventiva: {
+      title: 'Manutenção Preventiva por KM & Odômetro',
+      subtitle: 'Monitoramento preditivo de vida útil (óleo 15k km / 250h PTO, engraxamento 5k km, freios 30k km) e gestão de OSs'
     },
     frotas: { 
       title: 'Gestão de Frotas & Veículos Homologados', 
@@ -380,6 +389,7 @@ export default function App() {
             <main className="stage-content-body" id="stage-content-body">
               <ErrorBoundary>
                 {currentModule === 'auditoria_vencimentos' && <ComplianceAuditModule />}
+                {currentModule === 'manutencao_preventiva' && <PreventiveMaintenanceModule user={session.user} onNavigateFleet={() => handleSelectModule('frotas')} />}
                 {currentModule === 'escala' && <EscalaModule user={session.user} onNavigateRotas={() => handleSelectModule('rotas')} />}
                 {currentModule === 'rotas' && <RotasModule user={session.user} onNavigateEscala={() => handleSelectModule('escala')} />}
                 {currentModule.startsWith('maintenance_') && <MaintenanceModule access={maintenanceAccess} page={currentModule} />}

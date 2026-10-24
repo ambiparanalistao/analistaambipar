@@ -100,6 +100,16 @@ export const ANOMALY_TYPES = {
     key: 'DESVIO_MATRIZ_MENSAL',
     label: 'Pico Anômalo no Relatório Mensal',
     desc: 'Despesa mensal de combustível na matriz apresenta salto desproporcional sem aumento de frota.'
+  },
+  DESVIO_ARLA32: {
+    key: 'DESVIO_ARLA32',
+    label: 'Desvio Crítico de ARLA 32 (< 3% ou Ausente)',
+    desc: 'Veículo Euro 5/6 consumindo Diesel S10 sem reposição proporcional de ARLA 32 (3% a 5%), com risco de falha catalítica e corte de potência.'
+  },
+  DESVIO_MEDIA_CATEGORIA: {
+    key: 'DESVIO_MEDIA_CATEGORIA',
+    label: 'Consumo Excessivo vs Meta da Categoria RJ',
+    desc: 'Rendimento KM/L abaixo da meta técnica esperada para a tipologia do caminhão nas rotas do Rio de Janeiro.'
   }
 };
 
@@ -279,6 +289,113 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
         metricValue: `${count} tickets`,
         status: 'PENDENTE'
       });
+    }
+  });
+
+
+  // Regra 6: AUDITORIA DE PROPORÇÃO DIESEL X ARLA 32 (EURO 5 & EURO 6)
+  const plateFuelStats = {};
+  sortedRecords.forEach(r => {
+    if (!r.placa) return;
+    const p = r.placa;
+    if (!plateFuelStats[p]) {
+      plateFuelStats[p] = {
+        placa: p,
+        modelo: r.modelo_veiculo || 'Caminhão',
+        motorista: r.motorista,
+        dieselLitros: 0,
+        arlaLitros: 0,
+        totalKm: 0
+      };
+    }
+    const combustivel = (r.tipo_combustivel || '').toLowerCase();
+    const l = Number(r.litros) || 0;
+    const km = Number(r.distancia_percorrida_km) || 0;
+
+    if (combustivel.includes('diesel')) {
+      plateFuelStats[p].dieselLitros += l;
+    } else if (combustivel.includes('arla')) {
+      plateFuelStats[p].arlaLitros += l;
+    }
+    plateFuelStats[p].totalKm += km;
+  });
+
+  Object.values(plateFuelStats).forEach(stat => {
+    if (stat.dieselLitros >= 150) {
+      const propArla = (stat.arlaLitros / stat.dieselLitros) * 100;
+      // Proporção ideal de Arla no Proconve P7/P8 é de 3% a 5%
+      if (propArla < 2.5) {
+        anomalies.push({
+          id: `ANOM_ARLA_DEFICIT_${stat.placa}`,
+          type: 'DESVIO_ARLA32',
+          severity: 'CRITICAL',
+          title: `Alerta ARLA 32: Proporção de apenas ${propArla.toFixed(1)}% (Mínimo exigido: 3% a 5%)`,
+          diagnostico: `O veículo ${stat.placa} consumiu ${stat.dieselLitros.toFixed(0)} L de Diesel S10 e apenas ${stat.arlaLitros.toFixed(0)} L de ARLA 32 (${propArla.toFixed(1)}% de taxa de reposição). Motores Euro 5 e Euro 6 exigem entre 3% e 5% de ARLA 32. Risco iminente de cristalização, falha na bomba dosadora SCR ou corte de 40% do torque do motor pela central eletrônica (modo de segurança ambiental Proconve P7/P8).`,
+          placa: stat.placa,
+          modelo: stat.modelo,
+          motorista: stat.motorista || 'Escala CCO',
+          data: 'Últimos Abastecimentos',
+          posto: 'Rede Convênio Ticket Log',
+          valorTotal: stat.dieselLitros * 5.95,
+          litros: stat.dieselLitros,
+          impactoFinanceiro: 1200.00, // custo estimado de limpeza de bico SCR
+          metricLabel: 'Proporção ARLA/Diesel',
+          metricValue: `${propArla.toFixed(1)}% (Ideal: 3-5%)`,
+          status: 'PENDENTE'
+        });
+      } else if (propArla > 7.0) {
+        anomalies.push({
+          id: `ANOM_ARLA_EXCESS_${stat.placa}`,
+          type: 'DESVIO_ARLA32',
+          severity: 'HIGH',
+          title: `Consumo Elevado de ARLA 32: ${propArla.toFixed(1)}% (Acima da média de 5%)`,
+          diagnostico: `O veículo ${stat.placa} registrou consumo desproporcional de ARLA 32 (${stat.arlaLitros.toFixed(0)} L para ${stat.dieselLitros.toFixed(0)} L de Diesel). Possível vazamento na linha de injeção ou falha no bico dosador do catalisador.`,
+          placa: stat.placa,
+          modelo: stat.modelo,
+          motorista: stat.motorista || 'Escala CCO',
+          data: 'Últimos Abastecimentos',
+          posto: 'Rede Convênio',
+          valorTotal: stat.arlaLitros * 3.80,
+          litros: stat.arlaLitros,
+          impactoFinanceiro: 450.00,
+          metricLabel: 'Proporção ARLA/Diesel',
+          metricValue: `${propArla.toFixed(1)}% (Máx: 5%)`,
+          status: 'PENDENTE'
+        });
+      }
+
+      // Regra 7: DESVIO DE CONSUMO POR CATEGORIA DE VEÍCULO NAS ROTAS RJ
+      if (stat.totalKm > 0) {
+        const mediaKmL = stat.totalKm / stat.dieselLitros;
+        let metaCategoria = 2.6; // padrão para pesado
+        const mod = (stat.modelo || '').toLowerCase();
+        if (mod.includes('accelo') || mod.includes('baú 3/4') || mod.includes('delivery')) metaCategoria = 3.8;
+        else if (mod.includes('poli') || mod.includes('26.280')) metaCategoria = 2.6;
+        else if (mod.includes('roll-on') || mod.includes('2629') || mod.includes('6x4')) metaCategoria = 2.4;
+        else if (mod.includes('cavalo') || mod.includes('carreta')) metaCategoria = 2.1;
+
+        if (mediaKmL < metaCategoria * 0.78) {
+          const desvioPct = Math.round(((metaCategoria - mediaKmL) / metaCategoria) * 100);
+          anomalies.push({
+            id: `ANOM_KM_L_DESVIO_${stat.placa}`,
+            type: 'DESVIO_MEDIA_CATEGORIA',
+            severity: 'HIGH',
+            title: `Consumo Excessivo: Média ${mediaKmL.toFixed(2)} km/l (${desvioPct}% abaixo da meta)`,
+            diagnostico: `O veículo ${stat.placa} está operando a ${mediaKmL.toFixed(2)} km/l, enquanto a meta técnica homologada para esta categoria nas rotas do RJ é de ${metaCategoria.toFixed(1)} km/l. Recomendada vistoria técnica: conferência de bicos injetores, filtro de ar, calibragem de pneus e avaliação do estilo de condução do motorista.`,
+            placa: stat.placa,
+            modelo: stat.modelo,
+            motorista: stat.motorista || 'Escala CCO',
+            data: 'Período Consolidado',
+            posto: 'Rede de Abastecimento',
+            valorTotal: stat.dieselLitros * 5.95,
+            litros: stat.dieselLitros,
+            impactoFinanceiro: (stat.dieselLitros * 0.2) * 5.95,
+            metricLabel: 'Média Real vs Meta',
+            metricValue: `${mediaKmL.toFixed(2)} km/l (Meta: ${metaCategoria.toFixed(1)})`,
+            status: 'PENDENTE'
+          });
+        }
+      }
     }
   });
 
@@ -623,6 +740,8 @@ export default function FuelAuditWorkspace({
             style={{ fontSize: '0.8rem', padding: '0.5rem 0.75rem', background: '#0f172a', borderColor: 'rgba(255,255,255,0.15)', color: '#ffffff' }}
           >
             <option value="ALL">Todos os Tipos de Desvio</option>
+            <option value="DESVIO_ARLA32">🚨 Desvio de ARLA 32 (Proporção &lt; 3% ou Sem ARLA)</option>
+            <option value="DESVIO_MEDIA_CATEGORIA">📉 Consumo Abaixo da Meta da Categoria RJ</option>
             <option value="CONSUMO_EXCESSIVO">Consumo Excessivo (KM/L)</option>
             <option value="VOLUME_MAIOR_QUE_TANQUE">Volume Acima do Tanque</option>
             <option value="ABASTECIMENTO_DUPLICADO">Abastecimento Duplicado</option>
