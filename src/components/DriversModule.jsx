@@ -1,3 +1,4 @@
+import {driverValidityRequest} from '../utils/driverValidityRequest';
 import DriverBindingPanel from './maintenance/driver/DriverBindingPanel';
 import React, { useState, useEffect } from 'react';
 import { 
@@ -173,6 +174,8 @@ export const getCountdown = (dateStr) => {
     color: '#10b981'
   };
 };
+
+function ValidityRequestButton({driver,compact=false}){const delivery=driverValidityRequest(driver);const label='Solicitar validades';return delivery?<a href={delivery.href} target="_blank" rel="noopener noreferrer" className={compact?'table-wa-direct-btn':'btn-whatsapp-executive'} aria-label={'Solicitar validades de '+driver.nome} title="Abre o WhatsApp com a solicitação dos cursos e exame toxicológico. Confirme o envio no WhatsApp." style={{display:'inline-flex',gap:6,alignItems:'center',maxWidth:'100%',whiteSpace:'normal'}}><Calendar size={14}/><span>{label}</span></a>:<button type="button" disabled className="btn-secondary" title="Cadastre um telefone / WhatsApp válido para solicitar as validades.">{label}</button>;}
 
 export default function DriversModule({ user, maintenanceAccess }) {
   // Controle de visualização: 'list' (Quadro Geral) ou 'form' (Formulário Amplo na Página, sem pop-up)
@@ -1040,6 +1043,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
                         )}
                       </div>
 
+                      <div style={{padding:'0 16px 12px'}}><ValidityRequestButton driver={d}/></div>
                       {/* Dossiê de Validades & Certificações (Grid 2x2 Limpo) */}
                       <div className="driver-compliance-matrix">
                         {/* 1. CNH */}
@@ -1204,6 +1208,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
                                   <span>Chamar no Zap</span>
                                 </a>
                               )}
+                              <ValidityRequestButton driver={d} compact/>
                             </div>
                           </td>
 
