@@ -1,7 +1,7 @@
 export const PARTNER_TYPES = {
   oficina_mecanica:'Oficina mecânica', eletrica:'Auto elétrica', funilaria_pintura:'Funilaria e pintura',
   borracharia:'Borracharia', concessionaria:'Concessionária', auto_center:'Auto center',
-  guincho_socorro:'Guincho e socorro', lavagem:'Lavagem', tacografo_rastreador:'Tacógrafo e rastreador', outros:'Outros',
+  guincho_socorro:'Guincho e socorro', lavagem:'Lavagem', tacografo_rastreador:'Tacógrafo e rastreador', pecas_acessorios:'Peças e acessórios', outros:'Outros',
 };
 export const SPECIALTIES=['Motor','Câmbio','Freios','Suspensão','Elétrica','Injeção eletrônica','Pneus','Alinhamento','Funilaria','Pintura','Ar-condicionado','Hidráulica','Tacógrafo','Rastreamento','Socorro rodoviário','Lavagem'];
 export const VEHICLE_TYPES=['Caminhão','Cavalo mecânico','Carreta','Bitrem','Rodotrem','Truck','Toco','VUC','Semirreboque','Reboque'];

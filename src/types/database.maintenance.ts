@@ -4,7 +4,7 @@ export type MaintenanceRole='admin_geral'|'admin_empresa'|'analista_transporte'|
 // Dates/timestamps are ISO strings; money uses PostgreSQL numeric, serialized by supabase-js as number.
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 export type Enums = {
-  partner_type: "oficina_mecanica" | "eletrica" | "funilaria_pintura" | "borracharia" | "concessionaria" | "auto_center" | "guincho_socorro" | "lavagem" | "tacografo_rastreador" | "outros";
+  partner_type: "oficina_mecanica" | "eletrica" | "funilaria_pintura" | "borracharia" | "concessionaria" | "auto_center" | "guincho_socorro" | "lavagem" | "tacografo_rastreador" | "pecas_acessorios" | "outros";
   partner_status: "ativo" | "inativo" | "bloqueado";
   maintenance_type: "preventiva" | "corretiva" | "preditiva" | "sinistro" | "revisao" | "inspecao" | "pneus";
   priority_level: "baixa" | "media" | "alta" | "critica";
@@ -37,6 +37,8 @@ export interface MaintenanceRows {
     ativo: boolean;
   };
   maintenance_partners: {
+    deleted_at: string|null;
+    deleted_by: string|null;
     onboarding_profile: Json;
     id: string;
     company_id: string;
@@ -76,6 +78,7 @@ export interface MaintenanceRows {
     sla_medio_dias: number | null;
   };
   maintenance_orders: {
+    quote_partner_types: string[];
     responsavel_id: string|null;
     version: number;
     km_abertura: number | null;
@@ -309,6 +312,7 @@ export interface MaintenanceInserts {
     sla_medio_dias?: never;
   };
   maintenance_orders: {
+    quote_partner_types?: string[];
     id?: string;
     company_id: string;
     created_at?: string;
@@ -485,6 +489,7 @@ export type MaintenanceDatabase = {
     } };
     Views: Record<string, never>;
     Functions: {
+      maintenance_partner_delete: {Args:{target_company:string;target_partner:string;expected_version:number};Returns:Json};
       driver_toxicology_request:{Args:{target_company:string;command:'claim'|'finish';body?:Json};Returns:Json};
       maintenance_plan_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
       maintenance_branch_command: { Args:{target_company:string;command:string;body?:Json};Returns:Json };
@@ -505,7 +510,7 @@ export type MaintenanceDatabase = {
 
 export interface MaintenanceRows {
  maintenance_partner_attachments:{id:string;company_id:string;partner_id:string;categoria:'contrato'|'certidao'|'tabela_precos';nome:string;object_path:string;content_type:string;tamanho_bytes:number;created_at:string;updated_at:string;created_by:string};
- maintenance_partner_audit:{id:string;company_id:string;partner_id:string;acao:'criacao'|'edicao'|'bloqueio'|'desbloqueio'|'anexo_incluido'|'anexo_excluido';antes:Json|null;depois:Json|null;created_at:string;created_by:string};
+ maintenance_partner_audit:{id:string;company_id:string;partner_id:string;acao:'criacao'|'edicao'|'bloqueio'|'desbloqueio'|'anexo_incluido'|'anexo_excluido'|'exclusao';antes:Json|null;depois:Json|null;created_at:string;created_by:string};
 }
 export interface MaintenanceInserts {
  maintenance_partner_attachments:Omit<MaintenanceRows['maintenance_partner_attachments'],'id'|'created_at'|'updated_at'|'created_by'>;
