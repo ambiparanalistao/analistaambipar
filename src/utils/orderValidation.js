@@ -1,3 +1,4 @@
+import {validQuoteTypes} from './quoteFilters.js';
 export const ORDER_STATUS={aberta:'Aberta',aguardando_orcamento:'Aguardando orçamento',orcamento_aprovado:'Orçamento aprovado',em_transito:'Em trânsito',na_oficina:'Na oficina',em_execucao:'Em execução',aguardando_peca:'Aguardando peça',concluido:'Concluído',veiculo_retirado:'Veículo retirado',encerrada:'Encerrada',cancelada:'Cancelada'};
 export const ORDER_TYPES={preventiva:'Preventiva',corretiva:'Corretiva',preditiva:'Preditiva',sinistro:'Sinistro',revisao:'Revisão',inspecao:'Inspeção',pneus:'Pneus'};
 export const PRIORITIES={baixa:'Baixa',media:'Média',alta:'Alta',critica:'Crítica'};
@@ -7,7 +8,7 @@ export const isLate=(order,now=Date.now())=>!CLOSED.includes(order.status)&&!!or
 export const orderPermissions=role=>({create:['admin_geral','admin_empresa','analista_transporte','supervisor','operador_logistico'].includes(role),manage:['admin_geral','admin_empresa','analista_transporte'].includes(role),budget:['admin_geral','admin_empresa','analista_transporte','supervisor'].includes(role),visit:['admin_geral','admin_empresa','analista_transporte','operador_logistico'].includes(role)});
 export function nextStatuses(o){return ({aberta:['aguardando_orcamento','na_oficina'],aguardando_orcamento:o.orcamento_status==='aprovado'?['orcamento_aprovado','na_oficina']:['na_oficina'],orcamento_aprovado:['em_transito','na_oficina'],em_transito:['na_oficina'],na_oficina:['em_execucao'],em_execucao:['aguardando_peca','concluido'],aguardando_peca:['em_execucao'],concluido:['veiculo_retirado'],veiculo_retirado:['encerrada']})[o.status]||[];}
 export function validateOrder(f,vehicle,now=Date.now()){
- const e={};if(!vehicle||vehicle.id!==f.vehicle_id)e.vehicle_id='Selecione um veículo salvo nesta empresa.';
+ const e={};if(f.quote_partner_types!==undefined&&!validQuoteTypes(f.quote_partner_types))e.quote_partner_types='Filtros de oficinas inválidos.';if(!vehicle||vehicle.id!==f.vehicle_id)e.vehicle_id='Selecione um veículo salvo nesta empresa.';
  if(vehicle&&vehicle.status==='Em Viagem')e.vehicle_id='Finalize a viagem antes de abrir a S.OR.';
  if(!f.partner_id)e.partner_id='Selecione uma oficina ativa.';
  if(!ORDER_TYPES[f.tipo])e.tipo='Selecione o tipo.';if(!PRIORITIES[f.prioridade])e.prioridade='Selecione a prioridade.';

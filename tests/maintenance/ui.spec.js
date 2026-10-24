@@ -15,8 +15,9 @@ async function boot(page,role='admin_geral',fullAccess=false){
  else if(table==='maintenance_partners'){
  if(method==='POST'){partner={...partner,...request.postDataJSON(),id,version:1};data=partner;}
  else if(method==='PATCH'){partner={...partner,...request.postDataJSON(),version:partner.version+1};data=[partner];}
- else data=url.searchParams.has('id')?partner:[partner];
+ else data=url.searchParams.has('id')?partner:(partner.deleted_at?[]:[partner]);
  }
+ else if(table==='maintenance_partner_delete'){partner={...partner,deleted_at:new Date().toISOString(),status:'inativo'};data={deleted:true,id};}
  else if(table==='maintenance_partner_cities')data=[{cidade:'São Paulo'}];
  else if(table==='maintenance_partner_metrics')data=[{total_os:0,custo_medio:null}];
  else if(table==='maintenance_partner_attachments'){if(method==='POST'){const row={...request.postDataJSON(),id:'file-1',created_at:new Date().toISOString()};files.push(row);data=row;}else data=files;}
@@ -60,3 +61,7 @@ test('bloqueio exige motivo, gera cadastro e permite anexo',async({page})=>{
 });
 
 for(const role of ['supervisor','operador_logistico','motorista','cliente'])test('acesso completo liberado mantém perfil '+role,async({page})=>{await boot(page,role,true);await page.goto('/manutencao/oficinas');await expect(page.getByRole('heading',{name:'Central de Manutenção'})).toBeVisible();await expect(page.getByRole('button',{name:'Novo parceiro',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Manutenção',exact:true})).toBeVisible();await expect(page.getByRole('navigation',{name:'Áreas de manutenção'}).getByRole('button')).toHaveCount(7);await expect(page.getByText('Todos os módulos liberados',{exact:true})).toBeVisible();});
+
+test('excluir oficina persiste e remove da lista após recarregar',async({page})=>{const f=await boot(page);await page.goto('/manutencao/oficinas');const m=page.locator('.mp-module');page.once('dialog',d=>d.accept());await m.getByRole('button',{name:'Excluir oficina',exact:true}).first().click();await expect.poll(()=>!!f.getPartner().deleted_at).toBe(true);await expect(m.getByText('Horizonte',{exact:true})).toHaveCount(0);await page.reload();await expect(m.getByText('Horizonte',{exact:true})).toHaveCount(0);expect(f.queries.some(u=>u.pathname.endsWith('maintenance_partners')&&u.searchParams.get('deleted_at')==='is.null')).toBe(true);});
+
+test('cancelar exclusão mantém oficina e não chama o banco',async({page})=>{const f=await boot(page);await page.goto('/manutencao/oficinas');page.once('dialog',d=>d.dismiss());await page.locator('.mp-module').getByRole('button',{name:'Excluir oficina',exact:true}).first().click();expect(f.getPartner().deleted_at).toBeUndefined();expect(f.queries.some(u=>u.pathname.endsWith('maintenance_partner_delete'))).toBe(false);await expect(page.locator('.mp-module').getByText('Horizonte',{exact:true})).toBeVisible();});
