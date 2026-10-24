@@ -1,3 +1,4 @@
+import PublicWorkshopQuote from './components/maintenance/orders/PublicWorkshopQuote.jsx'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
@@ -7,6 +8,6 @@ import PublicPartnerRegistration from './components/maintenance/registration/Pub
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    {window.location.pathname.replace(/\/$/,'')==='/cadastro/oficinas'?<PublicPartnerRegistration/>:window.location.pathname.replace(/\/$/,'')==='/motoristas/solicitar-manutencao'?<PublicDriverPortal/>:<App />}
+    {window.location.pathname.replace(/\/$/,'')==='/oficina/orcamento'?<PublicWorkshopQuote/>:window.location.pathname.replace(/\/$/,'')==='/cadastro/oficinas'?<PublicPartnerRegistration/>:window.location.pathname.replace(/\/$/,'')==='/motoristas/solicitar-manutencao'?<PublicDriverPortal/>:<App />}
   </StrictMode>,
 )
