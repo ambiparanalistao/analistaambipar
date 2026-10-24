@@ -24,6 +24,7 @@ import ClientsModule from './components/ClientsModule';
 import FuelModule from './components/FuelModule';
 import AuthCard from './components/AuthCard';
 import SupabaseConfigModal from './components/SupabaseConfigModal';
+import ComplianceAuditModule from './components/ComplianceAuditModule';
 import ErrorBoundary from './components/ErrorBoundary';
 import AutomationModule from './components/AutomationModule';
 import MaintenanceModule from './components/maintenance/MaintenanceModule';
@@ -37,6 +38,7 @@ export const MODULE_ROUTES = {
   driver_maintenance: '/motorista/manutencao',
   automacao: '/automacao',
   dashboard: '/dashboard',
+  auditoria_vencimentos: '/auditoria-vencimentos',
   frotas: '/frotas',
   motoristas: '/motoristas',
   viagens: '/viagens',
@@ -57,6 +59,10 @@ export const PATH_TO_MODULE = {
   '/automacao': 'automacao',
   '/': 'dashboard',
   '/dashboard': 'dashboard',
+  '/auditoria-vencimentos': 'auditoria_vencimentos',
+  '/vencimentos': 'auditoria_vencimentos',
+  '/auditoria': 'auditoria_vencimentos',
+  '/documentos': 'auditoria_vencimentos',
   '/frotas': 'frotas',
   '/frota': 'frotas',
   '/veiculos': 'frotas',
@@ -154,6 +160,10 @@ export default function App() {
     dashboard: { 
       title: 'Torre de Controle Operacional', 
       subtitle: 'Painel Geral de Operações, KPIs Consolidados e Monitoramento de Frota & Resíduos' 
+    },
+    auditoria_vencimentos: { 
+      title: 'Auditoria de Vencimentos & Ativos 2026', 
+      subtitle: 'Controle de 665 documentos físicos/digitais, 83 caçambas, 21 veículos e licenças regulatórias' 
     },
     frotas: { 
       title: 'Gestão de Frotas & Veículos Homologados', 
@@ -351,6 +361,7 @@ export default function App() {
             {/* Módulo Ativo Selecionado */}
             <main className="stage-content-body" id="stage-content-body">
               <ErrorBoundary>
+                {currentModule === 'auditoria_vencimentos' && <ComplianceAuditModule />}
                 {currentModule.startsWith('maintenance_') && <MaintenanceModule access={maintenanceAccess} page={currentModule} />}
                 {currentModule === 'dashboard' && (
                   <LogisticsDashboard 
