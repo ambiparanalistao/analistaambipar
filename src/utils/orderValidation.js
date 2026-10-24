@@ -8,7 +8,7 @@ export const orderPermissions=role=>({create:['admin_geral','admin_empresa','ana
 export function nextStatuses(o){return ({aberta:['aguardando_orcamento','na_oficina'],aguardando_orcamento:o.orcamento_status==='aprovado'?['orcamento_aprovado','na_oficina']:['na_oficina'],orcamento_aprovado:['em_transito','na_oficina'],em_transito:['na_oficina'],na_oficina:['em_execucao'],em_execucao:['aguardando_peca','concluido'],aguardando_peca:['em_execucao'],concluido:['veiculo_retirado'],veiculo_retirado:['encerrada']})[o.status]||[];}
 export function validateOrder(f,vehicle,now=Date.now()){
  const e={};if(!vehicle||vehicle.id!==f.vehicle_id)e.vehicle_id='Selecione um veículo salvo nesta empresa.';
- if(vehicle&&vehicle.status==='Em Viagem')e.vehicle_id='Finalize a viagem antes de abrir a OS.';
+ if(vehicle&&vehicle.status==='Em Viagem')e.vehicle_id='Finalize a viagem antes de abrir a S.OR.';
  if(!f.partner_id)e.partner_id='Selecione uma oficina ativa.';
  if(!ORDER_TYPES[f.tipo])e.tipo='Selecione o tipo.';if(!PRIORITIES[f.prioridade])e.prioridade='Selecione a prioridade.';
  if(!f.descricao_problema?.trim())e.descricao_problema='Descreva o problema.';
