@@ -18,11 +18,18 @@ import {
   Sparkles,
   ChevronRight,
   MoveDown,
-  Navigation
+  Navigation,
+  ArrowLeft,
+  Check,
+  Fuel,
+  ShieldCheck
 } from 'lucide-react';
 import { AUDITED_RJ_ROUTES, AUDITED_RJ_CLIENTS } from '../data/auditedClientsRoutesData';
 
 export default function RotasModule({ user, onNavigateEscala }) {
+  // Controle de Tela Cheia: 'list' (Catálogo Geral) | 'form' (Estúdio de Roteirização Tela Cheia)
+  const [viewMode, setViewMode] = useState('list');
+
   const [routes, setRoutes] = useState(() => {
     try {
       const saved = localStorage.getItem('ambipar_real_routes');
@@ -34,7 +41,6 @@ export default function RotasModule({ user, onNavigateEscala }) {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Filtro por polo ou nome
   const filteredRoutes = routes.filter(r => {
@@ -115,9 +121,292 @@ export default function RotasModule({ user, onNavigateEscala }) {
     } catch (err) {
       console.warn(err);
     }
-    setShowCreateModal(false);
+    setViewMode('list');
   };
 
+  // =========================================================================
+  // MODO 1: TELA INTEIRA DE CADASTRO DE ROTA (SEM POP-UP!)
+  // =========================================================================
+  if (viewMode === 'form') {
+    return (
+      <div className="rotas-form-fullscreen animate-fade-in" style={{ padding: '0.5rem 0' }}>
+        {/* Top Header da Tela Cheia */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                onClick={() => setViewMode('list')}
+              >
+                <ArrowLeft size={14} />
+                <span>Voltar ao Catálogo</span>
+              </button>
+              <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 800, background: 'rgba(6, 182, 212, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                ROTEIRIZAÇÃO CCO • CIRUCTOS MULTI-PARADAS
+              </span>
+            </div>
+            <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+              Cadastrar Nova Rota com Múltiplos Endereços em Tela Cheia
+            </h2>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.85rem' }}>
+              Defina o circuito logístico e vincule todos os clientes/paradas que o veículo visitará em sequência no mesmo dia.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setViewMode('list')}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn-primary btn-icon-text"
+              onClick={handleSaveRoute}
+              style={{ background: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)', color: '#070b12', fontWeight: 700 }}
+            >
+              <Check size={16} />
+              <span>Salvar & Homologar Rota</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Layout Dividido em Duas Colunas Amplas */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(450px, 1.4fr)', gap: '1.5rem' }}>
+          {/* Coluna 1: Dados Gerais da Rota */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div className="card-panel" style={{ background: '#0e1524' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Route size={18} />
+                <span>1. Dados do Corredor Logístico</span>
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                    Nome da Rota:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: ROTA-RJ-04 - Circuito Jogue Limpo Zona Sul & Niterói"
+                    value={newRouteForm.nome}
+                    onChange={(e) => setNewRouteForm({ ...newRouteForm, nome: e.target.value })}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                      Contrato / Polo Operacional:
+                    </label>
+                    <select
+                      value={newRouteForm.polo}
+                      onChange={(e) => setNewRouteForm({ ...newRouteForm, polo: e.target.value })}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
+                    >
+                      <option value="Contrato Jogue Limpo">Contrato Jogue Limpo (Óleo Usado)</option>
+                      <option value="Contrato Vale S.A.">Contrato Vale S.A. (Costa Verde)</option>
+                      <option value="Contrato Amazon">Contrato Amazon (Centros GIG)</option>
+                      <option value="Operações Spot RJ">Operações Spot / Indústrias RJ</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                      Perfil do Veículo Homologado:
+                    </label>
+                    <select
+                      value={newRouteForm.veiculo_padrao}
+                      onChange={(e) => setNewRouteForm({ ...newRouteForm, veiculo_padrao: e.target.value })}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
+                    >
+                      <option value="Caminhão Poli Duplo (26.280 CRM)">Caminhão Poli Duplo (26.280 CRM)</option>
+                      <option value="Caminhão Baú 3/4 (VW Delivery 9.170)">Caminhão Baú 3/4 (VW Delivery 9.170)</option>
+                      <option value="Cavalo Mecânico + Carreta Graneleira">Cavalo Mecânico + Carreta Graneleira</option>
+                      <option value="Caminhão Compactador 15m³">Caminhão Compactador 15m³</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                      Distância Total Estimada (KM):
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ex: 110"
+                      value={newRouteForm.distancia_km}
+                      onChange={(e) => setNewRouteForm({ ...newRouteForm, distancia_km: e.target.value })}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                      Tempo Estimado de Viagem:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 5h30"
+                      value={newRouteForm.tempo_estimado_horas}
+                      onChange={(e) => setNewRouteForm({ ...newRouteForm, tempo_estimado_horas: e.target.value })}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Painel Informativo de Diretrizes */}
+            <div className="card-panel" style={{ background: 'rgba(6, 182, 212, 0.05)', border: '1px solid rgba(6, 182, 212, 0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <ShieldCheck size={18} color="var(--accent-cyan)" />
+                <strong style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>Normas Operacionais CCO RJ</strong>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                <li>Todas as rotas iniciam e encerram na <strong>Base Ambipar DCX (Rod. Washington Luís, km 114)</strong>.</li>
+                <li>Clientes em corredores da Zona Sul exigem atenção aos horários de restrição de circulação pesada.</li>
+                <li>Para transporte de produtos perigosos / óleo usado, o condutor obrigatoriamente deve possuir MOPP homologado.</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Coluna 2: Sequenciador Visual de Múltiplos Endereços e Paradas */}
+          <div className="card-panel" style={{ background: '#0e1524' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.85rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-emerald)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <MapPin size={18} />
+                  <span>2. Sequência de Múltiplos Endereços ({newRouteForm.pontos_parada.length} paradas no dia)</span>
+                </h3>
+                <small style={{ color: 'var(--text-muted)' }}>O motorista seguirá rigorosamente esta ordem de paradas e coletas</small>
+              </div>
+
+              <button
+                type="button"
+                className="btn-secondary btn-icon-text"
+                onClick={handleAddStop}
+                style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+              >
+                <Plus size={15} />
+                <span>Adicionar Nova Parada</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', maxHeight: '600px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+              {newRouteForm.pontos_parada.map((pt, pIdx) => (
+                <div 
+                  key={pIdx}
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.75)',
+                    padding: '1rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ 
+                        background: pIdx === 0 ? 'var(--accent-cyan)' : 'var(--accent-amber)', 
+                        color: '#070b12', 
+                        fontWeight: 800, 
+                        fontSize: '0.75rem', 
+                        padding: '2px 8px', 
+                        borderRadius: '4px' 
+                      }}>
+                        #{pt.ordem}
+                      </span>
+                      <strong style={{ fontSize: '0.85rem', color: '#fff' }}>
+                        {pt.tipo}
+                      </strong>
+                    </div>
+
+                    {pIdx > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStop(pIdx)}
+                        style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                      >
+                        <Trash2 size={13} />
+                        <span>Remover</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginBottom: '0.5rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>
+                        Nome do Ponto / Cliente:
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: Inter Japan Botafogo"
+                        value={pt.nome_ponto}
+                        onChange={(e) => {
+                          const updated = [...newRouteForm.pontos_parada];
+                          updated[pIdx].nome_ponto = e.target.value;
+                          setNewRouteForm({ ...newRouteForm, pontos_parada: updated });
+                        }}
+                        style={{ width: '100%', padding: '0.5rem 0.75rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '0.85rem' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>
+                        Endereço Completo:
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: Rua Real Grandeza, 280 - Botafogo, Rio de Janeiro/RJ"
+                        value={pt.endereco}
+                        onChange={(e) => {
+                          const updated = [...newRouteForm.pontos_parada];
+                          updated[pIdx].endereco = e.target.value;
+                          setNewRouteForm({ ...newRouteForm, pontos_parada: updated });
+                        }}
+                        style={{ width: '100%', padding: '0.5rem 0.75rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '0.85rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>
+                      Ação Operacional a ser Executada no Ponto:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Coleta de bombonas de óleo lubrificante usado (OLUC) e conferência de MTR"
+                      value={pt.acao || ''}
+                      onChange={(e) => {
+                        const updated = [...newRouteForm.pontos_parada];
+                        updated[pIdx].acao = e.target.value;
+                        setNewRouteForm({ ...newRouteForm, pontos_parada: updated });
+                      }}
+                      style={{ width: '100%', padding: '0.45rem 0.75rem', background: '#070b12', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '4px', color: 'var(--accent-emerald)', fontSize: '0.8rem' }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // MODO 2: CATÁLOGO GERAL DE ROTAS EM TELA INTEIRA
+  // =========================================================================
   return (
     <div className="rotas-module animate-fade-in" style={{ padding: '0.5rem 0' }}>
       {/* Banner Superior */}
@@ -136,7 +425,7 @@ export default function RotasModule({ user, onNavigateEscala }) {
         <button 
           type="button" 
           className="btn-primary btn-icon-text"
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => setViewMode('form')}
           style={{ background: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)', color: '#070b12', fontWeight: 700 }}
         >
           <Plus size={16} />
@@ -218,47 +507,49 @@ export default function RotasModule({ user, onNavigateEscala }) {
               {/* Linha do Tempo de Múltiplos Endereços na Rota */}
               <div style={{ marginBottom: '1.25rem' }}>
                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.5rem' }}>
-                  Sequência de Paradas e Clientes no Dia:
+                  Itinerário de Paradas e Clientes no RJ:
                 </span>
+                
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                  {route.pontos_parada?.map((pt, pIdx) => (
+                  {route.pontos_parada && route.pontos_parada.map((pt, pIdx) => (
                     <div 
                       key={pIdx}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '0.65rem',
-                        background: pIdx === 0 ? 'rgba(16, 185, 129, 0.06)' : (pIdx === route.pontos_parada.length - 1 ? 'rgba(6, 182, 212, 0.06)' : 'rgba(255, 255, 255, 0.03)'),
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'flex-start', 
+                        gap: '0.6rem',
+                        background: 'rgba(15, 23, 42, 0.5)',
                         padding: '0.45rem 0.65rem',
                         borderRadius: '6px',
-                        border: '1px solid rgba(255, 255, 255, 0.04)'
+                        borderLeft: `3px solid ${pIdx === 0 ? 'var(--accent-cyan)' : pIdx === route.pontos_parada.length - 1 ? 'var(--accent-emerald)' : 'var(--accent-amber)'}`
                       }}
                     >
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        background: pIdx === 0 ? 'var(--accent-emerald)' : (pIdx === route.pontos_parada.length - 1 ? 'var(--accent-cyan)' : 'var(--accent-amber)'),
-                        color: '#070b12',
-                        fontWeight: 800,
-                        fontSize: '0.65rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
+                      <span style={{ 
+                        fontSize: '0.65rem', 
+                        fontWeight: 800, 
+                        color: 'var(--text-muted)',
+                        minWidth: '18px',
                         marginTop: '2px'
                       }}>
-                        {pt.ordem}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                        #{pt.ordem}
+                      </span>
+                      <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>
                             {pt.nome_ponto}
-                          </strong>
+                          </span>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--accent-amber)', background: 'rgba(245, 158, 11, 0.1)', padding: '1px 6px', borderRadius: '4px' }}>
+                            {pt.tipo}
+                          </span>
                         </div>
-                        <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', display: 'block', marginTop: '2px' }}>
                           {pt.endereco}
-                        </small>
+                        </span>
+                        {pt.acao && (
+                          <span style={{ fontSize: '0.68rem', color: 'var(--accent-cyan)', display: 'block', marginTop: '2px', fontStyle: 'italic' }}>
+                            ⚡ {pt.acao}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -267,201 +558,24 @@ export default function RotasModule({ user, onNavigateEscala }) {
             </div>
 
             {/* Ações do Card */}
-            <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '0.85rem', display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {route.veiculo_padrao}
-              </span>
-
+            <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '0.75rem' }}>
               <button
                 type="button"
                 className="btn-primary btn-icon-text"
-                style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem' }}
-                onClick={() => onNavigateEscala && onNavigateEscala(route)}
-                title="Criar escala operacional para esta rota"
+                style={{ flex: 1, padding: '0.45rem 0.75rem', fontSize: '0.78rem', justifyContent: 'center' }}
+                onClick={() => {
+                  if (onNavigateEscala) {
+                    onNavigateEscala();
+                  }
+                }}
               >
                 <Calendar size={14} />
-                <span>Escalar Veículo & Motorista</span>
-                <ArrowRight size={12} />
+                <span>Escalar Veículo Nesta Rota</span>
               </button>
             </div>
           </div>
         ))}
       </div>
-
-      {/* Modal de Criação de Rota com Múltiplos Endereços */}
-      {showCreateModal && (
-        <div className="modal-backdrop animate-fade-in" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="modal-container" style={{ background: '#0e1524', border: '1px solid rgba(6, 182, 212, 0.3)', borderRadius: '14px', width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', padding: '1.75rem', boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.85rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
-                  Cadastrar Nova Rota com Múltiplos Endereços
-                </h3>
-                <small style={{ color: 'var(--text-muted)' }}>Defina o circuito e adicione todos os clientes/paradas que o veículo visitará no mesmo dia</small>
-              </div>
-              <button 
-                type="button" 
-                onClick={() => setShowCreateModal(false)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveRoute}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                    Nome da Rota
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Rota Jogue Limpo - Centro & Niterói"
-                    value={newRouteForm.nome}
-                    onChange={(e) => setNewRouteForm({ ...newRouteForm, nome: e.target.value })}
-                    style={{ width: '100%', padding: '0.55rem 0.75rem', background: 'rgba(15, 23, 42, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                    Contrato / Polo
-                  </label>
-                  <select
-                    value={newRouteForm.polo}
-                    onChange={(e) => setNewRouteForm({ ...newRouteForm, polo: e.target.value })}
-                    style={{ width: '100%', padding: '0.55rem 0.75rem', background: '#0f172a', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff' }}
-                  >
-                    <option value="Contrato Jogue Limpo">Contrato Jogue Limpo</option>
-                    <option value="Contrato Vale S.A.">Contrato Vale S.A.</option>
-                    <option value="Contrato Amazon">Contrato Amazon</option>
-                    <option value="Operações Spot RJ">Operações Spot RJ</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                    Distância Estimada (KM)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Ex: 85"
-                    value={newRouteForm.distancia_km}
-                    onChange={(e) => setNewRouteForm({ ...newRouteForm, distancia_km: e.target.value })}
-                    style={{ width: '100%', padding: '0.55rem 0.75rem', background: 'rgba(15, 23, 42, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                    Tempo Estimado
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: 5h30"
-                    value={newRouteForm.tempo_estimado_horas}
-                    onChange={(e) => setNewRouteForm({ ...newRouteForm, tempo_estimado_horas: e.target.value })}
-                    style={{ width: '100%', padding: '0.55rem 0.75rem', background: 'rgba(15, 23, 42, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff' }}
-                  />
-                </div>
-              </div>
-
-              {/* Seção Dinâmica de Múltiplos Endereços / Paradas */}
-              <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                    Sequência de Paradas / Clientes na Rota ({newRouteForm.pontos_parada.length})
-                  </label>
-                  <button
-                    type="button"
-                    className="btn-secondary btn-icon-text"
-                    onClick={handleAddStop}
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
-                  >
-                    <Plus size={14} />
-                    <span>Adicionar Endereço / Parada</span>
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {newRouteForm.pontos_parada.map((pt, pIdx) => (
-                    <div 
-                      key={pIdx}
-                      style={{
-                        background: 'rgba(15, 23, 42, 0.6)',
-                        padding: '0.75rem 1rem',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(255, 255, 255, 0.06)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-amber)' }}>
-                          Parada #{pt.ordem}: {pt.tipo}
-                        </span>
-                        {pIdx > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveStop(pIdx)}
-                            style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '0.75rem' }}
-                          >
-                            Remover
-                          </button>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Nome do Ponto / Cliente (Ex: Inter Japan)"
-                          value={pt.nome_ponto}
-                          onChange={(e) => {
-                            const updated = [...newRouteForm.pontos_parada];
-                            updated[pIdx].nome_ponto = e.target.value;
-                            setNewRouteForm({ ...newRouteForm, pontos_parada: updated });
-                          }}
-                          style={{ padding: '0.45rem 0.65rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '0.8rem' }}
-                        />
-                        <input
-                          type="text"
-                          required
-                          placeholder="Endereço Completo (Rua, Bairro, Cidade)"
-                          value={pt.endereco}
-                          onChange={(e) => {
-                            const updated = [...newRouteForm.pontos_parada];
-                            updated[pIdx].endereco = e.target.value;
-                            setNewRouteForm({ ...newRouteForm, pontos_parada: updated });
-                          }}
-                          style={{ padding: '0.45rem 0.65rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '0.8rem' }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Botões do Rodapé do Modal */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{ background: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)', color: '#070b12', fontWeight: 700 }}
-                >
-                  Salvar Rota Homologada
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
