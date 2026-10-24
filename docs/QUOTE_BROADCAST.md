@@ -6,7 +6,7 @@ Cada destinatário recebe o Excel e a mensagem solicitando orçamento de peças 
 
 A cotação enviada a uma oficina não contém itens ou preços de orçamento já lançado para outra. O Excel possui campos para a oficina informar valores e prazo. Os dados do veículo e do relator continuam vindo dos cadastros reais.
 
-A oficina de referência pode ser trocada pelo Admin/Analista antes dos itens, aprovação ou chegada. Após receber os orçamentos, o analista escolhe a oficina executante, registra itens/NCM e confirma o prazo informado por ela. Somente essa oficina recebe a aprovação. A previsão de entrega é calculada a partir da data/hora da aprovação mais os dias corridos acordados, em São Paulo; não há média inventada nem garantia de data antes da aprovação.
+A oficina de referência pode ser trocada pelo Admin/Analista antes dos itens, aprovação ou chegada. Ao trocar a oficina, o prazo anterior é descartado e só é sugerido o prazo que constar no cadastro da nova oficina; sem esse dado, o analista precisa informar o prazo. Após receber os orçamentos, o analista escolhe a oficina executante, registra itens/NCM e confirma o prazo informado por ela. Somente essa oficina recebe a aprovação. A previsão de entrega é calculada a partir da data/hora da aprovação mais os dias corridos acordados, em São Paulo; não há média inventada nem garantia de data antes da aprovação.
 
 Cada envio tem destinatário, tentativas, identificador do provedor, status e auditoria por empresa. Envios aceitos não são repetidos. Falhas e resultados incertos não são repetidos automaticamente; a repetição incerta exige conferir o WhatsApp. Ao aprovar, as cotações ainda pendentes tornam-se desatualizadas. Mensagens que já estiverem em trânsito no provedor podem concluir.
 
