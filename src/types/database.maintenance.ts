@@ -136,14 +136,14 @@ export interface MaintenanceRows {
     company_id: string;
     created_at: string;
     updated_at: string;
-    created_by: string;
+    created_by: string | null;
     order_id: string;
     dados: Json | null;
     tipo_evento: "mudanca_status" | "mensagem" | "anexo" | "chegada" | "saida" | "aprovacao" | "comentario";
     status_anterior: Enums['order_status'] | null;
     status_novo: Enums['order_status'] | null;
     descricao: string;
-    usuario_id: string;
+    usuario_id: string | null;
   };
   workshop_visits: {
     id: string;
@@ -576,3 +576,15 @@ export interface MaintenanceRows {
  maintenance_finance_audit:{id:string;company_id:string;invoice_id:string;action:string;description:string;details:Json;actor_id:string;created_at:string};
 }
 export interface MaintenanceInserts {maintenance_finance_invoices:never;maintenance_finance_installments:never;maintenance_finance_payments:never;maintenance_finance_files:never;maintenance_finance_audit:never;}
+
+export interface MaintenanceRows {
+ maintenance_report_orders:{id:string;company_id:string;report_id:string;order_id:string;active:boolean;created_by:string;created_at:string};
+ maintenance_partner_quotes:{id:string;company_id:string;order_id:string;partner_id:string;version:number;items:Json;total:number;delivery_days:number|null;warranty_days:number|null;payment_terms:string;notes:string;contact:string;submitted_at:string|null;selected_by:string|null;selected_at:string|null;selection_reason:string|null};
+ maintenance_delivery_jobs:{id:string;company_id:string;kind:'order'|'report'|'message';dispatch_id:string;actor_id:string;status:'pending'|'running'|'accepted'|'failed'|'unknown'|'obsolete';attempts:number;next_attempt_at:string;lease_until:string|null;claim_token:string|null;error:string|null;provider_message_id:string|null;created_at:string;updated_at:string};
+ maintenance_assets:{id:string;company_id:string;kind:'pneu'|'implemento';code:string;description:string;brand:string;model:string;size:string;status:'estoque'|'instalado'|'recapagem'|'manutencao'|'descartado';vehicle_id:string|null;position:string|null;last_km:number;installed_km:number|null;retreads:number;acquisition_cost:number;interval_km:number|null;interval_days:number|null;last_service_km:number|null;last_service_date:string|null;version:number;created_by:string;created_at:string};
+ maintenance_asset_events:{id:string;company_id:string;asset_id:string;action:string;description:string;km:number|null;cost:number;vehicle_id:string|null;position:string|null;actor_id:string;created_at:string};
+ maintenance_checklists:{id:string;company_id:string;request_id:string;vehicle_id:string;driver_id:string;kind:'saida'|'retorno';km:number;items:Json;notes:string;severity:'leve'|'media'|'urgente'|null;report_id:string|null;created_by:string|null;verified_driver:boolean;created_at:string};
+ maintenance_warranty_claims:{id:string;company_id:string;item_id:string;description:string;status:'aberta'|'em_analise'|'aceita'|'recusada'|'resolvida';response:string;version:number;created_by:string;updated_by:string;created_at:string;updated_at:string};
+ maintenance_operations_audit:{id:string;company_id:string;entity_id:string;action:string;details:Json;actor_id:string;created_at:string};
+}
+export interface MaintenanceInserts {maintenance_report_orders:never;maintenance_partner_quotes:never;maintenance_delivery_jobs:never;maintenance_assets:never;maintenance_asset_events:never;maintenance_checklists:never;maintenance_warranty_claims:never;maintenance_operations_audit:never;}
