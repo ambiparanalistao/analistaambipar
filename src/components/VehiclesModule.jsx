@@ -56,7 +56,10 @@ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
 import { readCrlvFile } from '../utils/crlvPdfReader';
 import WhatsAppDispatchWorkspace from './WhatsAppDispatchWorkspace';
-import { getStoredOrSyncedDrivers, syncDriverFromVehicle } from '../utils/driverFleetSync';
+import useFleetDirectory from '../hooks/useFleetDirectory';
+import {deleteRegistryRecord,updateRegistryStatus,registryChanged} from '../services/fleetDirectory';
+import {driverForVehicle} from '../utils/registryMatching';
+import LegacyRegistryRecovery from './LegacyRegistryRecovery';
 
 export const VEHICLE_STATUS_OPTIONS = [
   { 
@@ -121,145 +124,10 @@ export const FUEL_TYPES = [
 ];
 
 // Frota Flagship Ambipar homologada com dados operacionais reais e oficiais
-export const DEFAULT_AMBIPAR_FLEET = [
-  {
-    id: 'VEI-AMB001',
-    placa: 'AMB4K89',
-    prefixo: 'AMB-101',
-    tipo: 'Carreta Tanque Químico (Inox 316L)',
-    marca_modelo: 'Scania R540 V8 Super 6x4',
-    ano_fabricacao: 2024,
-    ano_modelo: 2024,
-    chassi: '9BSAMB540RP128901',
-    renavam: '01293847561',
-    capacidade_peso_ton: 57.0,
-    capacidade_volume_m3: 38.0,
-    tipo_carga: 'Produtos Químicos Perigosos (Hazmat)',
-    combustivel: 'Diesel S10',
-    km_atual: 118420,
-    proxima_revisao_km: 125000,
-    validade_crlv: '2027-10-31',
-    validade_cronotacografo: '2026-11-20',
-    validade_cipp: '2027-08-15',
-    validade_civ: '2027-08-15',
-    validade_fumaca_opacidade: '2027-04-10',
-    validade_seguro_ambiental: '2028-01-30',
-    motorista_vinculado: 'Carlos Eduardo Dos Santos Ferreira',
-    motorista_telefone: '(21) 99240-5610',
-    status: 'Em Viagem',
-    observacoes: 'Conjunto dedicado ao transporte de Ácido Sulfúrico a granel. Válvulas de alívio testadas e kit PAE 100% completo.'
-  },
-  {
-    id: 'VEI-AMB002',
-    placa: 'AMB7X21',
-    prefixo: 'AMB-102',
-    tipo: 'Bitrem Tanque Químico',
-    marca_modelo: 'Volvo FH 540 6x4 Globetrotter (9 Eixos)',
-    ano_fabricacao: 2023,
-    ano_modelo: 2024,
-    chassi: '9BVFH540GT9028174',
-    renavam: '09812736452',
-    capacidade_peso_ton: 74.0,
-    capacidade_volume_m3: 62.0,
-    tipo_carga: 'Combustíveis & Derivados de Petróleo',
-    combustivel: 'Diesel S10',
-    km_atual: 94100,
-    proxima_revisao_km: 100000,
-    validade_crlv: '2027-09-30',
-    validade_cronotacografo: '2027-05-18',
-    validade_cipp: '2027-06-22',
-    validade_civ: '2027-06-22',
-    validade_fumaca_opacidade: '2027-03-12',
-    validade_seguro_ambiental: '2028-02-15',
-    motorista_vinculado: 'Marcelo Silveira Rocha',
-    motorista_telefone: '(19) 98765-4321',
-    status: 'Disponível',
-    observacoes: 'Bitrem higienizado e vaporizado com laudo de desgasificação emitido. Pronto para carregamento imediato.'
-  },
-  {
-    id: 'VEI-AMB003',
-    placa: 'AMB2M33',
-    prefixo: 'AMB-103',
-    tipo: 'Caminhão Truck PBT 23t (Tanque/Baú)',
-    marca_modelo: 'Mercedes-Benz Actros 2653 6x4 Alto Vácuo',
-    ano_fabricacao: 2023,
-    ano_modelo: 2023,
-    chassi: '9BMACTR2653KL81920',
-    renavam: '04561238907',
-    capacidade_peso_ton: 26.0,
-    capacidade_volume_m3: 16.0,
-    tipo_carga: 'Resíduos Industriais Classe I (Perigosos)',
-    combustivel: 'Diesel S10',
-    km_atual: 164200,
-    proxima_revisao_km: 170000,
-    validade_crlv: '2027-11-15',
-    validade_cronotacografo: '2027-02-10',
-    validade_cipp: '2027-07-05',
-    validade_civ: '2027-07-05',
-    validade_fumaca_opacidade: '2026-12-01',
-    validade_seguro_ambiental: '2027-12-31',
-    motorista_vinculado: 'Roberto Antunes de Lima',
-    motorista_telefone: '(71) 99123-8877',
-    status: 'Em Viagem',
-    observacoes: 'Bomba de anel líquido revisada e mangotes de sucção com teste hidrostático em dia.'
-  },
-  {
-    id: 'VEI-AMB004',
-    placa: 'AMB9R10',
-    prefixo: 'AMB-104',
-    tipo: 'Carreta Sider (Carga Seca / Tambores)',
-    marca_modelo: 'DAF XF 530 6x2 Space Cab',
-    ano_fabricacao: 2022,
-    ano_modelo: 2023,
-    chassi: '9BDAFXF530SC72819',
-    renavam: '07891234560',
-    capacidade_peso_ton: 48.5,
-    capacidade_volume_m3: 90.0,
-    tipo_carga: 'Carga Geral Seca & Embalada',
-    combustivel: 'Biodiesel B100',
-    km_atual: 82500,
-    proxima_revisao_km: 85000,
-    validade_crlv: '2027-08-20',
-    validade_cronotacografo: '2027-04-14',
-    validade_cipp: '2027-05-30',
-    validade_civ: '2027-05-30',
-    validade_fumaca_opacidade: '2027-01-22',
-    validade_seguro_ambiental: '2028-03-10',
-    motorista_vinculado: 'Não vinculado',
-    motorista_telefone: '',
-    status: 'Manutenção',
-    observacoes: 'Troca preventiva de pastilhas de freio e alinhamento a laser do conjunto.'
-  },
-  {
-    id: 'VEI-AMB005',
-    placa: 'AMB5P44',
-    prefixo: 'PAE-01',
-    tipo: 'Veículo de Apoio PAE (Ambipar Response)',
-    marca_modelo: 'VW Constellation 25.360 6x2 Response 24h',
-    ano_fabricacao: 2024,
-    ano_modelo: 2024,
-    chassi: '9BWCON25360RP45612',
-    renavam: '03456789123',
-    capacidade_peso_ton: 23.0,
-    capacidade_volume_m3: 45.0,
-    tipo_carga: 'Prontidão de Emergência Ambiental',
-    combustivel: 'Diesel S10',
-    km_atual: 45300,
-    proxima_revisao_km: 60000,
-    validade_crlv: '2027-12-31',
-    validade_cronotacografo: '2027-09-10',
-    validade_cipp: '2027-11-12',
-    validade_civ: '2027-11-12',
-    validade_fumaca_opacidade: '2027-06-15',
-    validade_seguro_ambiental: '2028-06-30',
-    motorista_vinculado: 'Anderson Silva Costa',
-    motorista_telefone: '(13) 99789-0011',
-    status: 'Disponível',
-    observacoes: 'Kit Hazmat Completo Nível A/B, Skimmer para óleo, 200m de barreira de contenção fluvial.'
-  }
-];
+export const DEFAULT_AMBIPAR_FLEET = [];
 
-export const formatPlateMercosul = (val) => {
+export const formatPlateMercosul = (val) =>
+ {
   if (!val) return '—';
   const clean = String(val).toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (clean.length === 7) {
@@ -328,7 +196,7 @@ export const DYNAMIC_TRIGGERS = [
   { tag: '{PLACA}', label: 'Placa', desc: 'Placa Mercosul do veículo' },
   { tag: '{PREFIXO}', label: 'Prefixo', desc: 'Prefixo operacional da frota' },
   { tag: '{MARCA_MODELO}', label: 'Modelo', desc: 'Marca, tração e modelo do caminhão' },
-  { tag: '{KM_ATUAL}', label: 'KM Atual', desc: 'Odômetro registrado na telemetria' },
+  { tag: '{KM_ATUAL}', label: 'KM Atual', desc: 'Odômetro informado no cadastro' },
   { tag: '{PROXIMA_REVISAO}', label: 'Próxima Revisão', desc: 'KM da próxima parada preventiva' },
   { tag: '{TIPO_CARGA}', label: 'Carga', desc: 'Tipo de carga homologada' },
   { tag: '{COMBUSTIVEL}', label: 'Combustível', desc: 'Diesel S10 / Biodiesel B100' },
@@ -354,7 +222,7 @@ export const WHATSAPP_TEMPLATES = [
     badge: 'Oficina',
     title: 'Alerta de Revisão Preventiva por Odômetro',
     description: 'Notificação de aproximação do limite de quilometragem',
-    template: 'Olá, {MOTORISTA}! Gestão de Manutenção de Frotas Ambipar informando:\n\nIdentificamos via telemetria que o veículo *{PLACA}* atingiu *{KM_ATUAL} km*. A próxima revisão preventiva está programada para *{PROXIMA_REVISAO} km*.\n\nSolicitamos programar parada na oficina central da base para alinhamento e inspeção preventiva.\n\nGestão de Frotas & Manutenção CCO'
+    template: 'Olá, {MOTORISTA}! Gestão de Manutenção de Frotas Ambipar informando:\n\nIdentificamos pelo odômetro cadastrado que o veículo *{PLACA}* atingiu *{KM_ATUAL} km*. A próxima revisão preventiva está programada para *{PROXIMA_REVISAO} km*.\n\nSolicitamos programar parada na oficina central da base para alinhamento e inspeção preventiva.\n\nGestão de Frotas & Manutenção CCO'
   },
   {
     id: 'vistorias',
@@ -407,11 +275,11 @@ export function resolveMessageTags(templateText, vehicle) {
     .replace(/{PLACA}/g, vehicle?.placa || 'Sem placa')
     .replace(/{PREFIXO}/g, vehicle?.prefixo || 'Frota')
     .replace(/{MARCA_MODELO}/g, vehicle?.marca_modelo || vehicle?.tipo || 'Caminhão')
-    .replace(/{TIPO_CARGA}/g, vehicle?.tipo_carga || 'Produtos Químicos / Carga Geral')
-    .replace(/{COMBUSTIVEL}/g, vehicle?.combustivel || 'Diesel S10')
+    .replace(/{TIPO_CARGA}/g, vehicle?.tipo_carga || 'Não informado')
+    .replace(/{COMBUSTIVEL}/g, vehicle?.combustivel || 'Não informado')
     .replace(/{KM_ATUAL}/g, vehicle?.km_atual ? Number(vehicle.km_atual).toLocaleString('pt-BR') : '—')
     .replace(/{PROXIMA_REVISAO}/g, vehicle?.proxima_revisao_km ? Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR') : '—')
-    .replace(/{STATUS_CCO}/g, vehicle?.status || 'Disponível')
+    .replace(/{STATUS_CCO}/g, vehicle?.status || 'Não informado')
     .replace(/{VISTORIAS_STATUS}/g, vistoriasStr)
     .replace(/{HORA_ATUAL}/g, horaStr);
 }
@@ -437,67 +305,16 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   const [crlvError, setCrlvError] = useState(null);
   const crlvFileInputRef = React.useRef(null);
 
-  // Inicializa veículos a partir do localStorage ou da frota flagship Ambipar
-  const [vehicles, setVehicles] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_real_vehicles');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.length > 0) {
-          // Remove resquício de teste inválido digitado com placa numérica '32342322'
-          const filtered = parsed.filter(v => v.placa !== '32342322' && v.marca_modelo !== 'errsszxfdrs');
-          if (filtered.length > 0) return filtered;
-        }
-      }
-      return DEFAULT_AMBIPAR_FLEET;
-    } catch {
-      return DEFAULT_AMBIPAR_FLEET;
-    }
-  });
-
-  // Lista de motoristas cadastrados para vinculação (sincronizada com o módulo de motoristas)
-  const [availableDrivers, setAvailableDrivers] = useState(() => {
-    try {
-      const driversList = getStoredOrSyncedDrivers();
-      return driversList.map(d => ({ 
-        value: d.nome, 
-        label: `${d.nome} (CNH ${d.categoria_cnh || 'E'})`,
-        phone: d.telefone || ''
-      }));
-    } catch {
-      return [];
-    }
-  });
-
-  // Atualiza a lista de motoristas disponíveis sempre que houver foco ou alteração no storage
-  useEffect(() => {
-    const refreshDriversList = () => {
-      try {
-        const driversList = getStoredOrSyncedDrivers();
-        setAvailableDrivers(driversList.map(d => ({ 
-          value: d.nome, 
-          label: `${d.nome} (CNH ${d.categoria_cnh || 'E'})`,
-          phone: d.telefone || ''
-        })));
-      } catch {}
-    };
-
-    window.addEventListener('storage', refreshDriversList);
-    window.addEventListener('focus', refreshDriversList);
-    return () => {
-      window.removeEventListener('storage', refreshDriversList);
-      window.removeEventListener('focus', refreshDriversList);
-    };
-  }, []);
-
+  const directory=useFleetDirectory(companyId);const [vehicles,setVehicles]=useState([]);const [availableDrivers,setAvailableDrivers]=useState([]);
+  useEffect(()=>{setVehicles(directory.vehicles);setAvailableDrivers(directory.drivers.map(d=>({value:d.nome,label:d.nome+(d.categoria_cnh?' (CNH '+d.categoria_cnh+')':''),phone:d.telefone||''})));setLoading(directory.loading);if(directory.error)setFeedback({type:'error',text:directory.error});},[directory.vehicles,directory.drivers,directory.loading,directory.error]);
   const initialForm = {
     branch_id: '',
     placa: '',
     prefixo: 'AMB-',
     tipo: 'Carreta Tanque Químico (Inox 316L)',
     marca_modelo: '',
-    ano_fabricacao: new Date().getFullYear(),
-    ano_modelo: new Date().getFullYear(),
+    ano_fabricacao: '',
+    ano_modelo: '',
     chassi: '',
     renavam: '',
     capacidade_peso_ton: '',
@@ -519,40 +336,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
 
   const [formData, setFormData] = useState(initialForm);
 
-  // Persistência no localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_real_vehicles', JSON.stringify(vehicles));
-      const platesList = vehicles.map(v => ({
-        placa: v.placa,
-        modelo: `${v.placa} - ${v.marca_modelo || v.tipo}`,
-        tipo: v.tipo
-      }));
-      localStorage.setItem('ambipar_fleet_vehicles', JSON.stringify(platesList));
-    } catch (e) {
-      console.warn('Erro ao salvar veículos:', e);
-    }
-  }, [vehicles]);
-
-  // Sincronização Supabase
-  const fetchSupabaseVehicles = async () => {
-    if (!isSupabaseConfigured || !supabase) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('veiculos')
-        .select('*')
-        .order('placa', { ascending: true });
-
-      if (!error && data && data.length > 0) {
-        setVehicles(previous=>data.map(row=>({...previous.find(v=>v.id===row.id),...row})));
-      }
-    } catch (err) {
-      console.warn('Tabela veiculos pendente no Supabase:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchSupabaseVehicles=()=>directory.reload();
 
   const handleOpenCreateForm = () => {
     setEditingId(null);
@@ -570,7 +354,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
       ...vehicle,
       capacidade_peso_ton: vehicle.capacidade_peso_ton || '',
       capacidade_volume_m3: vehicle.capacidade_volume_m3 || '',
-      km_atual: vehicle.km_atual || '',
+      km_atual: vehicle.km_atual ?? '',
       proxima_revisao_km: vehicle.proxima_revisao_km || ''
     });
     setCrlvSuccess(null);
@@ -646,6 +430,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
     e.preventDefault();
     if(fleetSaving)return;
 
+    if(formData.km_atual===''){setFeedback({type:'error',text:'Informe o odômetro real do veículo antes de salvar.'});return;}
     const formattedPlaca = formData.placa.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!formattedPlaca || formattedPlaca.length < 7) {
       alert('A Placa do veículo deve ter no mínimo 7 caracteres alfanuméricos.');
@@ -657,11 +442,11 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
       placa: formattedPlaca,
       capacidade_peso_ton: formData.capacidade_peso_ton ? parseFloat(formData.capacidade_peso_ton) : null,
       capacidade_volume_m3: formData.capacidade_volume_m3 ? parseFloat(formData.capacidade_volume_m3) : null,
-      meta_consumo_kml: formData.meta_consumo_kml ? parseFloat(formData.meta_consumo_kml) : 2.40,
+      meta_consumo_kml: formData.meta_consumo_kml ? parseFloat(formData.meta_consumo_kml) : null,
       km_atual: formData.km_atual ? parseInt(formData.km_atual, 10) : 0,
-      proxima_revisao_km: formData.proxima_revisao_km ? parseInt(formData.proxima_revisao_km, 10) : 0,
+      proxima_revisao_km: formData.proxima_revisao_km ? parseInt(formData.proxima_revisao_km, 10) : null,
       velocidade_kmh: formData.velocidade_kmh ? parseInt(formData.velocidade_kmh, 10) : 0,
-      nivel_tanque_percent: formData.nivel_tanque_percent ? parseInt(formData.nivel_tanque_percent, 10) : 80
+      nivel_tanque_percent: formData.nivel_tanque_percent ? parseInt(formData.nivel_tanque_percent, 10) : null
     };
 
     if (isSupabaseConfigured && supabase && !user?.id?.startsWith('demo')) {
@@ -674,46 +459,14 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
         setFeedback({type:'error',text:'Veículo não salvo: '+error.message});
         return;
       } finally { setFleetSaving(false); }
-    } else {
-      const localVehicle={...payload,id:editingId||'VEI-'+Date.now(),created_at:new Date().toISOString()};
-      setVehicles(previous=>editingId?previous.map(v=>v.id===editingId?localVehicle:v):[localVehicle,...previous]);
-    }
-    // Sincroniza imediatamente o motorista com o Quadro de Motoristas
-    if (payload.motorista_vinculado && payload.motorista_vinculado !== 'Não vinculado') {
-      syncDriverFromVehicle({
-        name: payload.motorista_vinculado,
-        phone: payload.motorista_telefone || '',
-        placa: formattedPlaca,
-        status: payload.status
-      });
-    }
-
+    } else {setFeedback({type:'error',text:'Conecte-se ao banco e selecione uma empresa para salvar.'});return;}
     setFeedback({type:'success',text:'Veículo placa '+formattedPlaca+' salvo com sucesso!'});
     setViewMode('list');
     setTimeout(() => setFeedback(null), 4000);
   };
 
-  const handleQuickStatusChange = async (vehicleId,newStatus) => {
-    if(isSupabaseConfigured&&supabase&&!user?.id?.startsWith('demo')&&/^[0-9a-f-]{36}$/i.test(vehicleId)){
-      let query=supabase.from('veiculos').update({status:newStatus}).eq('id',vehicleId);
-      if(companyId)query=query.eq('company_id',companyId);
-      const result=await query.select().single();
-      if(result.error){setFeedback({type:'error',text:'Status não alterado: '+result.error.message});return;}
-    }
-    setVehicles(previous=>previous.map(v=>v.id===vehicleId?{...v,status:newStatus}:v));
-  };
-  const handleDeleteVehicle = async (vehicleId,placa) => {
-    if(!window.confirm('Confirma a exclusão do veículo placa '+placa+'?'))return;
-    if(isSupabaseConfigured&&supabase&&!user?.id?.startsWith('demo')&&/^[0-9a-f-]{36}$/i.test(vehicleId)){
-      let query=supabase.from('veiculos').delete().eq('id',vehicleId);
-      if(companyId)query=query.eq('company_id',companyId);
-      const result=await query.select('id');
-      if(result.error||!result.data?.length){setFeedback({type:'error',text:result.error?.code==='23503'?'Este veículo possui OS ou vínculos e não pode ser excluído.':result.error?.message||'Veículo não removido: verifique o acesso e as OS vinculadas.'});return;}
-    }
-    setVehicles(previous=>previous.filter(v=>v.id!==vehicleId));
-    setFeedback({type:'info',text:'Veículo placa '+placa+' removido.'});
-  };
-
+  const handleQuickStatusChange=async(id,status)=>{try{const saved=await updateRegistryStatus('veiculos',id,status,companyId);setVehicles(rows=>rows.map(v=>v.id===id?saved:v));}catch(e){setFeedback({type:'error',text:e.message});}};
+  const handleDeleteVehicle=async(id,placa)=>{if(!window.confirm('Confirma a exclusão do veículo '+placa+'?'))return;try{await deleteRegistryRecord('veiculos',id,companyId);setVehicles(rows=>rows.filter(v=>v.id!==id));setFeedback({type:'success',text:'Veículo excluído do banco.'});}catch(e){setFeedback({type:'error',text:e.message});}};
   const getWhatsAppLink = (phoneStr) => {
     if (!phoneStr) return null;
     const cleanNumber = phoneStr.replace(/\D/g, '');
@@ -731,7 +484,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   const readyVehiclesCount = availableCount + tripCount;
   const readinessRate = totalVehicles > 0 
     ? Math.round((readyVehiclesCount / totalVehicles) * 100) 
-    : 100;
+    : 0;
   const totalCapacityTons = vehicles.reduce((sum, v) => sum + (parseFloat(v.capacidade_peso_ton) || 0), 0);
   const totalVolumeM3 = vehicles.reduce((sum, v) => sum + (parseFloat(v.capacidade_volume_m3) || 0), 0);
   const totalKmRodados = vehicles.reduce((sum, v) => sum + (parseInt(v.km_atual, 10) || 0), 0);
@@ -759,23 +512,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSaveDriverPhone = (vehicleId, newPhone) => {
-    const updated = vehicles.map(v => v.id === vehicleId ? { ...v, motorista_telefone: newPhone } : v);
-    setVehicles(updated);
-    const targetVehicle = vehicles.find(v => v.id === vehicleId);
-    if (targetVehicle && targetVehicle.motorista_vinculado) {
-      syncDriverFromVehicle({
-        name: targetVehicle.motorista_vinculado,
-        phone: newPhone,
-        placa: targetVehicle.placa,
-        status: targetVehicle.status
-      });
-    }
-    if (isSupabaseConfigured && supabase) {
-      supabase.from('veiculos').update({ motorista_telefone: newPhone }).eq('id', vehicleId).then();
-    }
-  };
-
+  const handleSaveDriverPhone=async(vehicleId,newPhone)=>{try{const v=vehicles.find(v=>v.id===vehicleId);const d=driverForVehicle(v,directory.drivers);if(d){const r=await supabase.from('motoristas').update({telefone:newPhone}).eq('id',d.id).eq('company_id',companyId).select('id').single();if(r.error)throw r.error;}const r=await supabase.from('veiculos').update({motorista_telefone:newPhone}).eq('id',vehicleId).eq('company_id',companyId).select().single();if(r.error)throw r.error;setVehicles(rows=>rows.map(v=>v.id===vehicleId?r.data:v));registryChanged(companyId);}catch(e){setFeedback({type:'error',text:'Telefone não salvo: '+e.message});}};
   // Filtros aplicados
   const filteredVehicles = vehicles.filter(v => {
     const s = searchTerm.toLowerCase();
@@ -793,7 +530,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
 
   if(maintenanceVehicle)return <VehicleMaintenancePanel access={maintenanceAccess} vehicleId={maintenanceVehicle.id} onBack={()=>setMaintenanceVehicle(null)}/>;
   return (
-    <div className="module-page-container animate-fade-in" id="vehicles-module-root">
+    <div className="module-page-container animate-fade-in" id="vehicles-module-root"><LegacyRegistryRecovery records={vehicles} type="vehicles" onRecover={row=>{setEditingId(null);setFormData({...initialForm,...Object.fromEntries(Object.entries(row).filter(([k])=>k in initialForm).map(([k,v])=>[k,v??'']))});setViewMode('form');}}/>
       {/* ============================================================== */}
       {/* CABEÇALHO DO MÓDULO & TORRE DE TELEMETRIA AO VIVO              */}
       {/* ============================================================== */}
@@ -1504,7 +1241,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                 </span>
                 <span className="unit-suffix">{blockedCount > 0 ? 'alertas' : 'em dia'}</span>
                 <span className={`kpi-share-chip ${blockedCount > 0 ? 'rose' : 'emerald'}`}>
-                  {blockedCount > 0 ? `${blockedCount} pendente` : '100% regular'}
+                  {blockedCount > 0 ? `${blockedCount} pendente` : totalVehicles?'Sem bloqueios registrados':'Sem veículos cadastrados'}
                 </span>
               </div>
               <div className="kpi-footer-status">

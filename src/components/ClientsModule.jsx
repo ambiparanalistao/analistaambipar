@@ -239,7 +239,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('*')
+        .select('*').eq('company_id',companyId)
         .order('created_at', { ascending: false });
 
       if (!error && data) {
@@ -385,15 +385,19 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
   };
 
   // Exclusão
-  const handleDeleteClient = (clientId, name) => {
-    if (window.confirm(`Confirma a exclusão do cliente "${name}" da carteira ativa CCO?`)) {
-      setClients(clients.filter(c => c.id !== clientId));
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('clientes').delete().eq('id', clientId).then();
-      }
-      setFeedback({ type: 'info', text: `Cliente "${name}" removido com sucesso.` });
-      setTimeout(() => setFeedback(null), 3000);
-    }
+  const handleDeleteClient = async (clientId, name) => {
+    if (!window.confirm(`Confirma a exclusão do cliente "${name}" da carteira ativa CCO?`)) return;
+    try {
+      if (!isSupabaseConfigured || !supabase || !companyId) throw new Error('Conecte-se à empresa para confirmar a exclusão.');
+      const target=clients.find(c=>c.id===clientId);
+      let found=await supabase.from('clientes').select('id').eq('company_id',companyId).eq('id',clientId);
+      if(found.error)throw found.error;
+      if(!found.data?.length&&target?.cnpj){found=await supabase.from('clientes').select('id').eq('company_id',companyId).eq('cnpj',target.cnpj).limit(2);if(found.error)throw found.error;}
+      if(found.data?.length>1)throw new Error('Há mais de um cliente com este CNPJ. Sincronize e confira o cadastro antes de excluir.');
+      if(found.data?.length){const result=await supabase.from('clientes').delete().eq('company_id',companyId).eq('id',found.data[0].id).select('id');if(result.error)throw result.error;if(!result.data?.length)throw new Error('Exclusão não confirmada pelo banco.');}
+      setClients(rows=>rows.filter(c=>c.id!==clientId));
+      setFeedback({type:'success',text:`Cliente "${name}" removido.`});
+    } catch(error){setFeedback({type:'error',text:error.code==='23503'?'O cliente possui vínculos ou histórico e não pode ser excluído.':error.message||'Não foi possível excluir o cliente.'});}
   };
 
   // Abrir Modal de Redirecionar Rota
