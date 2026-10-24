@@ -32,12 +32,22 @@ export default function RotasModule({ user, onNavigateEscala }) {
 
   const [routes, setRoutes] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_real_routes');
-      return saved ? JSON.parse(saved) : AUDITED_RJ_ROUTES;
+      localStorage.removeItem('ambipar_real_routes');
+      const saved = localStorage.getItem('ambipar_user_routes_clean_v1');
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return AUDITED_RJ_ROUTES;
+      return [];
     }
   });
+
+  const handleLoadAuditedRoutes = () => {
+    setRoutes(AUDITED_RJ_ROUTES);
+    try {
+      localStorage.setItem('ambipar_user_routes_clean_v1', JSON.stringify(AUDITED_RJ_ROUTES));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoute, setSelectedRoute] = useState(null);
@@ -117,7 +127,7 @@ export default function RotasModule({ user, onNavigateEscala }) {
     const updated = [newRoute, ...routes];
     setRoutes(updated);
     try {
-      localStorage.setItem('ambipar_real_routes', JSON.stringify(updated));
+      localStorage.setItem('ambipar_user_routes_clean_v1', JSON.stringify(updated));
     } catch (err) {
       console.warn(err);
     }
@@ -450,9 +460,42 @@ export default function RotasModule({ user, onNavigateEscala }) {
         </span>
       </div>
 
-      {/* Grid de Cards das Rotas com Múltiplas Paradas */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.25rem', marginTop: '1.25rem' }}>
-        {filteredRoutes.map((route) => (
+      {/* Grid de Cards das Rotas com Múltiplas Paradas ou Estado Limpo */}
+      {filteredRoutes.length === 0 ? (
+        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', marginTop: '1.25rem', background: 'rgba(15, 23, 42, 0.4)', border: '1px dashed rgba(255, 255, 255, 0.12)', borderRadius: '12px' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(6, 182, 212, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
+            <Route size={32} style={{ color: 'var(--accent-cyan)' }} />
+          </div>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+            Nenhuma Rota Cadastrada no Sistema
+          </h3>
+          <p style={{ color: 'var(--text-muted)', maxWidth: '520px', margin: '0 auto 1.5rem', fontSize: '0.88rem', lineHeight: '1.5' }}>
+            O catálogo de rotas e circuitos está 100% limpo. Você pode criar novas rotas personalizadas com múltiplos endereços e paradas, ou carregar os modelos de corredores homologados do RJ.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn-primary btn-icon-text"
+              onClick={() => setViewMode('form')}
+              style={{ background: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)', color: '#070b12', fontWeight: 700, padding: '0.75rem 1.6rem', fontSize: '0.9rem' }}
+            >
+              <Plus size={18} />
+              <span>+ Criar Nova Rota Multi-Endereços</span>
+            </button>
+            <button
+              type="button"
+              className="btn-secondary btn-icon-text"
+              onClick={handleLoadAuditedRoutes}
+              style={{ padding: '0.75rem 1.4rem', fontSize: '0.88rem' }}
+            >
+              <Sparkles size={16} />
+              <span>Carregar Modelos Homologados RJ</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.25rem', marginTop: '1.25rem' }}>
+          {filteredRoutes.map((route) => (
           <div 
             key={route.id} 
             className="card-panel"
@@ -575,7 +618,8 @@ export default function RotasModule({ user, onNavigateEscala }) {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
