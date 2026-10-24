@@ -184,6 +184,12 @@ jobs:
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024203148_maintenance_worker_schedule.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024203245_maintenance_connected_indexes.sql
+      - name: Cashflow preserves effective payment history
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024204251_maintenance_cashflow_history.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/cashflow-history.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
         run: npm ci
