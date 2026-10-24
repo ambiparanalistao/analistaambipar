@@ -2,6 +2,8 @@ import PreventiveIndicator from './maintenance/plans/PreventiveIndicator';
 import React,{useState} from 'react';
 import {MAINTENANCE_PAGES} from './maintenance/maintenanceRoutes';
 import { 
+  CalendarDays,
+  MapPin,
   LayoutDashboard, 
   Truck, 
   FileText, 
@@ -53,6 +55,22 @@ export default function Sidebar({
           badge: '3 Alertas'
         },
         {
+          id: 'escala',
+          label: 'Escala Operacional CCO',
+          icon: CalendarDays,
+          badge: 'Diária'
+        },
+        {
+          id: 'rotas',
+          label: 'Central de Rotas & Circuitos',
+          icon: Route
+        },
+        {
+          id: 'clientes',
+          label: 'Gestão de Clientes & Contratos',
+          icon: Building2
+        },
+        {
           id: 'frotas',
           label: 'Gestão de Frotas & Veículos',
           icon: Truck
@@ -65,17 +83,12 @@ export default function Sidebar({
         {
           id: 'viagens',
           label: 'Monitoramento de Viagens',
-          icon: Route
+          icon: Compass
         },
         {
           id: 'combustivel',
           label: 'Controle de Combustível & ARLA',
           icon: Fuel
-        },
-        {
-          id: 'clientes',
-          label: 'Gestão de Clientes & Rotas',
-          icon: Building2
         },
         {
           id: 'mtr',

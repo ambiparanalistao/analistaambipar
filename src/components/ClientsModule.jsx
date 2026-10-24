@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
+import { AUDITED_RJ_CLIENTS } from '../data/auditedClientsRoutesData';
 import './ClientsModule.css';
 
 // Catálogo de Corredores Rodoviários Homologados da Ambipar (Inicia 100% Limpo)
@@ -144,12 +145,14 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
   // Estado de Clientes Inicial: 100% LIMPO (sem nenhum dado fictício)
   const [clients, setClients] = useState(() => {
     try {
-      // Limpa dados legados fictícios se existirem
-      localStorage.removeItem('ambipar_real_clients');
       const saved = localStorage.getItem('ambipar_real_clients_v2');
-      return saved ? JSON.parse(saved) : [];
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length >= 8) return parsed;
+      }
+      return AUDITED_RJ_CLIENTS;
     } catch {
-      return [];
+      return AUDITED_RJ_CLIENTS;
     }
   });
 
