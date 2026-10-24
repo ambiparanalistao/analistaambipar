@@ -13,3 +13,5 @@ ExcelJS 4.4.0 foi adicionado e fixado para escrever estilos reais no XLSX; o pac
 Envios têm claim com trava, token por tentativa, estado accepted/failed/unknown, controle de concorrência e snapshot dos dados. Histórico de comunicação e timeline registram os envios aceitos. Uma aprovação invalidada não pode ser enviada como válida. A fila não expõe snapshot ou token às consultas de tabela, apenas o estado; documento exige RPC com vínculo ativo na empresa.
 
 Configuração externa: Evolution API URL/key e instância analistalogistica conectada, e WhatsApp válido no parceiro. Endpoint Evolution 2.3.7: message/sendMedia, mediatype document, fileName, mimetype XLSX e media base64. Testes usam provedor simulado; sem enviar mensagens reais a oficinas.
+
+O motorista selecionado na OS é identificado como relator dos defeitos do veículo. Nome e telefone do relator constam no Excel, e o nome também segue na mensagem para a oficina. O vínculo usa driver_id da própria empresa; relator ausente é informado explicitamente, sem inventar dados.
