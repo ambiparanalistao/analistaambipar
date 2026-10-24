@@ -109,6 +109,12 @@ jobs:
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/full-access-seed.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261023202225_full_module_access.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/full-access.sql
+      - name: Minimal registration and secure completion
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024004814_relaxed_partner_registration.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/relaxed-registration.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
         run: npm ci

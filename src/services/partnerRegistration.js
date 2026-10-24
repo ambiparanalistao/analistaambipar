@@ -11,3 +11,5 @@ export async function sendPartnerApproval(company,id,command='approve',note='',c
  let data;try{data=await response.json();}catch{throw new Error('Resposta inválida. Atualize a solicitação antes de repetir.');}if(!response.ok)throw new Error(data.error||'Não foi possível aprovar a oficina.');return data;
 }
 export async function getApprovalNotice(company,id){return checked(await supabase.from('maintenance_partner_approval_notices').select('request_id,status,phone,body,attempts,claimed_at,provider_message_id,error_message,accepted_at,updated_at').eq('company_id',company).eq('request_id',id).maybeSingle());}
+
+export async function completeRegistration(token,command,body={}){return checked(await supabase.rpc('maintenance_partner_registration_edit',{token,command,body}));}
