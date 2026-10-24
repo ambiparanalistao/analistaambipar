@@ -205,7 +205,6 @@ export default function DriversModule({ user, maintenanceAccess }) {
     categoria_cnh: 'E',
     validade_cnh: '',
     mopp_numero: '',
-    validade_mopp: '',
     validade_toxicologico: '',
     validade_nr20: '',
     validade_nr35: '',
@@ -241,7 +240,6 @@ export default function DriversModule({ user, maintenanceAccess }) {
       categoria_cnh: driver.categoria_cnh || 'E',
       validade_cnh: driver.validade_cnh || '',
       mopp_numero: driver.mopp_numero || '',
-      validade_mopp: driver.validade_mopp || '',
       validade_toxicologico: driver.validade_toxicologico || '',
       validade_nr20: driver.validade_nr20 || '',
       validade_nr35: driver.validade_nr35 || '',
@@ -264,7 +262,6 @@ export default function DriversModule({ user, maintenanceAccess }) {
   const hasComplianceAlert = (driver) => {
     const dates = [
       driver.validade_cnh,
-      driver.validade_mopp,
       driver.validade_toxicologico,
       driver.validade_nr20,
       driver.validade_nr35,
@@ -329,7 +326,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
           </div>
           <h2>Quadro de Motoristas & Validades em Tempo Real</h2>
           <p>
-            Monitoramento de CNH, curso MOPP, exames toxicológicos e NRs com contadores automáticos de expiração e acionamento direto via WhatsApp.
+            MOPP com validade indeterminada; monitoramento de CNH, exames toxicológicos e NRs com contadores de expiração e acionamento direto via WhatsApp.
           </p>
         </div>
 
@@ -614,23 +611,13 @@ export default function DriversModule({ user, maintenanceAccess }) {
                   </div>
 
                   <div className="input-group-custom">
-                    <label>Data de Validade do Curso MOPP *</label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.validade_mopp}
-                      onChange={(e) => setFormData({ ...formData, validade_mopp: e.target.value })}
-                    />
+                    <label>Validade do Curso MOPP</label>
+                    <input type="text" aria-label="Validade do Curso MOPP" value="Validade indeterminada" readOnly/>
+
                   </div>
                 </div>
 
-                {formData.validade_mopp && (
-                  <div className={`countdown-live-banner ${getCountdown(formData.validade_mopp).badgeClass}`}>
-                    <Calendar size={15} />
-                    <strong>Curso MOPP ANTT:</strong>
-                    <span>{getCountdown(formData.validade_mopp).text}</span>
-                  </div>
-                )}
+
               </div>
 
               {/* Grid com Cursos e NRs Especializadas do Setor */}
@@ -858,7 +845,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
               <span className="stat-label">Alertas de Vencimento</span>
               <span className="stat-number">{alertDrivers}</span>
               <span className="stat-sub">
-                {alertDrivers > 0 ? 'CNH, MOPP ou Cursos a vencer/vencidos' : '100% dos certificados em dia'}
+                {alertDrivers > 0 ? 'CNH, toxicológico ou outros cursos a vencer/vencidos' : '100% dos certificados em dia'}
               </span>
             </div>
           </div>
@@ -868,7 +855,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
             <div className="live-board-header">
               <div>
                 <h3>Quadro Operacional de Motoristas & Validades</h3>
-                <p>Gestão técnica de condutores homologados, controle de validades MOPP/NRs e acionamento direto CCO</p>
+                <p>Gestão técnica de condutores homologados, MOPP com validade indeterminada e controle de validades das NRs e acionamento direto CCO</p>
               </div>
 
               <div className="table-controls-bar">
@@ -964,7 +951,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
               <div className="driver-cards-grid">
                 {filteredDrivers.map((d) => {
                   const cnhCount = getCountdown(d.validade_cnh);
-                  const moppCount = getCountdown(d.validade_mopp);
+                  const moppCount = {status:'valid',badgeClass:'badge-valid',compactText:'Validade indeterminada',formattedDate:''};
                   const toxCount = getCountdown(d.validade_toxicologico);
                   const nr20Count = getCountdown(d.validade_nr20);
                   const nr35Count = getCountdown(d.validade_nr35);
@@ -1064,9 +1051,9 @@ export default function DriversModule({ user, maintenanceAccess }) {
                             <span>Curso MOPP</span>
                             <span className={`cell-badge ${moppCount.badgeClass}`}>{moppCount.compactText}</span>
                           </div>
-                          <div className="cell-data">{d.mopp_numero || 'MOPP Homologado'}</div>
+                          <div className="cell-data">{d.mopp_numero || 'Certificado não informado'}</div>
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
-                            Val: {moppCount.formattedDate || 'Não informada'}
+                            Validade indeterminada
                           </span>
                         </div>
 
@@ -1169,7 +1156,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
                   <tbody>
                     {filteredDrivers.map((d) => {
                       const cnhCount = getCountdown(d.validade_cnh);
-                      const moppCount = getCountdown(d.validade_mopp);
+                      const moppCount = {status:'valid',badgeClass:'badge-valid',compactText:'Validade indeterminada',formattedDate:''};
                       const toxCount = getCountdown(d.validade_toxicologico);
                       const nr20Count = getCountdown(d.validade_nr20);
                       const nr35Count = getCountdown(d.validade_nr35);
@@ -1229,11 +1216,11 @@ export default function DriversModule({ user, maintenanceAccess }) {
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                               <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.82rem', color: '#f8fafc', whiteSpace: 'nowrap' }}>
-                                {d.mopp_numero || 'MOPP Homologado'}
+                                {d.mopp_numero || 'Certificado não informado'}
                               </span>
                               <span className={`table-compact-doc-chip ${moppCount.status}`}>
                                 <span className={`table-doc-dot ${moppCount.status}`}></span>
-                                <span>{moppCount.formattedDate || '—'} · {moppCount.compactText}</span>
+                                <span>{moppCount.compactText}</span>
                               </span>
                             </div>
                           </td>
