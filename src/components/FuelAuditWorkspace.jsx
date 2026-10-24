@@ -114,9 +114,9 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
   });
 
   // Média de referência esperada para pesados
-  const EXPECTED_KM_L_DEFAULT = 2.35;
-  const EXPECTED_PRICE_L_DEFAULT = 6.15;
-  const TANK_CAPACITY_DEFAULT = 600;
+
+
+
 
   // Agrupa por placa para analisar histórico sequencial
   const sortedRecords = [...records].sort((a, b) => {
@@ -138,10 +138,10 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
     const posto = rec.posto_nome || 'Posto Convênio';
 
     const vehicleInfo = plateMap.get(placa);
-    const tankCapacity = vehicleInfo?.capacidadeTanque || TANK_CAPACITY_DEFAULT;
+    const tankCapacity=Number(vehicleInfo?.capacidadeTanque)||0;const EXPECTED_KM_L_DEFAULT=Number(vehicleInfo?.meta_consumo_kml)||0;const EXPECTED_PRICE_L_DEFAULT=Number(rec.preco_referencia_litro)||0;
 
     // Regra 1: VOLUME EXCEDENTE AO TANQUE (FRAUDE OU ERRO DE DIGITAÇÃO)
-    if (litros > tankCapacity * 1.05 && rec.tipo_combustivel !== 'ARLA 32') {
+    if (tankCapacity>0 && litros > tankCapacity * 1.05 && rec.tipo_combustivel !== 'ARLA 32') {
       const excessVolume = litros - tankCapacity;
       const wastedR$ = excessVolume * (precoLitro || EXPECTED_PRICE_L_DEFAULT);
       anomalies.push({
@@ -166,7 +166,7 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
     }
 
     // Regra 2: CONSUMO EXCESSIVO (KM/L MUITO ABAIXO DA META)
-    if (kmPorLitro > 0 && kmPorLitro < 1.85 && rec.tipo_combustivel !== 'ARLA 32' && distKm > 30) {
+    if (EXPECTED_KM_L_DEFAULT>0 && kmPorLitro > 0 && kmPorLitro < EXPECTED_KM_L_DEFAULT*.8 && rec.tipo_combustivel !== 'ARLA 32' && distKm > 30) {
       const desvioPct = ((EXPECTED_KM_L_DEFAULT - kmPorLitro) / EXPECTED_KM_L_DEFAULT) * 100;
       const litrosIdeais = distKm / EXPECTED_KM_L_DEFAULT;
       const litrosDesperdicados = Math.max(0, litros - litrosIdeais);
@@ -222,7 +222,7 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
     }
 
     // Regra 4: PREÇO POR LITRO FORA DA CURVA CONVENIADA
-    if (precoLitro > EXPECTED_PRICE_L_DEFAULT * 1.18 && rec.tipo_combustivel?.toLowerCase().includes('diesel')) {
+    if (EXPECTED_PRICE_L_DEFAULT>0 && precoLitro > EXPECTED_PRICE_L_DEFAULT * 1.18 && rec.tipo_combustivel?.toLowerCase().includes('diesel')) {
       const sobrepreco = (precoLitro - EXPECTED_PRICE_L_DEFAULT) * litros;
       anomalies.push({
         id: `ANOM_PRICE_${rec.id || Math.random()}`,
@@ -281,67 +281,6 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
       });
     }
   });
-
-  // Se não houver anomalias reais detectadas (base limpa), incluímos 3 casos inteligentes de referência operacional
-  if (anomalies.length === 0) {
-    anomalies.push(
-      {
-        id: 'DEMO_ANOM_1',
-        type: 'CONSUMO_EXCESSIVO',
-        severity: 'CRITICAL',
-        title: 'Carreta Tanque Química (ABC-4E52) com 1,45 km/l no trecho Paulínia ⇄ Santos',
-        diagnostico: 'Consumo apurado de 1,45 km/l está 38,3% abaixo da meta CCO de 2,35 km/l. Condutor operou em rota com rotações elevadas acima da faixa verde do tacógrafo. Desperdício estimado: 264,8 litros de Diesel S10.',
-        placa: 'ABC-4E52',
-        modelo: 'Scania R450 6x2 (Carreta Tanque Inox 316L)',
-        motorista: 'Sebastião Oliveira Silva',
-        data: '2026-10-18',
-        posto: 'Posto Graal Petropen - Rod. Régis Bittencourt',
-        valorTotal: 4182.00,
-        litros: 680.0,
-        impactoFinanceiro: 1628.52,
-        metricLabel: 'Média Apurada',
-        metricValue: '1,45 km/l',
-        benchmark: '2,35 km/l',
-        status: 'PENDENTE'
-      },
-      {
-        id: 'DEMO_ANOM_2',
-        type: 'VOLUME_MAIOR_QUE_TANQUE',
-        severity: 'CRITICAL',
-        title: 'Volume de 790 L inserido em veículo com tanque homologado de 600 L',
-        diagnostico: 'Cupom fiscal lançou 790 litros abastecidos em cavalo mecânico com tanque técnico homologado de 600 litros (+190 L excedentes). Suspeita de abastecimento paralelo ou duplicidade na emissão.',
-        placa: 'AMB-8821',
-        modelo: 'Volvo FH 540 6x4 (Bitrem 74t)',
-        motorista: 'Carlos Eduardo Nogueira',
-        data: '2026-10-20',
-        posto: 'Rede Arco-Íris - Rod. Presidente Dutra KM 182',
-        valorTotal: 4858.50,
-        litros: 790.0,
-        impactoFinanceiro: 1168.50,
-        metricLabel: 'Litragem Excedente',
-        metricValue: '+190,0 L',
-        status: 'PENDENTE'
-      },
-      {
-        id: 'DEMO_ANOM_3',
-        type: 'PRECO_ABUSIVO',
-        severity: 'MEDIUM',
-        title: 'Diesel S10 cobrado a R$ 7,49/L fora da rede conveniada corporativa',
-        diagnostico: 'Abastecimento emergencial realizado em posto não homologado com preço de R$ 7,49/L (R$ 1,34/L acima da média conveniada de R$ 6,15/L).',
-        placa: 'AMB-1092',
-        modelo: 'Mercedes-Benz Actros 2651 (Rollon)',
-        motorista: 'Fernando Henrique Rocha',
-        data: '2026-10-19',
-        posto: 'Auto Posto Alvorada - BR-116 KM 420',
-        valorTotal: 2996.00,
-        litros: 400.0,
-        impactoFinanceiro: 536.00,
-        metricLabel: 'Sobrepreço Unitário',
-        metricValue: '+R$ 1,34/L',
-        status: 'PENDENTE'
-      }
-    );
-  }
 
   return anomalies;
 }

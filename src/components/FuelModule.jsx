@@ -1,3 +1,5 @@
+import {driverForVehicle} from '../utils/registryMatching';
+import useFleetDirectory from '../hooks/useFleetDirectory';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Fuel,
@@ -152,7 +154,7 @@ export const getConsumptionEfficiency = (kmPerL, fuelType) => {
   return { label: 'Consumo Excessivo (Pé Pesado)', status: 'critico', color: '#f43f5e' };
 };
 
-export default function FuelModule({ user, initialView = 'dashboard', onNavigateModule }) {
+export default function FuelModule({ user, companyId, initialView = 'dashboard', onNavigateModule }) {
   // Estado de abastecimentos persistente
   const [records, setRecords] = useState(() => {
     try {
@@ -164,54 +166,10 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
   });
 
   // Carrega veículos, motoristas e rotas de clientes
-  const [availablePlates, setAvailablePlates] = useState([]);
-  const [availableDrivers, setAvailableDrivers] = useState([]);
-  const [clientRoutes, setClientRoutes] = useState([]);
-
-  useEffect(() => {
-    try {
-      const savedVehicles = localStorage.getItem('ambipar_real_vehicles');
-      const savedPlatesList = localStorage.getItem('ambipar_fleet_vehicles');
-      let plates = [];
-      if (savedVehicles) {
-        const parsed = JSON.parse(savedVehicles);
-        plates = parsed.map(v => ({
-          placa: v.placa,
-          modelo: v.modelo || v.tipo || 'Caminhão',
-          capacidadeTanque: v.capacidade_tanque || 600
-        }));
-      } else if (savedPlatesList) {
-        const parsed = JSON.parse(savedPlatesList);
-        plates = parsed.map(p => ({ placa: p, modelo: 'Frota Ambipar', capacidadeTanque: 600 }));
-      }
-      setAvailablePlates(plates);
-
-      const savedDrivers = localStorage.getItem('ambipar_real_drivers');
-      if (savedDrivers) {
-        const parsed = JSON.parse(savedDrivers);
-        setAvailableDrivers(parsed.map(d => d.nome));
-      }
-
-      const savedClients = localStorage.getItem('ambipar_real_clients_v2');
-      if (savedClients) {
-        const parsed = JSON.parse(savedClients);
-        const validRoutes = parsed
-          .filter(c => c.rota_nome || (c.origem && c.destino))
-          .map(c => ({
-            id: c.id,
-            cliente: c.nome_fantasia || c.razao_social,
-            nome: c.rota_nome || `${c.origem} ⇄ ${c.destino}`,
-            origem: c.origem || `${c.cidade || 'Base'}/${c.uf || 'SP'}`,
-            destino: c.destino || 'Planta Cliente',
-            distanciaKm: Number(c.distancia_km) || 600
-          }));
-        setClientRoutes(validRoutes);
-      }
-    } catch (e) {
-      console.warn('Erro ao carregar dados integrados CCO:', e);
-    }
-  }, []);
-
+  const directory=useFleetDirectory(companyId);
+  const availablePlates=directory.vehicles.map(v=>({...v,modelo:v.marca_modelo,capacidadeTanque:v.capacidade_tanque||null}));
+  const availableDrivers=directory.drivers.map(d=>d.nome);const [clientRoutes,setClientRoutes]=useState([]);
+  useEffect(()=>{try{const rows=JSON.parse(localStorage.getItem('ambipar_real_clients_v2')||'[]');setClientRoutes(rows.filter(c=>c.origem&&c.destino).map(c=>({id:c.id,cliente:c.nome_fantasia||c.razao_social,nome:c.rota_nome||c.origem+' ⇄ '+c.destino,origem:c.origem,destino:c.destino,distanciaKm:Number(c.distancia_km)||null})));}catch{setClientRoutes([]);}},[]);
   // Salva no localStorage a cada atualização
   useEffect(() => {
     try {
@@ -356,7 +314,8 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
     setFormData(prev => ({
       ...prev,
       placa: selectedPlate.toUpperCase(),
-      modelo_veiculo: matchedVehicle ? matchedVehicle.modelo : prev.modelo_veiculo,
+      modelo_veiculo: matchedVehicle?.modelo||'',
+      motorista:driverForVehicle(matchedVehicle,directory.drivers)?.nome||'',
       hodometro_anterior: lastRecordForPlate ? String(lastRecordForPlate.hodometro_atual) : prev.hodometro_anterior
     }));
   };
@@ -2960,7 +2919,7 @@ export default function FuelModule({ user, initialView = 'dashboard', onNavigate
                     <span style={{ fontSize: '0.72rem', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Autorização Operacional de Abastecimento</span>
                   </div>
                   <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#94a3b8' }}>
-                    <div>Ref: <strong>AUT-{Math.floor(100000 + Math.random() * 900000)}</strong></div>
+                    <div>Ref: <strong>Prévia — não emitida</strong></div>
                     <div>Data: {new Date().toLocaleDateString('pt-BR')}</div>
                   </div>
                 </div>
