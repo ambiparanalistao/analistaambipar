@@ -6,5 +6,6 @@ export const MAINTENANCE_PAGES=[
  {id:'maintenance_driver_requests',path:'/manutencao/solicitacoes-motoristas',label:'Solicitações dos motoristas'},
  {id:'maintenance_occurrences',path:'/manutencao/ocorrencias',label:'Ocorrências'},
  {id:'maintenance_communication',path:'/manutencao/comunicacao',label:'Comunicação'},
+ {id:'maintenance_finance',path:'/manutencao/financeiro',label:'Financeiro'},
  {id:'maintenance_reports',path:'/manutencao/relatorios',label:'Relatórios'},
 ];

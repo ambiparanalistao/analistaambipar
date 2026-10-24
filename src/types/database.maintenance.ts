@@ -489,6 +489,7 @@ export type MaintenanceDatabase = {
     } };
     Views: Record<string, never>;
     Functions: {
+      maintenance_finance_command:{Args:{target_company:string;command:string;body?:Json};Returns:Json};
       driver_maintenance_gateway:{Args:{server_key:string;command:string;body:Json};Returns:Json};
       driver_maintenance_admin:{Args:{target_company:string;command:string;body?:Json};Returns:Json};
       maintenance_partner_delete: {Args:{target_company:string;target_partner:string;expected_version:number};Returns:Json};
@@ -566,3 +567,12 @@ export interface MaintenanceRows {
  maintenance_driver_report_dispatches:{id:string;company_id:string;report_id:string;partner_id:string;status:string;claim_token:string|null;started_at:string|null;updated_at:string;attempts:number;message_id:string|null;error_message:string|null};
 }
 export interface MaintenanceInserts {maintenance_driver_reports:never;maintenance_driver_report_events:never;maintenance_driver_report_dispatches:never;}
+
+export interface MaintenanceRows {
+ maintenance_finance_invoices:{id:string;company_id:string;order_id:string;partner_id:string;request_id:string;numero:string;serie:string;chave_acesso:string;emissao:string;valor:number;observacao:string;status:'conferencia'|'liberada'|'cancelada';version:number;referencia_orcamento:number|null;referencia_aprovacao:string|null;referencia_faturado:number|null;justificativa:string;conferido_por:string|null;conferido_em:string|null;motivo_cancelamento:string|null;created_by:string;created_at:string;updated_at:string};
+ maintenance_finance_installments:{id:string;company_id:string;invoice_id:string;numero:number;vencimento:string;valor:number};
+ maintenance_finance_payments:{id:string;company_id:string;installment_id:string;request_id:string;tipo:'pagamento'|'estorno';valor:number;data_pagamento:string;metodo:'pix'|'boleto'|'transferencia'|'dinheiro'|'cartao'|'outro';referencia:string;observacao:string;reverses_id:string|null;created_by:string;created_at:string};
+ maintenance_finance_files:{id:string;company_id:string;invoice_id:string;payment_id:string|null;categoria:'nota_fiscal'|'comprovante'|'outros';object_path:string;nome:string;content_type:string;tamanho_bytes:number;created_by:string;created_at:string};
+ maintenance_finance_audit:{id:string;company_id:string;invoice_id:string;action:string;description:string;details:Json;actor_id:string;created_at:string};
+}
+export interface MaintenanceInserts {maintenance_finance_invoices:never;maintenance_finance_installments:never;maintenance_finance_payments:never;maintenance_finance_files:never;maintenance_finance_audit:never;}
