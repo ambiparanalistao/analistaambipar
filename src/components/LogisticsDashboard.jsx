@@ -107,7 +107,7 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
           </div>
           <h2>Painel Geral de Operações Ambipar</h2>
           <p>
-            Métricas integradas da Unidade Duque de Caxias & Contrato Vale: 21 veículos homologados, 83 caçambas rastreadas, auditoria de abastecimentos Ticket Log e controle ambiental SINIR/INEA.
+            Métricas integradas da Unidade Duque de Caxias & Contrato Vale: 21 veículos homologados, 83 caçambas rastreadas, auditoria de abastecimentos Abank e controle ambiental SINIR/INEA.
           </p>
         </div>
 
@@ -312,7 +312,7 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
         {/* KPI 7: Diesel Ticket Log */}
         <div className="kpi-card" id="kpi-card-combustivel">
           <div className="kpi-top">
-            <span className="kpi-title">Combustível Ticket Log (2026)</span>
+            <span className="kpi-title">Combustível Abank Frota (2026)</span>
             <div className="kpi-icon-wrap forest">
               <Fuel size={20} />
             </div>
@@ -404,7 +404,7 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
           <div className="banner-text-content">
             <h4>Controle de Combustível & ARLA 32</h4>
             <p>
-              Base Ticket Log com 276 abastecimentos auditados, curva de rendimento médio (km/l) e CPK por caminhão.
+              Base Abank Frota com 276 abastecimentos auditados, curva de rendimento médio (km/l) e CPK por caminhão.
             </p>
           </div>
           <button

@@ -217,7 +217,7 @@ export default function App() {
     },
     aporte_combustivel: {
       title: 'Aporte Semanal & Solicitação de Saldo de Combustível',
-      subtitle: 'Fechamento Quarta-feira 17h ➔ Relatório e Solicitação de Saldo Ticket Log toda Quinta-feira Manhã'
+      subtitle: 'Fechamento Quarta-feira 17h ➔ Relatório e Solicitação de Saldo Abank toda Quinta-feira Manhã'
     },
     simulador_autonomia: { 
       title: 'Simulador Analítico de Autonomia & Consumo de Rota CCO', 

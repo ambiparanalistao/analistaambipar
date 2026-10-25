@@ -42,11 +42,14 @@ import {
 import './WeeklyFuelProvisionModule.css';
 
 export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
-  // Estado de ciclos salvo localmente
+  // Estado de ciclos salvo localmente (Versão 2 - Abank)
   const [cycles, setCycles] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_weekly_fuel_cycles_v1');
-      return saved ? JSON.parse(saved) : INITIAL_WEEKLY_CYCLES;
+      const saved = localStorage.getItem('ambipar_weekly_fuel_cycles_v2');
+      if (saved) return JSON.parse(saved);
+      // Limpa chave v1 antiga se existir
+      localStorage.removeItem('ambipar_weekly_fuel_cycles_v1');
+      return INITIAL_WEEKLY_CYCLES;
     } catch {
       return INITIAL_WEEKLY_CYCLES;
     }
@@ -54,8 +57,10 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_fuel_cycle_settings_v1');
-      return saved ? JSON.parse(saved) : DEFAULT_CYCLE_SETTINGS;
+      const saved = localStorage.getItem('ambipar_fuel_cycle_settings_v2');
+      if (saved) return JSON.parse(saved);
+      localStorage.removeItem('ambipar_fuel_cycle_settings_v1');
+      return DEFAULT_CYCLE_SETTINGS;
     } catch {
       return DEFAULT_CYCLE_SETTINGS;
     }
@@ -64,7 +69,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Salva no localStorage quando alterado
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_weekly_fuel_cycles_v1', JSON.stringify(cycles));
+      localStorage.setItem('ambipar_weekly_fuel_cycles_v2', JSON.stringify(cycles));
     } catch (e) {
       console.warn('Erro ao salvar ciclos:', e);
     }
@@ -72,7 +77,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_fuel_cycle_settings_v1', JSON.stringify(settings));
+      localStorage.setItem('ambipar_fuel_cycle_settings_v2', JSON.stringify(settings));
     } catch (e) {
       console.warn('Erro ao salvar configurações do ciclo:', e);
     }
@@ -159,7 +164,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     precoArla: 3.80,
     kmNoAto: 142400,
     nfNumero: 'NF-e 88921',
-    comprovante: 'TL-985100'
+    comprovante: 'ABK-985100'
   });
 
   const handleSaveNewEntry = (e) => {
@@ -273,7 +278,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             </div>
 
             <div className="doc-title-banner">
-              <h1>RELATÓRIO & APORTE SEMANAL DE COMBUSTÍVEL · TICKET LOG FROTA</h1>
+              <h1>RELATÓRIO & APORTE SEMANAL DE COMBUSTÍVEL · CARTÃO ABANK FROTA</h1>
               <p>Demonstrativo consolidado de abastecimentos realizados, quilometragens aferidas e solicitação de saldo financeiro para a semana seguinte.</p>
             </div>
 
@@ -380,7 +385,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                   <strong>R$ {(totals.totalAporteSugerido - totals.totalGasto).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
                 </div>
                 <div className="contingency-card highlight-card">
-                  <span>VALOR TOTAL REQUERIDO DE APORTE TICKET LOG:</span>
+                  <span>VALOR TOTAL REQUERIDO DE APORTE ABANK FROTA:</span>
                   <strong>R$ {totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
                 </div>
               </div>
@@ -402,7 +407,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <div className="sig-line"></div>
                 <strong>{settings.gestorNome}</strong>
                 <span>{settings.gestorCargo} (Aprovador)</span>
-                <small>Status: Aguardando Autorização no Portal Ticket Log</small>
+                <small>Status: Aguardando Autorização no Portal / App Abank</small>
               </div>
             </div>
           </div>
@@ -550,7 +555,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <div className="form-legend">
               <Plus size={20} className="icon-emerald" />
               <div>
-                <h3>Registro de Cupom / Nota Fiscal Ticket Log</h3>
+                <h3>Registro de Cupom / Nota Fiscal Abank</h3>
                 <p>Insira os dados do comprovante para atualizar a memória de cálculo do aporte da próxima quinta-feira.</p>
               </div>
             </div>
@@ -675,13 +680,13 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               </div>
 
               <div className="form-group">
-                <label>Comprovante Ticket Log / NSU:</label>
+                <label>Comprovante Abank / NSU:</label>
                 <input
                   type="text"
                   value={newEntryData.comprovante}
                   onChange={e => setNewEntryData({ ...newEntryData, comprovante: e.target.value })}
                   className="form-input"
-                  placeholder="Ex: TL-985100"
+                  placeholder="Ex: ABK-985100"
                 />
               </div>
             </div>
@@ -939,7 +944,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
       <section className="kpi-cards-grid">
         <div className="kpi-card highlight-card-blue">
           <div className="kpi-card-header">
-            <span className="kpi-label">TOTAL SOLICITADO P/ APORTE (TICKET LOG)</span>
+            <span className="kpi-label">TOTAL SOLICITADO P/ APORTE (ABANK FROTA)</span>
             <Wallet size={20} className="kpi-icon-cyan" />
           </div>
           <div className="kpi-value-row">
@@ -1190,8 +1195,8 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         <div className="proc-col">
           <div className="proc-step-num">3</div>
           <div>
-            <h4>Liberação do Saldo (Ticket Log)</h4>
-            <p>O financeiro processa a recarga corporativa. Os cartões de cada caminhão recebem o crédito antes das saídas de quinta-feira.</p>
+            <h4>Liberação do Saldo (Abank Frota)</h4>
+            <p>O financeiro processa a recarga corporativa no portal Abank. Os cartões de cada caminhão recebem o crédito antes das saídas de quinta-feira.</p>
           </div>
         </div>
       </section>

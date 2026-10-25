@@ -579,7 +579,7 @@ export const convertRowsToFuelRecords = (rawRows, mapping, existingRecords = [],
       uf: String(getVal('uf') || 'SP').trim().toUpperCase().slice(0, 2),
       rodovia_km: '',
       nota_fiscal: nf,
-      forma_pagamento: String(getVal('forma_pagamento') || 'Cartão Frota - Ticket Log').trim(),
+      forma_pagamento: String(getVal('forma_pagamento') || 'Cartão Frota - Abank').trim(),
       nivel_tanque_pos: '100%',
       observacoes: 'Importado via planilha XLS/CSV',
       origem_importacao: 'planilha_excel'
@@ -688,7 +688,7 @@ export const generateBlankTemplateExcel = () => {
       'CIDADE': 'Campinas',
       'UF': 'SP',
       'NOTA_FISCAL': '109842',
-      'FORMA_PAGAMENTO': 'Cartão Frota - Ticket Log'
+      'FORMA_PAGAMENTO': 'Cartão Frota - Abank'
     }
   ];
 
