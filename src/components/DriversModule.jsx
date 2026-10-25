@@ -35,14 +35,14 @@ import {saveDriver,deleteRegistryRecord,updateRegistryStatus} from '../services/
 export const STATUS_OPTIONS = [
   { 
     value: 'Disponível', 
-    label: 'Disponível no Pátio / CCO', 
+    label: 'Disponível no Pátio / Central de Gestão', 
     sublabel: 'Pronto para escala e alocação imediata', 
     color: '#10b981',
     badge: 'Liberado'
   },
   { 
     value: 'Bloqueado', 
-    label: 'Bloqueado (Documentação / CCO)', 
+    label: 'Bloqueado (Documentação / Central de Gestão)', 
     sublabel: 'Pendência em CNH, MOPP, Toxicológico ou NR', 
     color: '#f43f5e',
     badge: 'Bloqueado'
@@ -801,12 +801,12 @@ export default function DriversModule({ user, maintenanceAccess }) {
               </div>
 
               <div className="input-group-custom">
-                <label>Observações do Analista / Restrições Médicas / CCO</label>
+                <label>Observações do Analista / Restrições Médicas / Central de Gestão</label>
                 <textarea
                   rows={4}
                   className="select-custom"
                   style={{ resize: 'vertical' }}
-                  placeholder="Histórico de rotas, certificações adicionais ou observações do CCO..."
+                  placeholder="Histórico de rotas, certificações adicionais ou observações da Central de Gestão..."
                   value={formData.observacoes}
                   onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                 />
@@ -848,13 +848,13 @@ export default function DriversModule({ user, maintenanceAccess }) {
             </div>
 
             <div className="summary-stat-box success">
-              <span className="stat-label">Disponíveis no Pátio / CCO</span>
+              <span className="stat-label">Disponíveis no Pátio / Central de Gestão</span>
               <span className="stat-number">{availableDrivers}</span>
               <span className="stat-sub">Prontos para escala imediata</span>
             </div>
 
             <div className="summary-stat-box danger">
-              <span className="stat-label">Bloqueados pelo CCO</span>
+              <span className="stat-label">Bloqueados pela Central de Gestão</span>
               <span className="stat-number">{blockedDrivers}</span>
               <span className="stat-sub">Pendência documental ou administrativa</span>
             </div>
@@ -873,7 +873,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
             <div className="live-board-header">
               <div>
                 <h3>Quadro Operacional de Motoristas & Validades</h3>
-                <p>Gestão técnica de condutores homologados, MOPP com validade indeterminada e controle de validades das NRs e acionamento direto CCO</p>
+                <p>Gestão técnica de condutores homologados, MOPP com validade indeterminada e controle de validades das NRs e acionamento direto Central de Gestão</p>
               </div>
 
               <div className="table-controls-bar">
@@ -1116,7 +1116,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
                       {/* Rodapé: Seletor Rápido de Status e Ações */}
                       <div className="driver-card-footer">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Status CCO:</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Status Operacional:</span>
                           <PremiumSelect
                             value={d.status}
                             onChange={(val) => handleChangeStatus(d.id, val)}

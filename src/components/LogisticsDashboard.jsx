@@ -110,10 +110,10 @@ export default function LogisticsDashboard({
           <div className="tower-badge-live">
             <span className="live-dot"></span>
             <span>
-              TORRE DE CONTROLE DE LOGÍSTICA & TRANSPORTE • CCO AMBIPAR
+              TORRE DE CONTROLE DE LOGÍSTICA & TRANSPORTE • Central de Gestão AMBIPAR
             </span>
           </div>
-          <h2>Painel Geral de Operações Ambipar</h2>
+          <h2>Central de Gestão de Frota e Logística</h2>
           <p>
             Indicadores dos cadastros da empresa. Consulte os módulos para
             informações detalhadas e períodos específicos.
@@ -194,7 +194,7 @@ export default function LogisticsDashboard({
                   borderRadius: "4px",
                 }}
               >
-                ALERTA DE VENCIMENTO CCO
+                ALERTA DE VENCIMENTO Central de Gestão
               </span>
               <span
                 style={{
@@ -453,7 +453,7 @@ export default function LogisticsDashboard({
             <code>Indicadores no dashboard de manutenção</code>
           </div>
           <div className="kpi-footer-status neutral">
-            <span>DRE de Custos Operacionais CCO</span>
+            <span>DRE de Custos Operacionais Central de Gestão</span>
           </div>
         </div>
       </div>
@@ -671,7 +671,7 @@ export default function LogisticsDashboard({
                           {r.placa_veiculo || "AMB-FROTA"}
                         </span>
                         <small style={{ color: "var(--text-muted)" }}>
-                          {r.motorista || "Motorista CCO"}
+                          {r.motorista || "Motorista Central de Gestão"}
                         </small>
                       </div>
                     </td>

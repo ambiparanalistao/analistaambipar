@@ -57,7 +57,7 @@ export default function FleetPreventiveOrderForm({
   return (
     <>
       <p className="mp-notice">
-        SDO preventiva de {vehicle.placa}. Revise os serviços, acrescente o que
+        S.D.O preventiva de {vehicle.placa}. Revise os serviços, acrescente o que
         for necessário e informe o grau de urgência. A abertura não dá baixa na
         preventiva nem reinicia o odômetro.
       </p>
@@ -67,8 +67,8 @@ export default function FleetPreventiveOrderForm({
         options={options}
         vehicleLocked
         priorityLabel="Grau de urgência"
-        title="Nova SDO — Solicitação de Orçamento Preventivo"
-        submitLabel="Gerar SDO"
+        title="Nova S.D.O — Solicitação de Orçamento Preventivo"
+        submitLabel="Gerar S.D.O"
         descriptionLabel="Serviços preventivos e adicionais *"
         initialValues={state.initial}
       />

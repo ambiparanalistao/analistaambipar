@@ -212,16 +212,16 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
 
   // Disparo de Escala via WhatsApp para o Motorista
   const handleSendWhatsApp = (item) => {
-    const paradasTexto = item.paradas.map((p, i) => `${i + 1}️⃣ *${p.cliente}* ${p.endereco ? `(${p.endereco})` : ''} [${p.horario || 'Horário CCO'}]`).join('\n');
+    const paradasTexto = item.paradas.map((p, i) => `${i + 1}️⃣ *${p.cliente}* ${p.endereco ? `(${p.endereco})` : ''} [${p.horario || 'Horário Central de Gestão'}]`).join('\n');
     
-    const msg = `🚨 *ESCALA OPERACIONAL AMBIPAR CCO - RJ*\n` +
+    const msg = `🚨 *ESCALA OPERACIONAL AMBIPAR Central de Gestão - RJ*\n` +
       `📅 *Data:* ${item.data_escala} | *Turno:* ${item.turno}\n` +
       `🛣️ *Rota:* ${item.rota_nome}\n` +
       `🚛 *Veículo:* ${item.veiculo_placa} (${item.veiculo_modelo})\n` +
       `👤 *Motorista:* ${item.motorista_nome}\n\n` +
       `📍 *SEQUÊNCIA DE CLIENTES & PARADAS NO DIA:*\n${paradasTexto}\n\n` +
-      `⚠️ *Instruções CCO:* ${item.instrucoes_especiais || 'Conferir MTR SINIR e EPIs antes da saída.'}\n` +
-      `📞 Suporte CCO: (21) 3655-9000`;
+      `⚠️ *Instruções Central de Gestão:* ${item.instrucoes_especiais || 'Conferir MTR SINIR e EPIs antes da saída.'}\n` +
+      `📞 Suporte Central de Gestão: (21) 3655-9000`;
 
     const encoded = encodeURIComponent(msg);
     const cleanPhone = (item.motorista_telefone || '').replace(/\D/g, '');
@@ -294,10 +294,10 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
                 AMBIPAR ENVIRONMENT SOLUTIONS • UNIDADE DUQUE DE CAXIAS
               </span>
               <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0.2rem 0', color: 'var(--text-main)' }}>
-                Ficha Oficial de Despacho & Escala Diária CCO
+                Ficha Oficial de Despacho & Escala Diária Central de Gestão
               </h2>
               <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.85rem' }}>
-                Ordem de Serviço Logística • Centro de Controle Operacional (CCO)
+                Ordem de Serviço Logística • Central de Gestão de Frota e Logística
               </p>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -318,7 +318,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
               <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>{selectedRomaneio.data_escala}</strong>
             </div>
             <div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Turno CCO:</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Turna Central de Gestão:</span>
               <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>{selectedRomaneio.turno}</strong>
             </div>
             <div>
@@ -347,7 +347,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
                   <th>Cliente / Ponto de Atendimento</th>
                   <th>Endereço Completo de Coleta</th>
                   <th>Horário Previsto</th>
-                  <th>Situação CCO</th>
+                  <th>Situação Central de Gestão</th>
                 </tr>
               </thead>
               <tbody>
@@ -372,7 +372,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
             </table>
           </div>
 
-          {/* Instruções CCO */}
+          {/* Instruções Central de Gestão */}
           <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '1rem 1.25rem', borderRadius: '8px', borderLeft: '4px solid var(--accent-cyan)', marginBottom: '2rem' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>
               Instruções Especiais de Segurança e Operação:
@@ -389,12 +389,12 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
               <span style={{ fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: 700 }}>
                 {selectedRomaneio.motorista_nome}
               </span>
-              <small style={{ display: 'block', color: 'var(--text-muted)' }}>Condutor Responsável / CCO</small>
+              <small style={{ display: 'block', color: 'var(--text-muted)' }}>Condutor Responsável / Central de Gestão</small>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ borderBottom: '1px solid var(--text-muted)', width: '80%', margin: '0 auto 0.5rem' }}></div>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: 700 }}>
-                Analista de Logística CCO
+                Analista de Transporte
               </span>
               <small style={{ display: 'block', color: 'var(--text-muted)' }}>Ambipar Logistics & Operações RJ</small>
             </div>
@@ -424,7 +424,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
                 <span>Voltar ao Quadro</span>
               </button>
               <span style={{ fontSize: '0.75rem', color: 'var(--accent-emerald)', fontWeight: 800, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
-                CCO • DESPACHO OPERACIONAL
+                Central de Gestão • DESPACHO OPERACIONAL
               </span>
             </div>
             <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
@@ -592,7 +592,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
 
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                  Instruções Especiais CCO / Despacho:
+                  Instruções Especiais Central de Gestão / Despacho:
                 </label>
                 <textarea
                   rows={3}
@@ -766,7 +766,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
         <div className="tower-header-text">
           <div className="tower-badge-live" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: 'var(--accent-emerald)' }}>
             <span className="live-dot" style={{ background: 'var(--accent-emerald)' }}></span>
-            <span>CENTRAL DE ESCALA OPERACIONAL & DESPACHO CCO • 2026</span>
+            <span>CENTRAL DE ESCALA OPERACIONAL & DESPACHO Central de Gestão • 2026</span>
           </div>
           <h2>Escala Diária de Motoristas, Veículos & Rotas</h2>
           <p>
@@ -843,7 +843,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
             <code>Múltiplas paradas no mesmo dia</code>
           </div>
           <div className="kpi-footer-status neutral">
-            <span>Sequenciamento logístico otimizado CCO</span>
+            <span>Sequenciamento logístico otimizada Central de Gestão</span>
           </div>
         </div>
 
@@ -936,7 +936,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
               Nenhuma Escala Operacional Cadastrada
             </h3>
             <p style={{ color: 'var(--text-muted)', maxWidth: '520px', margin: '0 auto 1.5rem', fontSize: '0.88rem', lineHeight: '1.5' }}>
-              O quadro de despacho do CCO está 100% limpo. Nenhuma escala ou viagem foi pré-programada. Clique no botão abaixo para montar uma nova escala com veículo liberado, motorista e paradas do dia.
+              O quadro de despacho da Central de Gestão está 100% limpo. Nenhuma escala ou viagem foi pré-programada. Clique no botão abaixo para montar uma nova escala com veículo liberado, motorista e paradas do dia.
             </p>
             <button
               type="button"
@@ -948,7 +948,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
               style={{ background: 'var(--accent-emerald)', borderColor: 'var(--accent-emerald)', color: '#070b12', fontWeight: 700, padding: '0.75rem 1.6rem', fontSize: '0.9rem' }}
             >
               <Plus size={18} />
-              <span>+ Montar Nova Escala CCO</span>
+              <span>+ Montar Nova Escala Operacional</span>
             </button>
           </div>
         ) : (
@@ -1022,7 +1022,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
                       title="Visualizar Ficha de Despacho e Romaneio em Tela Cheia"
                     >
                       <FileText size={13} />
-                      <span>Romaneio CCO</span>
+                      <span>Romaneio Central de Gestão</span>
                     </button>
 
                     <button
@@ -1058,7 +1058,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
                       <span>{item.rota_nome}</span>
                     </strong>
                     <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.2rem' }}>
-                      {item.instrucoes_especiais || 'Operação conforme procedimento CCO.'}
+                      {item.instrucoes_especiais || 'Operação conforme procedimento Central de Gestão.'}
                     </small>
                   </div>
                 </div>
