@@ -56,6 +56,8 @@ export default function FuelSpreadsheetWorkspace({
   onOpenImportModal,
   companyId,
   user,
+  webhookSettings = { webhookUrl: '', autoSync: false },
+  onSaveWebhookSettings,
   initialMatrix,
   availablePlates = [],
   availableDrivers = []
@@ -96,13 +98,9 @@ export default function FuelSpreadsheetWorkspace({
     return () => { active = false; };
   }, [companyId, initialMatrix]);
 
-  // Estado da Sincronização em Nuvem (Google Sheets / Excel 365)
-  const [webhookUrl, setWebhookUrl] = useState(() => {
-    return localStorage.getItem('ambipar_sheet_webhook_url') || '';
-  });
-  const [autoSyncEnabled, setAutoSyncEnabled] = useState(() => {
-    return localStorage.getItem('ambipar_sheet_auto_sync') === 'true';
-  });
+  // Configuração por empresa, persistida em company_operational_records.
+  const webhookUrl = webhookSettings.webhookUrl || '';
+  const autoSyncEnabled = webhookSettings.autoSync === true;
   const [webhookTestResult, setWebhookTestResult] = useState(null);
   const [showScriptModal, setShowScriptModal] = useState(false);
   const [scriptCopied, setScriptCopied] = useState(false);
@@ -193,12 +191,13 @@ export default function FuelSpreadsheetWorkspace({
   }, [fleetMatrix]);
 
   // Salvar URL do Webhook
-  const handleSaveWebhookSettings = (url, autoSync) => {
-    setWebhookUrl(url);
-    setAutoSyncEnabled(autoSync);
-    localStorage.setItem('ambipar_sheet_webhook_url', url);
-    localStorage.setItem('ambipar_sheet_auto_sync', autoSync ? 'true' : 'false');
-    showNotification('Configurações de sincronização com Google Sheets salvas!');
+  const handleSaveWebhookSettings = async (url, autoSync) => {
+    try {
+      await onSaveWebhookSettings?.({ webhookUrl: url, autoSync });
+      showNotification('Configurações de sincronização salvas no banco de dados da empresa.');
+    } catch (error) {
+      showNotification(error.message || 'Não foi possível salvar as configurações de sincronização.', 'error');
+    }
   };
 
   // Valida o formato da URL sem inserir uma linha de teste fictícia na planilha.
