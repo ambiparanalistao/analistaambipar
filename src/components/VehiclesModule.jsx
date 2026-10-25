@@ -54,7 +54,7 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
-import { AUDITED_VEHICLES, AUDITED_DRIVERS } from '../data/auditedAmbiparData';
+import { AUDITED_VEHICLES } from '../data/auditedAmbiparData';
 import { readCrlvFile } from '../utils/crlvPdfReader';
 import WhatsAppDispatchWorkspace from './WhatsAppDispatchWorkspace';
 import useFleetDirectory from '../hooks/useFleetDirectory';
@@ -306,17 +306,17 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   const crlvFileInputRef = React.useRef(null);
 
   const directory=useFleetDirectory(companyId);
-  const [vehicles,setVehicles]=useState(() => DEFAULT_AMBIPAR_FLEET);
-  const [availableDrivers,setAvailableDrivers]=useState(() => AUDITED_DRIVERS.map(d=>({value:d.nome,label:d.nome+(d.categoria_cnh?' (CNH '+d.categoria_cnh+')':''),phone:d.telefone||''})));
+  const [vehicles,setVehicles]=useState([]);
+  const [availableDrivers,setAvailableDrivers]=useState([]);
   useEffect(()=>{
     if(directory.vehicles && directory.vehicles.length > 0){
       setVehicles(directory.vehicles);
     } else {
-      setVehicles(DEFAULT_AMBIPAR_FLEET);
+      setVehicles([]);
     }
     if(directory.drivers && directory.drivers.length > 0){
       setAvailableDrivers(directory.drivers.map(d=>({value:d.nome,label:d.nome+(d.categoria_cnh?' (CNH '+d.categoria_cnh+')':''),phone:d.telefone||''})));
-    }
+    } else {setAvailableDrivers([]);}
     setLoading(directory.loading);
     if(directory.error)setFeedback({type:'error',text:directory.error});
   },[directory.vehicles,directory.drivers,directory.loading,directory.error]);

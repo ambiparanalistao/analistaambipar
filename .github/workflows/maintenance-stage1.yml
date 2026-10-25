@@ -190,6 +190,12 @@ jobs:
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024204251_maintenance_cashflow_history.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/cashflow-history.sql
+      - name: Canonical compliance and manual fleet availability
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024211622_compliance_registry_manual_status.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/compliance.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
         run: npm ci
@@ -207,7 +213,7 @@ jobs:
         run: node --test tests/maintenance-worker.test.js tests/driver-portal.test.js tests/driver-report-dispatch.test.js tests/driver-reports.test.js tests/driver-toxicology.test.js tests/evolution.test.js tests/partner-approval.test.js tests/order-dispatch.test.js
       - name: Partner form validation
         if: ${{ !cancelled() }}
-        run: node --test tests/finance.test.js tests/quote-filters.test.js tests/driver-validity-request.test.js tests/registry-matching.test.js tests/partner-validation.test.js tests/orders-validation.test.js tests/occurrence-validation.test.js tests/communication.test.js tests/plans.test.js tests/analytics.test.js tests/registration.test.js
+        run: node --test tests/compliance.test.js tests/finance.test.js tests/quote-filters.test.js tests/driver-validity-request.test.js tests/registry-matching.test.js tests/partner-validation.test.js tests/orders-validation.test.js tests/occurrence-validation.test.js tests/communication.test.js tests/plans.test.js tests/analytics.test.js tests/registration.test.js
       - name: Install isolated browser tools
         if: ${{ !cancelled() }}
         run: |
