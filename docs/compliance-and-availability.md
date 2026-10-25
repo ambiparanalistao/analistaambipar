@@ -6,7 +6,7 @@ Editar validades nos veículos/motoristas altera as colunas originais do cadastr
 MOPP continua com validade indeterminada. Datas ausentes ficam explicitamente sem informação; não são calculadas a partir de ano de documento.
 
 ## Disponibilidade
-Abrir, movimentar, cancelar ou encerrar S.OR não modifica automaticamente o status do veículo. O usuário altera disponibilidade nos cadastros ou na central. As verificações existentes de despacho, viagem ativa e S.OR aberta permanecem.
+Abrir, movimentar, cancelar ou encerrar S.D.O não modifica automaticamente o status do veículo. O usuário altera disponibilidade nos cadastros ou na central. As verificações existentes de despacho, viagem ativa e S.D.O aberta permanecem.
 A mudança de status autenticada é auditada com valores anterior e novo e responsável. Edição de licença exige versão atual; edição de datas verifica o valor anterior para impedir sobrescrita concorrente.
 
 ## Migração de dados existentes
@@ -14,7 +14,7 @@ A empresa principal recebeu a relação de 21 placas e identificação da base a
 A migração de identificação e licenças é registrada no histórico. Os dados importados devem ser complementados nos cadastros conforme os documentos disponíveis.
 
 ## Validação
-Testes SQL com rollback: isolamento entre empresas, recusa de acesso anônimo, renovação persistente, conflito de edição, campos autorizados, status manual e preservação da trava de despacho por S.OR ativa.
+Testes SQL com rollback: isolamento entre empresas, recusa de acesso anônimo, renovação persistente, conflito de edição, campos autorizados, status manual e preservação da trava de despacho por S.D.O ativa.
 Playwright: renovação e recarregamento, validades no cadastro do veículo, disponibilidade manual, leitura do Supervisor e modo claro em celular. Regressões dos módulos existentes continuam na CI.
 
 ## Dossiê e dados confirmados
