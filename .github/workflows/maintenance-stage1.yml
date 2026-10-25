@@ -196,18 +196,6 @@ jobs:
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261024211622_compliance_registry_manual_status.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/compliance.sql
-      - name: Operational data centralization schema and RLS
-        if: ${{ !cancelled() }}
-        env:
-          PG_CONTAINER: ${{ job.services.postgres.id }}
-        run: |
-          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261025115359_operational_data_centralization.sql
-          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261025122000_residue_source_payload.sql
-          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261025122500_fuel_provision_snapshot_parent_optional.sql
-          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261025123000_fuel_cycle_source_payload.sql
-          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261025124000_trip_schedule_persistence.sql
-          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261025131415_company_operational_records.sql
-          docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 < tests/maintenance/data-centralization.sql
       - name: Install project dependencies
         if: ${{ !cancelled() }}
         run: npm ci
