@@ -10,7 +10,7 @@ export function nextStatuses(o){return ({aberta:['aguardando_orcamento','na_ofic
 export function validateOrder(f,vehicle,now=Date.now()){
  const e={};if(f.quote_partner_types!==undefined&&!validQuoteTypes(f.quote_partner_types))e.quote_partner_types='Filtros de oficinas inválidos.';if(!vehicle||vehicle.id!==f.vehicle_id)e.vehicle_id='Selecione um veículo salvo nesta empresa.';
  if(vehicle&&vehicle.status==='Em Viagem')e.vehicle_id='Finalize a viagem antes de abrir a S.OR.';
- if(!f.partner_id)e.partner_id='Selecione uma oficina ativa.';
+ if(!f.partner_id || (Array.isArray(f.selected_partner_ids) && f.selected_partner_ids.length === 0))e.partner_id='Selecione pelo menos uma oficina ativa.';
  if(!ORDER_TYPES[f.tipo])e.tipo='Selecione o tipo.';if(!PRIORITIES[f.prioridade])e.prioridade='Selecione a prioridade.';
  if(!f.descricao_problema?.trim())e.descricao_problema='Descreva o problema.';
  if(f.km_abertura===''||!Number.isInteger(Number(f.km_abertura))||Number(f.km_abertura)<Math.max(0,Number(vehicle?.km_atual||0)))e.km_abertura='Informe KM inteiro igual ou superior à última leitura do veículo.';
