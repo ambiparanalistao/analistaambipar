@@ -103,3 +103,26 @@ test('rejects unsafe URL and invalid instance configuration', () => {
 });
 
 test('released company member can manage automation without an individual allowlist',async()=>{const r=await run({user:{id:'released-user'},upstream:url=>url.includes('/rest/v1/company_members')?response([{company_id:'company'}]):response({instance:{state:'open'}})});assert.equal(r.code,200);assert.ok(r.calls.some(c=>c.url.includes('full_module_access=eq.true')));});
+
+test('sendText requires a real authenticated user before contacting Evolution', async () => {
+  const r = await run({ method: 'POST', authorization: null, body: { action: 'sendText', number: '5511999999999', text: 'Teste' } });
+  assert.equal(r.code, 401);
+  assert.equal(r.calls.length, 0);
+});
+
+test('sendText requires released company access and rejects invalid payloads', async () => {
+  const rejected = await run({ method: 'POST', user: { id: 'unreleased-user' }, body: { action: 'sendText', number: '5511999999999', text: 'Teste' }, upstream: url => url.includes('/rest/v1/company_members') ? response([]) : response({}) });
+  assert.equal(rejected.code, 403);
+  assert.ok(!rejected.calls.some(call => call.url.includes('evolution.example')));
+  const invalid = await run({ method: 'POST', body: { action: 'sendText', number: '12', text: 'Teste' } });
+  assert.equal(invalid.code, 400);
+});
+
+test('sendText sends only through the authenticated server endpoint', async () => {
+  const r = await run({ method: 'POST', body: { action: 'sendText', number: '5511999999999', text: 'Teste' }, upstream: () => response({ key: { id: 'msg-1' } }) });
+  assert.equal(r.code, 200);
+  const request = r.calls.find(call => call.url.includes('/message/sendText/'));
+  assert.ok(request);
+  assert.equal(request.headers.apikey, 'private-key');
+  assert.deepEqual(JSON.parse(request.body), { number: '5511999999999', text: 'Teste', linkPreview: false, delay: 1000 });
+});

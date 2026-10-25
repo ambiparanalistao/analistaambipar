@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-export async function evolutionRequest(action, signal) {
+export async function evolutionRequest(action, signal, payload = {}) {
   if (!supabase) throw new Error('Configure o Supabase e entre na sua conta.');
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session?.access_token) throw new Error('Entre com usuário e senha. O modo demonstrativo não permite gerenciar a instância.');
@@ -10,7 +10,7 @@ export async function evolutionRequest(action, signal) {
       Authorization: 'Bearer ' + data.session.access_token,
       ...(action ? { 'Content-Type': 'application/json' } : {}),
     },
-    ...(action ? { body: JSON.stringify({ action }) } : {}),
+    ...(action ? { body: JSON.stringify({ ...payload, action }) } : {}),
     cache: 'no-store', signal,
   });
   let result;
