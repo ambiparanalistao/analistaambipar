@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Calendar, 
   Truck, 
@@ -31,41 +31,57 @@ import {
   Check,
   X
 } from 'lucide-react';
-import { 
-  AUDITED_RJ_ROUTES, 
-  AUDITED_RJ_CLIENTS, 
-  INITIAL_SCHEDULE_DATA 
-} from '../data/auditedClientsRoutesData';
+import { supabase } from '../lib/supabaseClient';
 import useFleetDirectory from '../hooks/useFleetDirectory';
 
 export default function EscalaModule({ user, onNavigateRotas,companyId }) {
+  const today = new Date().toISOString().slice(0, 10);
   const directory=useFleetDirectory(companyId);const AUDITED_VEHICLES=directory.vehicles,AUDITED_DRIVERS=directory.drivers;
+  const [routes, setRoutes] = useState([]), [routesLoading, setRoutesLoading] = useState(true), [routesError, setRoutesError] = useState('');
+  const [scheduleLoading,setScheduleLoading]=useState(true),[scheduleError,setScheduleError]=useState(''),[scheduleSaving,setScheduleSaving]=useState(false);
+  const loadRoutes = async () => {
+    if (!supabase || !companyId) { setRoutes([]); setRoutesLoading(false); setRoutesError('Selecione uma empresa para consultar as rotas.'); return; }
+    setRoutesLoading(true); setRoutesError('');
+    const { data, error } = await supabase.from('routes').select('*').eq('company_id', companyId).is('deleted_at', null).order('created_at', { ascending: false });
+    if (error) { setRoutes([]); setRoutesError(error.message); } else setRoutes(data || []);
+    setRoutesLoading(false);
+  };
+  useEffect(() => { loadRoutes(); }, [companyId]);
   // Controle de Visualização em Tela Inteira: 'list' (Quadro Geral), 'form' (Montar Escala Tela Cheia), 'romaneio' (Ficha de Despacho Tela Cheia)
   const [viewMode, setViewMode] = useState('list');
   const [selectedRomaneio, setSelectedRomaneio] = useState(null);
 
-  const [schedules, setSchedules] = useState(() => {
-    try {
-      localStorage.removeItem('ambipar_real_schedules');
-      localStorage.removeItem('ambipar_real_schedules_v2');
-      const saved = localStorage.getItem('ambipar_user_schedules_clean_v1');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
+  // Escalas operacionais são sempre isoladas pela empresa selecionada no Supabase.
+  // A chave local antiga fica preservada para backup e revisão da migração.
+  const [schedules, setSchedules] = useState([]);
+  useEffect(()=>{
+    let cancelled=false;
+    async function loadSchedules(){
+      if(!supabase||!companyId){setScheduleLoading(false);return;}
+      setSchedules([]);
+      setScheduleLoading(true);
+      const {data,error}=await supabase.from('operational_schedules').select('*').eq('company_id',companyId).order('scheduled_for',{ascending:false});
+      if(cancelled)return;
+      if(error){setScheduleError(error.message);setScheduleLoading(false);return;}
+      const persisted=(data||[]).map(row=>({...row.source_payload,id:row.source_key,company_id:row.company_id,status:row.status||row.source_payload?.status}));
+      setSchedules(persisted);
+      setScheduleLoading(false);
     }
-  });
+    loadSchedules().catch(error=>{if(!cancelled){setScheduleError(error.message||'Não foi possível carregar escalas.');setScheduleLoading(false);}});
+    return()=>{cancelled=true;};
+  },[companyId]);
 
-  const [dateFilter, setDateFilter] = useState('2026-10-24');
+  const [dateFilter, setDateFilter] = useState(today);
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Formulário de Nova Escala (em Tela Inteira)
   const defaultScheduleState = {
-    data_escala: '2026-10-24',
-    turno: 'Manhã (07:00 às 16:00)',
+    data_escala: today,
+    turno: '',
     rota_id: '',
     rota_nome: '',
-    polo: 'Operações RJ',
+    polo: '',
     veiculo_placa: '',
     veiculo_modelo: '',
     motorista_nome: '',
@@ -76,10 +92,10 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
     paradas: [
       {
         ordem: 1,
-        cliente: 'Base Ambipar Duque de Caxias',
-        endereco: 'Rod. Washington Luís, km 114 - Duque de Caxias',
+        cliente: '',
+        endereco: '',
         status: 'Programado',
-        horario: '07:00'
+        horario: ''
       }
     ]
   };
@@ -97,7 +113,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
       }));
       return;
     }
-    const r = AUDITED_RJ_ROUTES.find(x => x.id === routeId);
+    const r = routes.find(x => x.id === routeId);
     if (!r) return;
     setFormData(prev => ({
       ...prev,
@@ -107,24 +123,27 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
       distancia_prevista_km: r.distancia_km,
       veiculo_placa: prev.veiculo_placa || r.placa_sugerida || '',
       motorista_nome: prev.motorista_nome || r.motorista_sugerido || '',
-      paradas: r.pontos_parada.map(p => ({
+      paradas: (r.pontos_parada || []).map(p => ({
         ordem: p.ordem,
-        cliente: p.nome_ponto,
-        endereco: p.endereco,
+        cliente: p.nome_ponto || p.cliente || '',
+        endereco: p.endereco || '',
         status: 'Programado',
-        horario: '08:00'
+        horario: ''
       }))
     }));
   };
 
-  // Salva no localStorage
-  const saveSchedules = (newSchedules) => {
-    setSchedules(newSchedules);
-    try {
-      localStorage.setItem('ambipar_user_schedules_clean_v1', JSON.stringify(newSchedules));
-    } catch (e) {
-      console.warn(e);
-    }
+  // Salva o registro alterado no banco, sob a empresa selecionada.
+  const saveSchedules = async (newSchedules, changedSchedule) => {
+    if(!supabase||!companyId)throw new Error('Selecione uma empresa conectada ao Supabase antes de salvar escala.');
+    setScheduleSaving(true);setScheduleError('');
+    try{
+      const vehicle=directory.vehicles.find(v=>v.placa===changedSchedule.veiculo_placa),driver=directory.drivers.find(d=>d.nome===changedSchedule.motorista_nome);
+      const {error}=await supabase.from('operational_schedules').upsert({company_id:companyId,source_key:String(changedSchedule.id),scheduled_for:changedSchedule.data_escala||null,status:changedSchedule.status||'',vehicle_id:vehicle?.id||null,driver_id:driver?.id||null,source_payload:changedSchedule,created_by:user?.id||null,updated_by:user?.id||null},{onConflict:'company_id,source_key'});
+      if(error)throw error;
+      setSchedules(newSchedules);
+    }catch(error){setScheduleError(error.message||'Não foi possível salvar a escala no Supabase.');throw error;}
+    finally{setScheduleSaving(false);}
   };
 
   // Adiciona nova parada dinâmica no formulário
@@ -138,7 +157,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
           cliente: '',
           endereco: '',
           status: 'Programado',
-          horario: '10:00'
+          horario: ''
         }
       ]
     }));
@@ -155,7 +174,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
   };
 
   // Salvar Escala (Tela Cheia)
-  const handleSaveSchedule = (e) => {
+  const handleSaveSchedule = async (e) => {
     e.preventDefault();
     if (!formData.rota_nome || !formData.rota_nome.trim()) {
       alert('Por favor informe o nome da rota a ser executada nesta escala.');
@@ -180,12 +199,12 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
     };
 
     const updated = [created, ...schedules];
-    saveSchedules(updated);
+    try{await saveSchedules(updated,created);}catch{return;}
     setViewMode('list');
   };
 
   // Concluir Parada na Escala
-  const handleAdvanceStop = (scheduleId) => {
+  const handleAdvanceStop = async (scheduleId) => {
     const updated = schedules.map(s => {
       if (s.id !== scheduleId) return s;
       const nextStop = Math.min(s.parada_atual + 1, s.paradas_total);
@@ -207,7 +226,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
         paradas: updatedParadas
       };
     });
-    saveSchedules(updated);
+    try{await saveSchedules(updated,updated.find(item=>item.id===scheduleId));}catch{/* Preserve the displayed schedule and report the database error. */}
   };
 
   // Disparo de Escala via WhatsApp para o Motorista
@@ -220,8 +239,8 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
       `🚛 *Veículo:* ${item.veiculo_placa} (${item.veiculo_modelo})\n` +
       `👤 *Motorista:* ${item.motorista_nome}\n\n` +
       `📍 *SEQUÊNCIA DE CLIENTES & PARADAS NO DIA:*\n${paradasTexto}\n\n` +
-      `⚠️ *Instruções Central de Gestão:* ${item.instrucoes_especiais || 'Conferir MTR SINIR e EPIs antes da saída.'}\n` +
-      `📞 Suporte Central de Gestão: (21) 3655-9000`;
+      (item.instrucoes_especiais ? `⚠️ *Instruções:* ${item.instrucoes_especiais}\n` : '') +
+      `Mensagem enviada pela plataforma de gestão de frota.`;
 
     const encoded = encodeURIComponent(msg);
     const cleanPhone = (item.motorista_telefone || '').replace(/\D/g, '');
@@ -243,10 +262,10 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
   });
 
   // Métricas do Topo
-  const totalEscaladosHoje = schedules.filter(s => s.data_escala === '2026-10-24').length;
-  const emRotaHoje = schedules.filter(s => s.data_escala === '2026-10-24' && s.status === 'Em Rota').length;
-  const paradasHoje = schedules.filter(s => s.data_escala === '2026-10-24').reduce((acc, curr) => acc + (curr.paradas_total || 0), 0);
-  const kmHoje = schedules.filter(s => s.data_escala === '2026-10-24').reduce((acc, curr) => acc + (curr.distancia_prevista_km || 0), 0);
+  const totalEscaladosHoje = schedules.filter(s => s.data_escala === today).length;
+  const emRotaHoje = schedules.filter(s => s.data_escala === today && s.status === 'Em Rota').length;
+  const paradasHoje = schedules.filter(s => s.data_escala === today).reduce((acc, curr) => acc + (curr.paradas_total || 0), 0);
+  const kmHoje = schedules.filter(s => s.data_escala === today).reduce((acc, curr) => acc + (curr.distancia_prevista_km || 0), 0);
 
   // =========================================================================
   // MODO 1: TELA INTEIRA DE ROMANEIO / FICHA DE DESPACHO
@@ -378,7 +397,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
               Instruções Especiais de Segurança e Operação:
             </span>
             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-main)' }}>
-              {selectedRomaneio.instrucoes_especiais || 'Conferir crachá de acesso industrial, utilizar todos os EPIs obrigatórios (capacete, óculos, botina e luvas) e emitir MTR SINIR antes de deixar a portaria do cliente.'}
+              {selectedRomaneio.instrucoes_especiais || 'Nenhuma instrução adicional registrada.'}
             </p>
           </div>
 
@@ -410,6 +429,8 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
   if (viewMode === 'form') {
     return (
       <div className="escala-form-fullscreen animate-fade-in" style={{ padding: '0.5rem 0' }}>
+        {scheduleError&&<p role="alert" className="card-panel">{scheduleError}</p>}
+        {scheduleSaving&&<p role="status">Salvando escala no Supabase…</p>}
         {/* Top Header da Tela Cheia */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1rem' }}>
           <div>
@@ -488,6 +509,7 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
                     onChange={(e) => setFormData({ ...formData, turno: e.target.value })}
                     style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
                   >
+                    <option value="">Selecione o turno</option>
                     <option value="Manhã (06:00 às 15:00)">Manhã (06:00 às 15:00)</option>
                     <option value="Manhã (07:00 às 16:00)">Manhã (07:00 às 16:00)</option>
                     <option value="Tarde (13:00 às 22:00)">Tarde (13:00 às 22:00)</option>
@@ -518,14 +540,14 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
                   style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid rgba(6, 182, 212, 0.4)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
                 >
                   <option value="">-- Preencher rota e paradas manualmente --</option>
-                  {AUDITED_RJ_ROUTES.map(r => (
+                  {routes.map(r => (
                     <option key={r.id} value={r.id}>
-                      {r.codigo} - {r.nome} ({r.distancia_km} km • {r.pontos_parada.length} paradas)
+                      {r.codigo} - {r.nome} ({r.distancia_km || '—'} km • {(r.pontos_parada || []).length} paradas)
                     </option>
                   ))}
                 </select>
                 <small style={{ color: 'var(--accent-cyan)', display: 'block', marginTop: '0.35rem' }}>
-                  💡 Se selecionar um circuito cadastrado, ele preenche os clientes e endereços automaticamente ao lado.
+                  {routesLoading ? 'Carregando rotas da empresa…' : routesError || '💡 Se selecionar um circuito cadastrado, ele preenche os clientes e endereços automaticamente ao lado.'}
                 </small>
               </div>
             </div>
@@ -741,12 +763,13 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
 
                 <button
                   type="button"
+                  disabled={scheduleSaving}
                   className="btn-primary btn-icon-text"
                   onClick={handleSaveSchedule}
                   style={{ background: 'var(--accent-emerald)', borderColor: 'var(--accent-emerald)', color: '#070b12', fontWeight: 700 }}
                 >
                   <Check size={16} />
-                  <span>Confirmar & Despachar</span>
+                  <span>{scheduleSaving?'Salvando…':'Confirmar & Despachar'}</span>
                 </button>
               </div>
             </div>
@@ -761,6 +784,8 @@ export default function EscalaModule({ user, onNavigateRotas,companyId }) {
   // =========================================================================
   return (
     <div className="escala-module animate-fade-in" style={{ padding: '0.5rem 0' }}>
+      {scheduleLoading&&<p role="status">Carregando escalas da empresa…</p>}
+      {scheduleError&&<p role="alert" className="card-panel">{scheduleError}</p>}
       {/* Banner Principal */}
       <div className="control-tower-banner" style={{ background: 'linear-gradient(135deg, rgba(14, 21, 36, 0.95) 0%, rgba(10, 15, 29, 0.98) 100%)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
         <div className="tower-header-text">

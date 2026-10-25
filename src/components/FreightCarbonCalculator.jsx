@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { listCompanyOperationalRecords, saveCompanyOperationalRecord } from '../services/companyOperationalRecords';
 import { 
   Calculator, 
   DollarSign, 
@@ -21,55 +22,52 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-export default function FreightCarbonCalculator({ onNavigateMtr }) {
+export default function FreightCarbonCalculator({ onNavigateMtr, companyId, user }) {
   // Parâmetros da Rota
-  const [origin, setOrigin] = useState('Paulínia - SP (Polo Petroquímico)');
-  const [destination, setDestination] = useState('Nova Odessa - SP (Unidade Ambipar)');
-  const [distanceKm, setDistanceKm] = useState(450);
-  const [roadType, setRoadType] = useState('dupla'); // 'dupla' | 'simples' | 'mista' | 'serra'
-  const [tollCost, setTollCost] = useState(240); // Pedágio total em R$
+  const [origin, setOrigin] = useState('');
+  const [destination, setDestination] = useState('');
+  const [distanceKm, setDistanceKm] = useState(0);
+  const [roadType, setRoadType] = useState('');
+  const [tollCost, setTollCost] = useState(0);
 
   // Parâmetros da Carga e Equipamento
-  const [cargoWeightTon, setCargoWeightTon] = useState(25.0);
-  const [wasteClass, setWasteClass] = useState('Classe I - Perigosos');
-  const [vehicleType, setVehicleType] = useState('carreta_tanque');
-  const [fuelType, setFuelType] = useState('diesel_s10'); // 'diesel_s10' | 'diesel_b20' | 'hvo_verde' | 'gnv'
-  const [dieselPrice, setDieselPrice] = useState(6.19);
-  const [customKmL, setCustomKmL] = useState(2.3);
+  const [cargoWeightTon, setCargoWeightTon] = useState(0);
+  const [wasteClass, setWasteClass] = useState('');
+  const [vehicleType, setVehicleType] = useState('');
+  const [fuelType, setFuelType] = useState('');
+  const [dieselPrice, setDieselPrice] = useState(0);
+  const [customKmL, setCustomKmL] = useState(0);
 
   // Parâmetros Financeiros e Operacionais
-  const [driverDaily, setDriverDaily] = useState(280); // Diária motorista MOPP + alimentação
-  const [maintenancePerKm, setMaintenancePerKm] = useState(0.85); // Pneus + manutenção por km
-  const [insuranceCost, setInsuranceCost] = useState(150); // Seguro ambiental e de carga
-  const [marginPct, setMarginPct] = useState(22); // Margem de lucro desejada (%)
+  const [driverDaily, setDriverDaily] = useState(0);
+  const [maintenancePerKm, setMaintenancePerKm] = useState(0);
+  const [insuranceCost, setInsuranceCost] = useState(0);
+  const [marginPct, setMarginPct] = useState(0);
 
-  // Histórico de Simulações Salvas (Persistência real no localStorage)
-  const [savedSimulations, setSavedSimulations] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_freight_simulations');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [savedSimulations, setSavedSimulations] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState('');
+  const [historySaving, setHistorySaving] = useState(false);
 
   const [notification, setNotification] = useState(null);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_freight_simulations', JSON.stringify(savedSimulations));
-    } catch (e) {
-      console.warn('Erro ao salvar simulações:', e);
-    }
-  }, [savedSimulations]);
+    let cancelled = false;
+    setSavedSimulations([]); setHistoryError(''); setHistoryLoading(true);
+    listCompanyOperationalRecords(companyId, 'freight_simulations').then(rows => {
+      if (!cancelled) setSavedSimulations(rows.map(row => row.payload));
+    }).catch(error => { if (!cancelled) setHistoryError(error.message || 'Não foi possível carregar o histórico da empresa.'); })
+      .finally(() => { if (!cancelled) setHistoryLoading(false); });
+    return () => { cancelled = true; };
+  }, [companyId]);
 
   // Perfis técnicos de veículos
   const vehicleOptions = {
-    carreta_tanque: { label: 'Carreta Tanque Inox Químico (Resíduos Perigosos)', baseKmL: 2.3, axles: 6 },
-    bitrem_articulado: { label: 'Bitrem Articulado 9 Eixos (Carga Granel/Sólidos)', baseKmL: 2.1, axles: 9 },
-    truck_sider: { label: 'Truck Sider 6x2 (Tambores / IBCs)', baseKmL: 3.1, axles: 3 },
-    vacuo_quimico: { label: 'Vácuo Químico Pesado (Lodos e ETE)', baseKmL: 2.0, axles: 4 },
-    vuc_coleta: { label: 'VUC Urbano (Fracionado / Laboratorial)', baseKmL: 5.5, axles: 2 }
+    carreta_tanque: { label: 'Carreta tanque' },
+    bitrem_articulado: { label: 'Bitrem' },
+    truck_sider: { label: 'Truck sider' },
+    vacuo_quimico: { label: 'Vácuo químico' },
+    vuc_coleta: { label: 'VUC' }
   };
 
   // Coeficientes de emissão (kg CO2e por unidade de combustível)
@@ -83,26 +81,25 @@ export default function FreightCarbonCalculator({ onNavigateMtr }) {
   // Atualiza consumo base quando veículo muda
   const handleVehicleChange = (vType) => {
     setVehicleType(vType);
-    setCustomKmL(vehicleOptions[vType].baseKmL);
   };
 
   // --- CÁLCULOS TÉCNICOS OPERACIONAIS ---
-  const validDistance = Math.max(1, Number(distanceKm) || 1);
-  const validKmL = Math.max(0.5, Number(customKmL) || 1);
+  const validDistance = Math.max(0, Number(distanceKm) || 0);
+  const validKmL = Math.max(0, Number(customKmL) || 0);
 
   // Fator de correção de relevo/topografia
   const roadFactor = roadType === 'serra' ? 1.25 : roadType === 'ondulada' ? 1.10 : roadType === 'simples' ? 1.05 : 1.0;
-  const adjustedKmL = Math.max(0.5, validKmL / roadFactor);
+  const adjustedKmL = validKmL > 0 ? validKmL / roadFactor : 0;
 
   // Combustível e Arla 32
-  const fuelLiters = validDistance / adjustedKmL;
-  const fuelTotalCost = fuelLiters * (Number(dieselPrice) || 6.19);
+  const fuelLiters = adjustedKmL > 0 ? validDistance / adjustedKmL : 0;
+  const fuelTotalCost = fuelLiters * (Number(dieselPrice) || 0);
   // Consumo Arla 32 é aprox 5% do consumo de diesel @ R$ 3,80/L
   const arla32Liters = fuelLiters * 0.05;
-  const arla32Cost = arla32Liters * 3.80;
+  const arla32Cost = 0;
 
   // Custos Diretos
-  const maintenanceTotal = validDistance * (Number(maintenancePerKm) || 0.85);
+  const maintenanceTotal = validDistance * (Number(maintenancePerKm) || 0);
   const tollsTotal = Number(tollCost) || 0;
   const driverTotal = Number(driverDaily) || 0;
   const insuranceTotal = Number(insuranceCost) || 0;
@@ -117,7 +114,7 @@ export default function FreightCarbonCalculator({ onNavigateMtr }) {
   const pricePerTon = cargoWeightTon > 0 ? suggestedSellingPrice / Number(cargoWeightTon) : 0;
 
   // --- CÁLCULOS ESG & DESCARBONIZAÇÃO (GHG PROTOCOL) ---
-  const currentFuelFactor = fuelEmissionFactors[fuelType].factor;
+  const currentFuelFactor = fuelEmissionFactors[fuelType]?.factor || 0;
   const totalCarbonKg = fuelLiters * currentFuelFactor;
   const totalCarbonTons = totalCarbonKg / 1000;
   // Intensidade de carbono por tonelada-quilômetro (TKU)
@@ -131,7 +128,12 @@ export default function FreightCarbonCalculator({ onNavigateMtr }) {
   const carbonSavedWithHvoTon = Math.max(0, (totalCarbonKg - carbonWithHvoKg) / 1000);
 
   // Salvar Simulação
-  const handleSaveSimulation = () => {
+  const handleSaveSimulation = async () => {
+    if (!companyId || !user?.id) { setHistoryError('Selecione uma empresa conectada antes de salvar a simulação.'); return; }
+    if (!origin.trim() || !destination.trim() || Number(distanceKm) <= 0 || Number(cargoWeightTon) <= 0 || !vehicleType || !fuelType || Number(dieselPrice) <= 0 || Number(customKmL) <= 0) {
+      setHistoryError('Preencha origem, destino, distância, carga, tipo de veículo, combustível, preço e consumo real antes de salvar.'); return;
+    }
+    setHistorySaving(true); setHistoryError('');
     const sim = {
       id: `SIM-${Date.now().toString().slice(-6)}`,
       date: new Date().toLocaleDateString('pt-BR'),
@@ -140,8 +142,8 @@ export default function FreightCarbonCalculator({ onNavigateMtr }) {
       distanceKm: validDistance,
       cargoWeightTon,
       wasteClass,
-      vehicleTypeLabel: vehicleOptions[vehicleType].label,
-      fuelTypeLabel: fuelEmissionFactors[fuelType].label,
+      vehicleTypeLabel: vehicleOptions[vehicleType]?.label || '',
+      fuelTypeLabel: fuelEmissionFactors[fuelType]?.label || '',
       directCost: directOperationalCost.toFixed(2),
       sellingPrice: suggestedSellingPrice.toFixed(2),
       cpk: cpkOperational.toFixed(2),
@@ -149,9 +151,13 @@ export default function FreightCarbonCalculator({ onNavigateMtr }) {
       treesNeeded
     };
 
-    setSavedSimulations([sim, ...savedSimulations]);
-    setNotification({ type: 'success', text: `Simulação ${sim.id} salva com sucesso no histórico!` });
-    setTimeout(() => setNotification(null), 4000);
+    try {
+      await saveCompanyOperationalRecord({ companyId, collection: 'freight_simulations', recordKey: sim.id, payload: sim, userId: user.id });
+      setSavedSimulations(current => [sim, ...current.filter(item => item.id !== sim.id)]);
+      setNotification({ type: 'success', text: `Simulação ${sim.id} salva no histórico da empresa.` });
+      setTimeout(() => setNotification(null), 4000);
+    } catch (error) { setHistoryError(error.message || 'Não foi possível salvar a simulação no Supabase.'); }
+    finally { setHistorySaving(false); }
   };
 
   const handleLoadSimulation = (sim) => {
@@ -164,15 +170,10 @@ export default function FreightCarbonCalculator({ onNavigateMtr }) {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleClearHistory = () => {
-    if (window.confirm('Deseja limpar todo o histórico de simulações salvas?')) {
-      setSavedSimulations([]);
-      localStorage.removeItem('ambipar_freight_simulations');
-    }
-  };
-
   return (
     <div className="module-view animate-fade-in" id="freight-calculator-module">
+      {historyLoading && <p role="status">Carregando histórico da empresa…</p>}
+      {historyError && <p role="alert">{historyError}</p>}
       {/* Cabeçalho do Módulo */}
       <div className="module-page-header">
         <div>
@@ -584,16 +585,6 @@ export default function FreightCarbonCalculator({ onNavigateMtr }) {
             <h3>Histórico de Simulações de Frete Realizadas</h3>
             <p>Cotações salvas pela sua equipe técnica para consulta e reutilização rápida</p>
           </div>
-          {savedSimulations.length > 0 && (
-            <button
-              type="button"
-              className="btn-danger btn-icon-text"
-              style={{ fontSize: '0.78rem', padding: '0.4rem 0.8rem' }}
-              onClick={handleClearHistory}
-            >
-              Limpar Histórico
-            </button>
-          )}
         </div>
 
         <div className="table-responsive-wrapper">

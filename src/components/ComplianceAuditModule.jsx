@@ -20,6 +20,7 @@ import useCompliance from "../hooks/useCompliance";
 import useFleetDirectory from "../hooks/useFleetDirectory";
 import { complianceCommand } from "../services/compliance";
 import { updateRegistryStatus } from "../services/fleetDirectory";
+import { supabase } from "../lib/supabaseClient";
 import {
   VEHICLE_VALIDITIES,
   DRIVER_VALIDITIES,
@@ -27,10 +28,6 @@ import {
   displayDate,
   complianceToday,
 } from "../utils/compliance";
-import {
-  AUDITED_CONTAINERS,
-  AUDITED_INFRACTIONS,
-} from "../data/auditedAmbiparData";
 import "./ComplianceAudit.css";
 function Badge({ date, indeterminate, today }) {
   const s = validity(date, indeterminate, today);
@@ -202,6 +199,18 @@ export default function ComplianceAuditModule({ access }) {
   const company = access?.companyId,
     licenses = useCompliance(company),
     directory = useFleetDirectory(company);
+  const [containers, setContainers] = useState([]), [infractions, setInfractions] = useState([]), [operationalError, setOperationalError] = useState('');
+  const loadOperationalAudit = async () => {
+    if (!supabase || !company) { setContainers([]); setInfractions([]); return; }
+    setOperationalError('');
+    const [c, i] = await Promise.all([
+      supabase.from('fleet_containers').select('*').eq('company_id', company).is('deleted_at', null).order('codigo'),
+      supabase.from('vehicle_infractions').select('*').eq('company_id', company).is('deleted_at', null).order('data', { ascending: false }),
+    ]);
+    if (c.error || i.error) setOperationalError(c.error?.message || i.error?.message || 'Falha ao consultar auditoria.');
+    setContainers(c.data || []); setInfractions((i.data || []).map(row => ({ ...row, ...(row.source_payload || {}) })));
+  };
+  useEffect(() => { loadOperationalAudit(); }, [company]);
   const [tab, setTab] = useState("licencas"),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState("todos"),
@@ -302,8 +311,8 @@ export default function ComplianceAuditModule({ access }) {
           : ["veiculos", "motoristas"].includes(tab)
             ? current.filter(match)
             : (tab === "cacambas"
-                ? AUDITED_CONTAINERS
-                : AUDITED_INFRACTIONS
+                ? containers
+                : infractions
               ).filter(match);
       const exporters = await import("../utils/complianceExports");
       const metadata = [
@@ -334,8 +343,8 @@ export default function ComplianceAuditModule({ access }) {
           licenses={licenses.rows}
           vehicles={directory.vehicles}
           drivers={directory.drivers}
-          containers={AUDITED_CONTAINERS}
-          infractions={AUDITED_INFRACTIONS}
+          containers={containers}
+          infractions={infractions}
           onBack={() => setDossier(false)}
         />
       </section>
@@ -579,9 +588,9 @@ export default function ComplianceAuditModule({ access }) {
           )}
           {licenses.loading || directory.loading ? (
             <p role="status">Carregando dados da empresa…</p>
-          ) : licenses.error || directory.error ? (
+          ) : licenses.error || directory.error || operationalError ? (
             <div className="ca-panel" role="alert">
-              <p>{licenses.error || directory.error}</p>
+              <p>{licenses.error || directory.error || operationalError}</p>
               <button onClick={refresh}>Tentar novamente</button>
             </div>
           ) : (
@@ -785,8 +794,8 @@ export default function ComplianceAuditModule({ access }) {
                   </p>
                   <div className="ca-reference-grid">
                     {(tab === "cacambas"
-                      ? AUDITED_CONTAINERS
-                      : AUDITED_INFRACTIONS
+                      ? containers
+                      : infractions
                     )
                       .filter(match)
                       .map((r, i) => (

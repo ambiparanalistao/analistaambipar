@@ -28,7 +28,6 @@ import {
   List
 } from 'lucide-react';
 import PremiumSelect from './PremiumSelect';
-import { AUDITED_VEHICLES } from '../data/auditedAmbiparData';
 import useFleetDirectory from '../hooks/useFleetDirectory';
 import {saveDriver,deleteRegistryRecord,updateRegistryStatus} from '../services/fleetDirectory';
 
@@ -49,7 +48,6 @@ export const STATUS_OPTIONS = [
   }
 ];
 
-export const DEFAULT_FLEET = AUDITED_VEHICLES.map(v => ({ placa: v.placa, modelo: `${v.tipo} (${v.marca_modelo})` }));
 
 export const CNH_CATEGORIES = [
   {

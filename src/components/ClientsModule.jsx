@@ -34,7 +34,6 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
-import { AUDITED_RJ_CLIENTS } from '../data/auditedClientsRoutesData';
 import './ClientsModule.css';
 
 // Catálogo de Corredores Rodoviários Homologados da Ambipar (Inicia 100% Limpo)
@@ -142,21 +141,9 @@ export const formatCEP = (val) => {
 };
 
 export default function ClientsModule({ user, companyId, onNavigateTrips, onNavigateFleet }) {
-  // Estado de Clientes Inicial: 100% LIMPO (sem nenhum dado fictício)
-  const [clients, setClients] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_real_clients_v2');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.length >= 8) return parsed;
-      }
-      return AUDITED_RJ_CLIENTS;
-    } catch {
-      return AUDITED_RJ_CLIENTS;
-    }
-  });
+  const [clients, setClients] = useState([]);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchingCep, setSearchingCep] = useState(false);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table' | 'form'
   const [activeTab, setActiveTab] = useState('todos'); // 'todos' | 'em_operacao' | 'ativos' | 'platinum' | 'bloqueados'
@@ -222,42 +209,34 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
     observacoes: ''
   });
 
-  // Salva no localStorage a cada atualização
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_real_clients_v2', JSON.stringify(clients));
-    } catch (err) {
-      console.warn('Erro ao salvar clientes localmente:', err);
-    }
-  }, [clients]);
-
-  // Carrega do Supabase se configurado
+  // Dados operacionais de clientes vêm exclusivamente do banco da empresa.
   const fetchSupabaseClients = async () => {
-    if (!isSupabaseConfigured || !supabase) {
-      setFeedback({ type: 'info', text: 'Operação Central de Gestão ativa. Dados sincronizados com sucesso.' });
-      setTimeout(() => setFeedback(null), 3000);
+    if (!isSupabaseConfigured || !supabase || !companyId) {
+      setClients([]);
+      setLoading(false);
+      setFeedback({ type: 'error', text: 'Conecte a empresa para carregar os clientes salvos.' });
       return;
     }
+    setClients([]);
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('clientes')
         .select('*').eq('company_id',companyId)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        setClients(data);
-        setFeedback({ type: 'success', text: `${data.length} clientes e rotas sincronizados com sucesso.` });
-      } else {
-        setFeedback({ type: 'info', text: 'Nenhum cliente remoto encontrado. Pronto para novos cadastros.' });
-      }
-    } catch {
-      setFeedback({ type: 'info', text: 'Sincronização local pronta para novos cadastros.' });
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error) {
+      setClients([]);
+      setFeedback({ type: 'error', text: error.message || 'Não foi possível carregar os clientes.' });
     } finally {
       setLoading(false);
-      setTimeout(() => setFeedback(null), 3500);
     }
   };
+
+  useEffect(() => { fetchSupabaseClients(); }, [companyId]);
 
   // Busca automática de endereço por CEP (ViaCEP)
   const handleCepLookup = async (cepInput) => {
@@ -344,6 +323,10 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
   // Salvar Formulário
   const handleSubmitForm = async (e) => {
     e.preventDefault();
+    if (!isSupabaseConfigured || !supabase || !companyId) {
+      setFeedback({ type: 'error', text: 'Conecte a empresa no Supabase antes de salvar.' });
+      return;
+    }
     if (!formData.razao_social.trim() || !formData.cnpj.trim()) {
       alert('Por favor informe a Razão Social e o CNPJ da empresa.');
       return;
@@ -355,36 +338,56 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
       (formData.origem && formData.destino ? `${formData.origem} ⇄ ${formData.destino}` : '');
 
     const payload = {
-      ...formData,
+      company_id: companyId,
+      created_by: user?.id || null,
+      updated_by: user?.id || null,
+      razao_social: formData.razao_social.trim(),
+      nome_fantasia: formData.nome_fantasia?.trim() || '',
+      cnpj: formData.cnpj.replace(/\D/g, ''),
+      inscricao_estadual: formData.inscricao_estadual || '',
+      segmento: formData.segmento || '',
+      contrato_polo: formData.contrato_polo || '',
+      status: formData.status || 'Ativo',
+      tier_sla: formData.tier_sla || '',
+      centro_custo: formData.centro_custo || '',
+      cep: formData.cep || '', logradouro: formData.logradouro || '', numero: formData.numero || '',
+      bairro: formData.bairro || '', cidade: formData.cidade || '', uf: formData.uf || '',
+      polo_logistico: formData.polo_logistico || '', contato_responsavel: formData.responsavel_nome || '',
+      responsavel_nome: formData.responsavel_nome || '', responsavel_cargo: formData.responsavel_cargo || '',
+      telefone: formData.telefone || '', email: formData.email || '', tipo_carga: formData.tipo_carga || '',
+      implemento_exigido: formData.implemento_exigido || '', observacoes: formData.observacoes || '',
       rota_nome: routeName,
+      origem: formData.origem || '', destino: formData.destino || '',
+      tipo_operacao: formData.tipo_operacao || '', frequencia: formData.frequencia || '',
+      janela_atendimento: formData.janela_atendimento || '', veiculo_preferencial: formData.veiculo_preferencial || '',
+      veiculo_alocado_placa: formData.veiculo_alocado_placa || '', motorista_preferencial: formData.motorista_preferencial || '',
+      classes_residuos: formData.classes_residuos || '', codigo_ibama: formData.codigo_ibama || '',
+      mtr_obrigatorio: formData.mtr_obrigatorio ?? null, licenca_ambiental_num: formData.licenca_ambiental_num || '',
+      validade_licenca: formData.validade_licenca || null,
       distancia_km: Number(formData.distancia_km) || 0,
       tempo_ciclo_horas: Number(formData.tempo_ciclo_horas) || 0,
       volume_mensal_ton: Number(formData.volume_mensal_ton) || 0,
       updated_at: new Date().toISOString()
     };
 
+    try {
     if (editingId) {
-      const updated = clients.map(c => c.id === editingId ? { ...payload, id: editingId } : c);
-      setClients(updated);
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('clientes').update(payload).eq('id', editingId).then();
-      }
+      const { company_id: _companyId, created_by: _createdBy, ...updatePayload } = payload;
+      const result = await supabase.from('clientes').update(updatePayload).eq('company_id', companyId).eq('id', editingId).select('*').single();
+      if (result.error) throw result.error;
+      setClients(rows => rows.map(c => c.id === editingId ? result.data : c));
       setFeedback({ type: 'success', text: `Cliente "${payload.nome_fantasia || payload.razao_social}" atualizado com sucesso!` });
     } else {
-      const newClient = {
-        ...payload,
-        id: allocationRef,
-        created_at: new Date().toISOString()
-      };
-      setClients([newClient, ...clients]);
-      if (isSupabaseConfigured && supabase) {
-        supabase.from('clientes').insert([{ user_id: user?.id, ...payload }]).then();
-      }
+      const { data: newClient, error } = await supabase.from('clientes').insert(payload).select('*').single();
+      if (error) throw error;
+      setClients(rows => [newClient, ...rows]);
       setFeedback({ type: 'success', text: `Cliente "${newClient.nome_fantasia || newClient.razao_social}" cadastrado e direcionado à rota!` });
     }
-
     setViewMode('cards');
     setTimeout(() => setFeedback(null), 4000);
+    } catch (error) {
+      setFeedback({ type: 'error', text: error.message || 'Não foi possível salvar o cliente no banco.' });
+    }
   };
 
   // Exclusão
@@ -428,33 +431,22 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
     if (!clientToRedirect) return;
     if(clientToRedirect.veiculo_alocado_placa){try{await allocateVehicle(companyId,clientToRedirect.veiculo_alocado_placa,'client',clientToRedirect.id);}catch(e){setFeedback({type:'error',text:e.message});return;}}
 
-    const updated = clients.map(c => {
-      if (c.id === clientToRedirect.id) {
-        return {
-          ...c,
-          rota_nome: redirectForm.rota_nome,
-          origem: redirectForm.origem,
-          destino: redirectForm.destino,
-          distancia_km: Number(redirectForm.distancia_km) || 0,
-          tempo_ciclo_horas: Number(redirectForm.tempo_ciclo_horas) || 0,
-          frequencia: redirectForm.frequencia,
-          status: 'Em Operação'
-        };
-      }
-      return c;
-    });
-
-    setClients(updated);
-    if (isSupabaseConfigured && supabase) {
-      supabase.from('clientes').update({
+    try {
+      if (!supabase || !companyId) throw new Error('Empresa não conectada.');
+      const result = await supabase.from('clientes').update({
         rota_nome: redirectForm.rota_nome,
         origem: redirectForm.origem,
         destino: redirectForm.destino,
         distancia_km: Number(redirectForm.distancia_km) || 0,
         tempo_ciclo_horas: Number(redirectForm.tempo_ciclo_horas) || 0,
         frequencia: redirectForm.frequencia,
-        status: 'Em Operação'
-      }).eq('id', clientToRedirect.id).then();
+        status: 'Em Operação', updated_by: user?.id || null
+      }).eq('company_id', companyId).eq('id', clientToRedirect.id).select('*').single();
+      if (result.error) throw result.error;
+      setClients(rows => rows.map(c => c.id === clientToRedirect.id ? result.data : c));
+    } catch (error) {
+      setFeedback({ type: 'error', text: error.message || 'Não foi possível salvar a rota do cliente.' });
+      return;
     }
 
     setFeedback({

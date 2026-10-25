@@ -23,7 +23,7 @@ import {
   Building2,
   Fuel,
   Compass,
-  Wifi, Wrench,
+  Wifi, Wrench, Database,
   DollarSign
 } from 'lucide-react';
 
@@ -48,6 +48,7 @@ export default function Sidebar({
     {
       title: 'Operação & Torre de Controle',
       items: [
+        { id: 'centralizacao_dados', label: 'Centralização de Dados', icon: Database },
         {
           id: 'dashboard',
           label: 'Torre de Controle (KPIs)',

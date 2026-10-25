@@ -35,13 +35,10 @@ import {
   GOOGLE_APPS_SCRIPT_TEMPLATE,
   MATRIX_MONTHS
 } from '../utils/excelFuelIntegration';
+import { listCompanyOperationalRecords } from '../services/companyOperationalRecords';
 
 // Dados padrão baseados exatamente no Relatório Mensal da Ambipar (Imagem 2 do usuário)
 const INITIAL_MATRIX_DATA=[];
-const DEMO_ROW_SIGNATURES=new Set([244996957,3108090062,259250536,1820701282,3424134468,2205476082,1912786264,3187853289,4112053187,1528303215,3369736888,1414207774,761586911,1438304639,105092215]);
-function realMatrixRows(rows){if(!Array.isArray(rows))return [];const clean=rows.filter(row=>{let n=2166136261;for(const c of JSON.stringify(row))n=Math.imul(n^c.charCodeAt(0),16777619);return !DEMO_ROW_SIGNATURES.has(n>>>0);});if(clean.length!==rows.length){try{if(!localStorage.getItem('ambipar_monthly_costs_legacy_backup'))localStorage.setItem('ambipar_monthly_costs_legacy_backup',JSON.stringify(rows));}catch{}}return clean;}
-
-
 const VEHICLE_FAMILIES = [
   'CUSTO FROTA GERAL',
   'BAÚ 3-4',
@@ -55,7 +52,11 @@ const VEHICLE_FAMILIES = [
 export default function FuelSpreadsheetWorkspace({
   records = [],
   onUpdateRecords,
+  onUpdateMatrix,
   onOpenImportModal,
+  companyId,
+  user,
+  initialMatrix,
   availablePlates = [],
   availableDrivers = []
 }) {
@@ -65,14 +66,35 @@ export default function FuelSpreadsheetWorkspace({
   const [selectedFleetTab, setSelectedFleetTab] = useState('CUSTO FROTA GERAL');
 
   // Estado da Matriz de Custos da Frota (Como a foto do usuário)
-  const [fleetMatrix, setFleetMatrix] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_monthly_fleet_costs_2026');
-      return saved ? realMatrixRows(JSON.parse(saved)) : INITIAL_MATRIX_DATA;
-    } catch {
-      return INITIAL_MATRIX_DATA;
+  const [fleetMatrix, setFleetMatrix] = useState(INITIAL_MATRIX_DATA);
+  const [matrixLoading, setMatrixLoading] = useState(true);
+  const [matrixError, setMatrixError] = useState('');
+  const [matrixSaving, setMatrixSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setMatrixLoading(true);
+    setMatrixError('');
+    if (!companyId) {
+      setFleetMatrix([]);
+      setHasUnsavedChanges(false);
+      setMatrixLoading(false);
+      return () => { active = false; };
     }
-  });
+    listCompanyOperationalRecords(companyId, 'monthly_fleet_costs')
+      .then(rows => {
+        if (!active) return;
+        const current = rows.find(row => row.record_key === '2026');
+        setFleetMatrix(Array.isArray(initialMatrix)
+          ? initialMatrix
+          : Array.isArray(current?.payload?.rows) ? current.payload.rows : []);
+        setHasUnsavedChanges(Array.isArray(initialMatrix));
+      })
+      .catch(error => { if (active) { setFleetMatrix(Array.isArray(initialMatrix) ? initialMatrix : []); setHasUnsavedChanges(Array.isArray(initialMatrix)); setMatrixError(error.message || 'Não foi possível carregar a matriz da empresa.'); } })
+      .finally(() => { if (active) setMatrixLoading(false); });
+    return () => { active = false; };
+  }, [companyId, initialMatrix]);
 
   // Estado da Sincronização em Nuvem (Google Sheets / Excel 365)
   const [webhookUrl, setWebhookUrl] = useState(() => {
@@ -81,14 +103,12 @@ export default function FuelSpreadsheetWorkspace({
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(() => {
     return localStorage.getItem('ambipar_sheet_auto_sync') === 'true';
   });
-  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
   const [webhookTestResult, setWebhookTestResult] = useState(null);
   const [showScriptModal, setShowScriptModal] = useState(false);
   const [scriptCopied, setScriptCopied] = useState(false);
 
   // Estado da Grade Interativa (Spreadsheet Grid)
   const [gridData, setGridData] = useState(() => [...(records || [])]);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [gridSearch, setGridSearch] = useState('');
   const [pasteBoxText, setPasteBoxText] = useState('');
   const [showPasteBox, setShowPasteBox] = useState(false);
@@ -123,14 +143,38 @@ export default function FuelSpreadsheetWorkspace({
   };
 
   // Salvar Matriz no LocalStorage
-  const handleSaveMatrix = () => {
+  const handleSaveMatrix = async () => {
+    if (!user?.id || !companyId) { showNotification('Selecione uma empresa com sessão ativa antes de salvar.', 'error'); return; }
+    if (!fleetMatrix.length) { showNotification('Adicione ao menos um item de custo antes de salvar.', 'error'); return; }
+    const cleaned = fleetMatrix.map(row => ({
+      ...row,
+      unidade: String(row.unidade || '').trim(),
+      tipo: String(row.tipo || '').trim(),
+      categoria: String(row.categoria || '').trim(),
+      meses: Object.fromEntries(MATRIX_MONTHS.map(month => [month.key, Number(row.meses?.[month.key]) || 0])),
+    }));
+    if (cleaned.some(row => !row.categoria)) { showNotification('Informe a descrição de cada item de custo.', 'error'); return; }
+    if (cleaned.some(row => MATRIX_MONTHS.some(month => row.meses[month.key] < 0))) { showNotification('Os valores mensais não podem ser negativos.', 'error'); return; }
     try {
-      localStorage.setItem('ambipar_monthly_fleet_costs_2026', JSON.stringify(fleetMatrix));
+      setMatrixSaving(true);
+      await onUpdateMatrix?.(cleaned);
       setHasUnsavedChanges(false);
-      showNotification('Matriz de Custos da Frota salva com sucesso!');
+      showNotification('Matriz salva no banco de dados da empresa.');
     } catch (e) {
-      console.error(e);
+      showNotification(e.message || 'Não foi possível salvar a matriz no banco de dados.', 'error');
+    } finally {
+      setMatrixSaving(false);
     }
+  };
+
+  const handleMatrixTextChange = (rowIndex, field, value) => {
+    setFleetMatrix(prev => prev.map((row, index) => index === rowIndex ? { ...row, [field]: value } : row));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleAddMatrixRow = () => {
+    setFleetMatrix(prev => [...prev, { unidade: '', tipo: '', categoria: '', meses: Object.fromEntries(MATRIX_MONTHS.map(month => [month.key, 0])) }]);
+    setHasUnsavedChanges(true);
   };
 
   // Totais por mês da Matriz (Linha TOTAL R$)
@@ -157,64 +201,14 @@ export default function FuelSpreadsheetWorkspace({
     showNotification('Configurações de sincronização com Google Sheets salvas!');
   };
 
-  // Testar conexão com o Webhook do Google Sheets
+  // Valida o formato da URL sem inserir uma linha de teste fictícia na planilha.
   const handleTestWebhook = async () => {
     if (!webhookUrl || !webhookUrl.trim().startsWith('http')) {
       alert('Por favor informe uma URL válida de Webhook do Google Apps Script (iniciando com https://).');
       return;
     }
-
-    setIsTestingWebhook(true);
-    setWebhookTestResult(null);
-
-    const testPayload = {
-      action: 'UPSERT',
-      record: {
-        id: 'test_cco_' + Date.now(),
-        data_abastecimento: new Date().toISOString().split('T')[0],
-        hora_abastecimento: '12:00',
-        placa: 'TESTE-99',
-        modelo_veiculo: 'Caminhão Teste Ambipar Central de Gestão',
-        motorista: 'Operador Teste Webhook',
-        tipo_combustivel: 'Diesel S10',
-        litros: 100,
-        preco_litro: 6.19,
-        valor_total: 619.00,
-        hodometro_anterior: 10000,
-        hodometro_atual: 10250,
-        distancia_percorrida_km: 250,
-        km_por_litro: 2.5,
-        custo_por_km: 2.47,
-        posto_nome: 'Posto Teste Integração',
-        cidade: 'Paulínia',
-        uf: 'SP',
-        nota_fiscal: 'TEST-01',
-        forma_pagamento: 'Cartão Frota - Ticket Log'
-      }
-    };
-
-    try {
-      const startTime = Date.now();
-      await fetch(webhookUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testPayload)
-      });
-      const duration = Date.now() - startTime;
-
-      setWebhookTestResult({
-        success: true,
-        message: `Disparo realizado com sucesso (${duration}ms)! Verifique se a linha "TESTE-99" apareceu na sua planilha do Google Sheets.`
-      });
-    } catch (err) {
-      setWebhookTestResult({
-        success: false,
-        message: 'Falha ao conectar com o Webhook: ' + err.message
-      });
-    } finally {
-      setIsTestingWebhook(false);
-    }
+    try { new URL(webhookUrl); setWebhookTestResult({ success: true, message: 'Endereço válido. Nenhuma linha de teste foi enviada; a entrega só será confirmada ao sincronizar um abastecimento real.' }); }
+    catch { setWebhookTestResult({ success: false, message: 'Informe uma URL completa e válida.' }); }
   };
 
   const handleCopyScript = () => {
@@ -293,11 +287,16 @@ export default function FuelSpreadsheetWorkspace({
     }
   };
 
-  const handleSaveGridChanges = () => {
+  const handleSaveGridChanges = async () => {
     const validRows = gridData.filter(r => r.placa && r.placa.trim() && Number(r.litros) > 0);
-    onUpdateRecords(validRows);
-    setHasUnsavedChanges(false);
-    showNotification(`Planilha salva com sucesso! ${validRows.length} abastecimentos consolidados.`);
+    try {
+      const saved = await onUpdateRecords?.(validRows);
+      if (saved === false) throw new Error('A cópia não foi concluída. Confira a mensagem de erro.');
+      setHasUnsavedChanges(false);
+      showNotification(`${validRows.length} abastecimentos copiados para revisão da empresa no Supabase.`);
+    } catch (error) {
+      showNotification(error.message || 'Não foi possível copiar os abastecimentos para revisão.', 'error');
+    }
   };
 
   const handleProcessPastedData = () => {
@@ -318,7 +317,7 @@ export default function FuelSpreadsheetWorkspace({
       if (cols.length < 2) continue;
 
       const placa = (cols[0] || '').toUpperCase().trim();
-      const data = cols[1] || new Date().toISOString().split('T')[0];
+      const data = cols[1] || '';
       const litros = parseFloat(cols[2]?.replace(',', '.')) || 0;
       const preco = parseFloat(cols[3]?.replace(',', '.')) || 0;
       const total = parseFloat(cols[4]?.replace(',', '.')) || (litros * preco);
@@ -335,24 +334,24 @@ export default function FuelSpreadsheetWorkspace({
         newRows.push({
           id: `paste_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
           data_abastecimento: data,
-          hora_abastecimento: '12:00',
+          hora_abastecimento: '',
           placa,
-          modelo_veiculo: 'Frota',
+          modelo_veiculo: '',
           motorista,
-          tipo_combustivel: 'Diesel S10',
+          tipo_combustivel: '',
           litros,
-          preco_litro: preco > 0 ? preco.toFixed(3) : '6.15',
-          valor_total: total > 0 ? total.toFixed(2) : (litros * 6.15).toFixed(2),
+          preco_litro: preco > 0 ? preco.toFixed(3) : '',
+          valor_total: total > 0 ? total.toFixed(2) : '',
           hodometro_anterior: kmAnterior || '',
           hodometro_atual: kmAtual || '',
           distancia_percorrida_km: dist,
           km_por_litro: kmL,
           custo_por_km: cpk,
           posto_nome: posto,
-          cidade: 'Paulínia',
-          uf: 'SP',
+          cidade: '',
+          uf: '',
           nota_fiscal: '',
-          forma_pagamento: 'Cartão Frota - Ticket Log'
+          forma_pagamento: ''
         });
       }
     }
@@ -545,14 +544,25 @@ export default function FuelSpreadsheetWorkspace({
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="fuel-btn fuel-btn-secondary"
+                  onClick={handleAddMatrixRow}
+                  disabled={matrixLoading || matrixSaving}
+                  style={{ fontSize: '0.78rem' }}
+                >
+                  <Plus size={14} />
+                  <span>Adicionar item</span>
+                </button>
               <button
                 type="button"
                 className="fuel-btn fuel-btn-primary"
                 onClick={handleSaveMatrix}
+                  disabled={matrixLoading || matrixSaving || !hasUnsavedChanges}
                 style={{ fontSize: '0.78rem', padding: '0.4rem 0.85rem' }}
               >
                 <Save size={14} />
-                <span>Salvar Alterações na Matriz</span>
+                  <span>{matrixSaving ? 'Salvando…' : 'Salvar alterações'}</span>
               </button>
             </div>
           </div>
@@ -581,7 +591,7 @@ export default function FuelSpreadsheetWorkspace({
                   ambipar® RELATÓRIO DE CUSTO FROTA MENSAL
                 </strong>
                 <div style={{ fontSize: '0.74rem', color: '#34d399', fontWeight: 700 }}>
-                  TOTAL 2026 - DCX • {selectedFleetTab}
+                  CUSTOS MENSAIS · 2026 • {selectedFleetTab}
                 </div>
               </div>
 
@@ -607,11 +617,15 @@ export default function FuelSpreadsheetWorkspace({
                       </th>
                     ))}
                     <th style={{ textAlign: 'right', color: '#000000', width: '110px' }}>TOTAL (R$)</th>
+                    <th style={{ color: '#000000', width: '56px' }}>AÇÕES</th>
                   </tr>
                 </thead>
                 <tbody>
+                  {matrixLoading && <tr><td colSpan={MATRIX_MONTHS.length + 5} role="status">Carregando matriz salva da empresa…</td></tr>}
+                  {!matrixLoading && matrixError && <tr><td colSpan={MATRIX_MONTHS.length + 5} role="alert">{matrixError}</td></tr>}
+                  {!matrixLoading && !matrixError && fleetMatrix.length === 0 && <tr><td colSpan={MATRIX_MONTHS.length + 5}>Nenhum item cadastrado. Importe uma matriz ou adicione um item de custo.</td></tr>}
                   {fleetMatrix.map((row, idx) => {
-                    const isFuel = row.categoria.toLowerCase().includes('combustivel');
+                    const isFuel = String(row.categoria || '').toLowerCase().includes('combustivel');
                     let rowSum = 0;
                     MATRIX_MONTHS.forEach(m => { rowSum += Number(row.meses?.[m.key] || 0); });
 
@@ -624,15 +638,13 @@ export default function FuelSpreadsheetWorkspace({
                         }}
                       >
                         <td style={{ textAlign: 'center', fontWeight: 600, color: '#94a3b8' }}>
-                          {row.unidade || 'DCX'}
+                          <input aria-label={`Unidade do item ${idx + 1}`} value={row.unidade || ''} onChange={e => handleMatrixTextChange(idx, 'unidade', e.target.value)} />
                         </td>
                         <td style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
-                          {row.tipo || 'FROTA COMPLETA'}
+                          <input aria-label={`Tipo do item ${idx + 1}`} value={row.tipo || ''} onChange={e => handleMatrixTextChange(idx, 'tipo', e.target.value)} />
                         </td>
                         <td>
-                          <span style={{ color: isFuel ? '#34d399' : '#ffffff', fontWeight: isFuel ? 700 : 600 }}>
-                            {row.categoria}
-                          </span>
+                          <input aria-label={`Descrição do custo ${idx + 1}`} required value={row.categoria || ''} onChange={e => handleMatrixTextChange(idx, 'categoria', e.target.value)} />
                         </td>
 
                         {/* Colunas dos 12 Meses */}
@@ -664,14 +676,15 @@ export default function FuelSpreadsheetWorkspace({
                         <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>
                           R$ {Number(rowSum).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </td>
+                        <td><button type="button" aria-label={`Remover item ${idx + 1}`} onClick={() => { setFleetMatrix(rows => rows.filter((_, rowIndex) => rowIndex !== idx)); setHasUnsavedChanges(true); }}><Trash2 size={14} /></button></td>
                       </tr>
                     );
                   })}
 
                   {/* Linha 20 do Excel: TOTAL (R$) */}
                   <tr style={{ background: 'rgba(116, 192, 68, 0.25)', fontWeight: 800, borderTop: '2px solid #74c044' }}>
-                    <td style={{ textAlign: 'center', color: '#ffffff' }}>X</td>
-                    <td style={{ color: '#ffffff' }}>FROTA</td>
+                    <td style={{ textAlign: 'center', color: '#ffffff' }}>—</td>
+                    <td style={{ color: '#ffffff' }}>—</td>
                     <td style={{ color: '#ffffff', fontSize: '0.82rem' }}>TOTAL (R$)</td>
                     {MATRIX_MONTHS.map(m => (
                       <td key={m.key} style={{ textAlign: 'right', color: '#ffffff', fontSize: '0.78rem' }}>
@@ -681,6 +694,7 @@ export default function FuelSpreadsheetWorkspace({
                     <td style={{ textAlign: 'right', color: '#10b981', fontSize: '0.85rem' }}>
                       R$ {Number(matrixMonthTotals.grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
+                    <td />
                   </tr>
                 </tbody>
               </table>
@@ -696,10 +710,11 @@ export default function FuelSpreadsheetWorkspace({
                   type="button"
                   className="fuel-btn fuel-btn-primary"
                   onClick={handleSaveMatrix}
+                  disabled={matrixLoading || matrixSaving || !hasUnsavedChanges}
                   style={{ fontSize: '0.78rem' }}
                 >
                   <Save size={13} />
-                  <span>Salvar Matriz</span>
+                  <span>{matrixSaving ? 'Salvando…' : 'Salvar Matriz'}</span>
                 </button>
               </div>
             </div>
@@ -1085,10 +1100,10 @@ export default function FuelSpreadsheetWorkspace({
                 type="button"
                 className="fuel-btn fuel-btn-secondary"
                 onClick={handleTestWebhook}
-                disabled={isTestingWebhook || !webhookUrl}
+                disabled={!webhookUrl}
                 style={{ fontSize: '0.82rem', padding: '0.55rem 0.95rem' }}
               >
-                {isTestingWebhook ? 'Testando...' : 'Testar Conexão'}
+                Validar URL
               </button>
             </div>
 

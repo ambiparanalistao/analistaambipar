@@ -305,7 +305,6 @@ export const detectColumnMapping = (rawHeaders) => {
 // Extrai dados da Matriz Mensal da Frota (Como a da foto)
 export const parseFleetCostMatrix = (rawJson, headerIndex, headers, sheetName) => {
   const matrixData = [];
-  const monthlyFuelExpenses = [];
   const unit = 'DCX';
   const fleetType = sheetName || 'FROTA COMPLETA';
 
@@ -352,44 +351,9 @@ export const parseFleetCostMatrix = (rawJson, headerIndex, headers, sheetName) =
     rowObj.totalAno = rowTotal;
     matrixData.push(rowObj);
 
-    // Se for a linha de COMBUSTÍVEIS, cria os registros de abastecimento mensais automáticos!
-    const normCat = normalizeHeader(rawCategory);
-    if (normCat.includes('combustivel')) {
-      MATRIX_MONTHS.forEach(m => {
-        const val = rowObj.meses[m.key];
-        if (val > 0) {
-          const precoMedioEst = 6.15;
-          const litrosEst = Number((val / precoMedioEst).toFixed(1));
-          monthlyFuelExpenses.push({
-            id: `MAT_${m.key}_${fleetType.replace(/[^A-Za-z0-9]/g, '_')}_${Date.now()}`,
-            data_abastecimento: `2026-${m.num}-15`,
-            hora_abastecimento: '12:00',
-            placa: `FROTA-${sheetName?.slice(0, 8).toUpperCase() || 'DCX'}`,
-            modelo_veiculo: fleetType,
-            motorista: 'Gestão de Frota',
-            tipo_combustivel: 'Diesel S10',
-            litros: litrosEst,
-            preco_litro: precoMedioEst.toFixed(2),
-            valor_total: val.toFixed(2),
-            hodometro_atual: '',
-            hodometro_anterior: '',
-            distancia_percorrida_km: Math.round(litrosEst * 2.3),
-            km_por_litro: 2.3,
-            custo_por_km: Number((val / (litrosEst * 2.3)).toFixed(2)),
-            posto_nome: 'Rede Convênio / Matriz Ambipar',
-            cidade: 'Paulínia',
-            uf: 'SP',
-            nota_fiscal: `FECH-${m.key.toUpperCase()}-2026`,
-            forma_pagamento: 'Faturado Convênio Corporativo',
-            observacoes: `Importado da Matriz de Custos da Frota (${sheetName}) - Mês de ${m.label}`,
-            origem_importacao: 'matriz_custo_frota'
-          });
-        }
-      });
-    }
   });
 
-  return { matrixData, monthlyFuelExpenses };
+  return { matrixData };
 };
 
 // Leitor assíncrono avançado de arquivo Excel (.xlsx, .xls) ou CSV
@@ -670,29 +634,7 @@ export const exportFuelRecordsToExcel = (records, fileName = 'abastecimentos_fro
 // Gera o Modelo Oficial em Branco (.xlsx)
 export const generateBlankTemplateExcel = () => {
   const wb = XLSX.utils.book_new();
-
-  const templateRows = [
-    {
-      'PLACA': 'ABC1D23',
-      'DATA': '2026-10-22',
-      'HORA': '08:30',
-      'MODELO': 'Volvo FH 540 6x4',
-      'MOTORISTA': 'João da Silva',
-      'COMBUSTIVEL': 'Diesel S10',
-      'LITROS': 450.5,
-      'PRECO_LITRO': 6.19,
-      'VALOR_TOTAL': 2788.60,
-      'KM_ANTERIOR': 142100,
-      'KM_ATUAL': 143180,
-      'POSTO': 'Posto Graal Rodovia Anhanguera',
-      'CIDADE': 'Campinas',
-      'UF': 'SP',
-      'NOTA_FISCAL': '109842',
-      'FORMA_PAGAMENTO': 'Cartão Frota - Abank'
-    }
-  ];
-
-  const ws = XLSX.utils.json_to_sheet(templateRows);
+  const ws = XLSX.utils.aoa_to_sheet([['PLACA','DATA','HORA','MODELO','MOTORISTA','COMBUSTIVEL','LITROS','PRECO_LITRO','VALOR_TOTAL','KM_ANTERIOR','KM_ATUAL','POSTO','CIDADE','UF','NOTA_FISCAL','FORMA_PAGAMENTO']]);
   XLSX.utils.book_append_sheet(wb, ws, 'Modelo_Abastecimentos');
   XLSX.writeFile(wb, 'modelo_padrao_abastecimentos_ambipar.xlsx');
 };

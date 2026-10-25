@@ -58,6 +58,7 @@ import FuelSpreadsheetWorkspace from './FuelSpreadsheetWorkspace';
 import FuelAuditWorkspace, { runPredictiveAudit } from './FuelAuditWorkspace';
 import ErrorBoundary from './ErrorBoundary';
 import { exportFuelRecordsToExcel, generateBlankTemplateExcel } from '../utils/excelFuelIntegration';
+import { saveCompanyOperationalRecord } from '../services/companyOperationalRecords';
 import './FuelModule.css';
 
 // Tipos de Combustíveis Homologados
@@ -157,29 +158,63 @@ export const getConsumptionEfficiency = (kmPerL, fuelType) => {
 
 export default function FuelModule({ user, companyId, initialView = 'dashboard', onNavigateModule }) {
   // Estado de abastecimentos persistente
-  const [records, setRecords] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_fuel_records_v1');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Abastecimentos operacionais vêm apenas do banco da empresa selecionada.
+  // A chave antiga do navegador permanece intacta para backup e revisão.
+  const [records, setRecords] = useState([]);
+  const [importedCostMatrix, setImportedCostMatrix] = useState(null);
+  const [importedCostMatrixCompany, setImportedCostMatrixCompany] = useState('');
+  const [fuelDbLoading, setFuelDbLoading] = useState(true);
+  const [fuelDbError, setFuelDbError] = useState('');
+  const [clientRouteError, setClientRouteError] = useState('');
+  const [fuelDbReady, setFuelDbReady] = useState(false);
 
   // Carrega veículos, motoristas e rotas de clientes
   const directory=useFleetDirectory(companyId);
   const availablePlates=directory.vehicles.map(v=>({...v,modelo:v.marca_modelo,capacidadeTanque:v.capacidade_tanque||null}));
   const availableDrivers=directory.drivers.map(d=>d.nome);const [clientRoutes,setClientRoutes]=useState([]);
-  useEffect(()=>{try{const rows=JSON.parse(localStorage.getItem('ambipar_real_clients_v2')||'[]');setClientRoutes(rows.filter(c=>c.origem&&c.destino).map(c=>({id:c.id,cliente:c.nome_fantasia||c.razao_social,nome:c.rota_nome||c.origem+' ⇄ '+c.destino,origem:c.origem,destino:c.destino,distanciaKm:Number(c.distancia_km)||null})));}catch{setClientRoutes([]);}},[]);
-  // Salva no localStorage a cada atualização
   useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_fuel_records_v1', JSON.stringify(records));
-    } catch (err) {
-      console.warn('Erro ao salvar abastecimentos:', err);
+    let cancelled = false;
+    async function loadClientRoutes() {
+      if (!supabase || !companyId) { setClientRoutes([]); setClientRouteError(''); return; }
+      const { data, error } = await supabase.from('clientes')
+        .select('id,nome_fantasia,razao_social,origem,destino,distancia_km,rota_nome')
+        .eq('company_id', companyId).is('deleted_at', null);
+      if (cancelled) return;
+      if (error) { setClientRoutes([]); setClientRouteError(error.message); return; }
+      setClientRouteError('');
+      setClientRoutes((data || []).filter(c => c.origem && c.destino).map(c => ({
+        id: c.id, cliente: c.nome_fantasia || c.razao_social,
+        nome: c.rota_nome || `${c.origem} ⇄ ${c.destino}`, origem: c.origem, destino: c.destino,
+        distanciaKm: Number(c.distancia_km) || null,
+      })));
     }
-  }, [records]);
-
+    loadClientRoutes().catch(e => { if (!cancelled) setClientRouteError(e.message || 'Falha ao consultar rotas dos clientes.'); });
+    return () => { cancelled = true; };
+  }, [companyId]);
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDatabaseFuel() {
+      setRecords([]); setFuelDbReady(false);
+      if (!supabase || !companyId) { setFuelDbLoading(false); return; }
+      setFuelDbLoading(true); setFuelDbError('');
+      const { data, error } = await supabase.from('fuel_transactions').select('*').eq('company_id', companyId).order('occurred_at', { ascending: false });
+      if (cancelled) return;
+      if (error) { setFuelDbError(error.message); setFuelDbLoading(false); return; }
+      const persisted = (data || []).map(row => {
+        const source = row.source_payload || {};
+        const stamp = row.occurred_at ? new Date(row.occurred_at) : null;
+        return { ...source, id: source.id || row.source_key || row.id, databaseId: row.id, sourceKey: row.source_key,
+          placa: source.placa || row.placa_snapshot || '', data_abastecimento: source.data_abastecimento || (stamp && !Number.isNaN(stamp.valueOf()) ? stamp.toISOString().slice(0,10) : ''),
+          hora_abastecimento: source.hora_abastecimento || (stamp && !Number.isNaN(stamp.valueOf()) ? stamp.toTimeString().slice(0,5) : ''),
+          tipo_combustivel: source.tipo_combustivel || row.combustivel || '', litros: source.litros ?? row.litros ?? '', preco_litro: source.preco_litro ?? row.preco_unitario ?? '',
+          valor_total: source.valor_total ?? row.valor_total ?? '', hodometro_atual: source.hodometro_atual ?? row.km_no_ato ?? '', posto_nome: source.posto_nome || row.posto || '', cidade: source.cidade || row.cidade || '' };
+      });
+      setRecords(persisted);
+      setFuelDbReady(true); setFuelDbLoading(false);
+    }
+    loadDatabaseFuel().catch(e => { if (!cancelled) { setFuelDbError(e.message || 'Falha ao consultar abastecimentos.'); setFuelDbLoading(false); } });
+    return () => { cancelled = true; };
+  }, [companyId]);
   // Controles de Visualização & Filtros
   // viewMode: 'dashboard' | 'table' | 'cards' | 'simulator' | 'form'
   const [viewMode, setViewMode] = useState(initialView || 'dashboard');
@@ -414,7 +449,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
     setViewMode('form');
   };
 
-  const handleSubmitForm = (e) => {
+  const handleSubmitForm = async (e) => {
     e.preventDefault();
     if (!formData.placa.trim()) {
       alert('Por favor informe a Placa do Veículo.');
@@ -460,6 +495,24 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
       updated_at: new Date().toISOString()
     };
 
+    if (supabase && companyId) {
+      const previousRecord = editingId ? records.find(record => String(record.id) === String(editingId)) : null;
+      const recordId = previousRecord?.sourceKey || String(editingId || crypto.randomUUID());
+      const vehicle = directory.vehicles.find(v => String(v.placa).toUpperCase() === payload.placa);
+      const driver = directory.drivers.find(d => String(d.nome).toLowerCase() === String(payload.motorista || '').toLowerCase());
+      const occurrenceDate = payload.data_abastecimento ? new Date(`${payload.data_abastecimento}T${payload.hora_abastecimento || '00:00'}:00`) : null;
+      const occurredAt = occurrenceDate && !Number.isNaN(occurrenceDate.valueOf()) ? occurrenceDate.toISOString() : null;
+      const dbRow = { company_id: companyId, source_key: recordId, vehicle_id: vehicle?.id || null,
+        placa_snapshot: payload.placa, driver_id: driver?.id || null, occurred_at: occurredAt, posto: payload.posto_nome || '', cidade: payload.cidade || '',
+        combustivel: payload.tipo_combustivel || '', litros: litrosNum, preco_unitario: precoNum, valor_total: totalNum,
+        km_no_ato: atualKm || null, arla_litros: payload.tipo_combustivel?.includes('ARLA') ? litrosNum : null,
+        arla_preco_unitario: payload.tipo_combustivel?.includes('ARLA') ? precoNum : null, nf_numero: payload.nota_fiscal || '',
+        source_payload: { ...payload, id: recordId }, created_by: user?.id || null };
+      const { data: savedRow, error } = await supabase.from('fuel_transactions').upsert(dbRow, { onConflict: 'company_id,source_key' }).select('id,source_key').single();
+      if (error) { setFuelDbError(error.message); setFeedback({ type: 'error', text: 'Não foi possível salvar o abastecimento no banco de dados.' }); return; }
+      payload.databaseId = savedRow.id; payload.sourceKey = savedRow.source_key;
+      setFuelDbError('');
+    }
     if (editingId) {
       const updated = records.map(r => r.id === editingId ? { ...payload, id: editingId } : r);
       setRecords(updated);
@@ -468,7 +521,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
     } else {
       const newRec = {
         ...payload,
-        id: `ABAST-AMB${Math.floor(1000 + Math.random() * 9000)}`,
+        id: payload.sourceKey || `ABAST-${crypto.randomUUID()}`,
         created_at: new Date().toISOString()
       };
       setRecords([newRec, ...records]);
@@ -480,13 +533,70 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
     setTimeout(() => setFeedback(null), 4000);
   };
 
-  const handleDeleteRecord = (id, placa) => {
+  const handleDeleteRecord = async (id, placa) => {
+    const existing = records.find(record => String(record.id) === String(id));
+    if (supabase && companyId && existing?.sourceKey) {
+      const { error } = await supabase.from('fuel_transactions').delete().eq('company_id', companyId).eq('source_key', existing.sourceKey);
+      if (error) { setFuelDbError(error.message); setFeedback({ type: 'error', text: 'Não foi possível excluir o registro no banco de dados.' }); return; }
+    }
     if (window.confirm(`Confirma a exclusão do registro de abastecimento da placa "${placa}"?`)) {
       setRecords(records.filter(r => r.id !== id));
       triggerGoogleSheetWebhook('DELETE', { id });
       setFeedback({ type: 'info', text: `Registro de abastecimento removido.` });
       setTimeout(() => setFeedback(null), 3000);
     }
+  };
+
+  const stageFuelImportForReview = async (payload) => {
+    if (!supabase || !companyId || !user?.id) throw new Error('Selecione uma empresa com sessão ativa antes de copiar para revisão.');
+    const value = payload.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' ? (payload.matrixData || []) : (payload.records || []);
+    const key = payload.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' ? 'ambipar_monthly_fleet_costs_2026' : 'ambipar_fuel_records_v1';
+    const serialized = JSON.stringify({ key, value });
+    const checksum = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(serialized)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    const sourceName = `spreadsheet:${user.id}:${key}`;
+    const { data: batch, error: batchError } = await supabase.from('operational_data_import_batches').upsert({
+      company_id: companyId, source_name: sourceName, source_checksum: checksum,
+      status: 'em_revisao', counts: { [key]: Array.isArray(value) ? value.length : 1 }, created_by: user.id,
+    }, { onConflict: 'company_id,source_name,source_checksum' }).select('id').single();
+    if (batchError) throw batchError;
+    const { error: rowError } = await supabase.from('operational_data_import_rows').upsert({
+      company_id: companyId, batch_id: batch.id, entity: 'local_storage', source_key: `${user.id}:${key}:${checksum}`,
+      payload: { key, value, origin: 'spreadsheet_import', exported_at: new Date().toISOString() },
+    }, { onConflict: 'company_id,batch_id,entity,source_key' });
+    if (rowError) throw rowError;
+  };
+
+  const handleFuelWorkbookImport = async (payload) => {
+    try {
+      await stageFuelImportForReview(payload);
+      const matrix = payload.sheetFormat === 'MATRIZ_CUSTOS_MENSAL';
+      if (matrix) {
+        setImportedCostMatrix(payload.matrixData || []);
+        setImportedCostMatrixCompany(companyId || '');
+      }
+      setFeedback({ type: 'success', text: matrix
+        ? 'Matriz de custos copiada para revisão privada no Supabase. Nenhum abastecimento estimado foi criado.'
+        : 'Planilha copiada para revisão privada no Supabase. Os registros operacionais existentes não foram alterados.' });
+      return true;
+    } catch (error) {
+      setFuelDbError(error.message || 'Não foi possível copiar a planilha para revisão.');
+      setFeedback({ type: 'error', text: error.message || 'Não foi possível copiar a planilha para revisão.' });
+      return false;
+    }
+  };
+
+  const handleSaveCostMatrix = async (matrixData) => {
+    if (!companyId || !user?.id) throw new Error('Selecione uma empresa com sessão ativa antes de salvar a matriz.');
+    await saveCompanyOperationalRecord({
+      companyId,
+      collection: 'monthly_fleet_costs',
+      recordKey: '2026',
+      payload: { year: 2026, rows: matrixData },
+      userId: user.id,
+    });
+    setImportedCostMatrix(null);
+    setImportedCostMatrixCompany('');
+    return true;
   };
 
   // KPIs Gerais
@@ -947,6 +1057,10 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
 
   return (
     <div className="module-page-container animate-fade-in" id="fuel-module-root">
+      {fuelDbLoading && <p role="status">Carregando abastecimentos da empresa…</p>}
+      {fuelDbReady && !fuelDbError && <p role="status" className="sr-only">Abastecimentos conectados ao Supabase.</p>}
+      {fuelDbError && <p role="alert" className="card-panel">Falha na sincronização com o Supabase: {fuelDbError}</p>}
+      {clientRouteError && <p role="alert" className="card-panel">Falha ao carregar rotas dos clientes: {clientRouteError}</p>}
       {/* 1. Header do Módulo */}
       <div className="fuel-top-header">
         <div className="fuel-header-title-box">
@@ -1526,11 +1640,11 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
         <ErrorBoundary>
           <FuelSpreadsheetWorkspace
             records={records}
-            onUpdateRecords={(updated) => {
-              setRecords(updated);
-              setFeedback({ type: 'success', text: `Base atualizada a partir da planilha! (${updated.length} abastecimentos)` });
-              setTimeout(() => setFeedback(null), 3500);
-            }}
+            onUpdateRecords={updated => handleFuelWorkbookImport({ records: updated })}
+            companyId={companyId}
+            user={user}
+            initialMatrix={importedCostMatrixCompany === companyId ? importedCostMatrix : null}
+            onUpdateMatrix={handleSaveCostMatrix}
             onOpenImportModal={() => setIsImportModalOpen(true)}
             availablePlates={availablePlates}
             availableDrivers={availableDrivers}
@@ -2390,6 +2504,8 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
             records={records}
             availablePlates={availablePlates}
             availableDrivers={availableDrivers}
+            companyId={companyId}
+            user={user}
             onOpenTicketDetails={(rec) => setSelectedTicket(rec)}
             onNavigateModule={onNavigateModule}
           />
@@ -2934,21 +3050,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
           existingRecords={records}
-          onImportComplete={({ records: newRecords, mode, stats }) => {
-            let consolidated = [];
-            if (mode === 'replace') {
-              consolidated = newRecords;
-            } else {
-              consolidated = [...newRecords, ...records];
-            }
-            setRecords(consolidated);
-            setFeedback({
-              type: 'success',
-              text: `Importação concluída! ${stats.totalImported.toLocaleString('pt-BR')} abastecimentos adicionados da planilha (${stats.skippedDuplicates} duplicatas evitadas).`
-            });
-            setTimeout(() => setFeedback(null), 5000);
-            newRecords.slice(0, 10).forEach(r => triggerGoogleSheetWebhook('UPSERT', r));
-          }}
+          onImportComplete={handleFuelWorkbookImport}
         />
       </ErrorBoundary>
 

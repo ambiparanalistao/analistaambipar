@@ -2,6 +2,7 @@ import useFleetDirectory from '../hooks/useFleetDirectory';
 import {driverForVehicle} from '../utils/registryMatching';
 import AvailableVehicleSelect from './maintenance/AvailableVehicleSelect';
 import {allocateVehicle,vehicleCommand} from '../services/vehicleMaintenance';
+import {supabase} from '../lib/supabaseClient';
 import React, { useState, useEffect } from 'react';
 import { 
   Truck, 
@@ -15,38 +16,48 @@ import {
 
 export default function TripsModule({ user, companyId }) {
   const directory=useFleetDirectory(companyId);
-  // Inicializa a partir de dados salvos localmente ou vazio (sem dados fictícios)
-  const [trips, setTrips] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_real_trips');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // A lista operacional contém somente viagens vinculadas à empresa no Supabase.
+  // Registros antigos do navegador permanecem intactos para backup e revisão.
+  const [trips, setTrips] = useState([]);
+  const [tripsLoading,setTripsLoading]=useState(true);
 
   const [tripError,setTripError]=useState(''),[tripBusy,setTripBusy]=useState(false);
+  useEffect(()=>{
+    let cancelled=false;
+    async function loadTrips(){
+      if(!supabase||!companyId){setTripsLoading(false);return;}
+      setTrips([]);
+      setTripsLoading(true);const {data,error}=await supabase.from('transport_trips').select('*').eq('company_id',companyId).order('created_at',{ascending:false});
+      if(cancelled)return;
+      if(error){setTripError(error.message);setTripsLoading(false);return;}
+      const persisted=(data||[]).map(row=>({...row.source_payload,id:row.source_key,company_id:row.company_id,vehicle_id:row.vehicle_id||row.source_payload?.vehicle_id,driver_id:row.driver_id||row.source_payload?.driver_id,status:row.status||row.source_payload?.status}));
+      setTrips(persisted);
+      setTripsLoading(false);
+    }
+    loadTrips().catch(error=>{if(!cancelled){setTripError(error.message||'Não foi possível carregar viagens.');setTripsLoading(false);}});
+    return()=>{cancelled=true;};
+  },[companyId]);
+
+  async function saveTripToDatabase(trip){
+    if(!supabase||!companyId)throw new Error('Conecte a empresa ao Supabase antes de salvar viagens.');
+    const vehicle=directory.vehicles.find(v=>v.id===trip.vehicle_id)||directory.vehicles.find(v=>v.placa===trip.vehiclePlate);
+    const driver=directory.drivers.find(d=>d.id===trip.driver_id)||directory.drivers.find(d=>d.nome===trip.driver);
+    const {error}=await supabase.from('transport_trips').upsert({company_id:companyId,source_key:String(trip.id),status:trip.status||'',vehicle_id:vehicle?.id||null,driver_id:driver?.id||null,source_payload:trip,created_by:user?.id||null,updated_by:user?.id||null},{onConflict:'company_id,source_key'});
+    if(error)throw error;
+  }
   const [showModal, setShowModal] = useState(false);
   const [newTrip, setNewTrip] = useState({
     vehiclePlate: '',
-    vehicleType: 'Carreta Tanque Químico',
+    vehicleType: '',
     driver: '',
     wasteType: '',
-    onuCode: 'ONU 3082',
+    onuCode: '',
     origin: '',
     destination: '',
     distanceKm: '',
     weightTon: '',
     slaEta: ''
   });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_real_trips', JSON.stringify(trips));
-    } catch (err) {
-      console.warn('Erro ao salvar viagens localmente:', err);
-    }
-  }, [trips]);
 
   const handleCreateTrip = async (e) => {
     e.preventDefault();
@@ -63,15 +74,16 @@ export default function TripsModule({ user, companyId }) {
       distanceKm: Number(newTrip.distanceKm),
       weightTon: Number(newTrip.weightTon)
     };
+    try{await saveTripToDatabase(created);}catch(error){try{await vehicleCommand(companyId,'release',{vehicle_id:selected.id,kind:'trip',reference:reference});}catch{/* Preserve the reported database failure; allocation state remains visible for reconciliation. */}setTripError(error.message);setTripBusy(false);return;}
     setTrips([created, ...trips]);
     setTripBusy(false);
     setShowModal(false);
     setNewTrip({
       vehiclePlate: '',
-      vehicleType: 'Carreta Tanque Químico',
+      vehicleType: '',
       driver: '',
       wasteType: '',
-      onuCode: 'ONU 3082',
+      onuCode: '',
       origin: '',
       destination: '',
       distanceKm: '',
@@ -81,17 +93,33 @@ export default function TripsModule({ user, companyId }) {
   };
 
   const handleUpdateStatus = async (id, newStatus, newLabel) => {
-    if(tripBusy)return;setTripBusy(true);setTripError('');try{const trip=trips.find(t=>t.id===id);if(trip.company_id&&trip.company_id!==companyId)throw new Error('Selecione a empresa desta viagem.');
-    if(newStatus==='transito')await allocateVehicle(companyId,trip.vehiclePlate,'trip',trip.id);
-    else if(newStatus==='concluido'&&trip.vehicle_id)await vehicleCommand(companyId,'release',{vehicle_id:trip.vehicle_id,kind:'trip',reference:trip.id});
+    if(tripBusy)return;setTripBusy(true);setTripError('');let allocationChanged=false,trip;
+    try{
+      trip=trips.find(t=>t.id===id);
+      if(!trip)throw new Error('Viagem não encontrada. Atualize a lista e tente novamente.');
+      if(trip.company_id&&trip.company_id!==companyId)throw new Error('Selecione a empresa desta viagem.');
+      const wasInTransit=trip.status==='transito',willBeInTransit=newStatus==='transito';
+      if(!wasInTransit&&willBeInTransit){await allocateVehicle(companyId,trip.vehiclePlate,'trip',trip.id);allocationChanged=true;}
+      else if(wasInTransit&&newStatus==='concluido'&&trip.vehicle_id){await vehicleCommand(companyId,'release',{vehicle_id:trip.vehicle_id,kind:'trip',reference:trip.id});allocationChanged=true;}
 
-    setTrips(trips.map(t => t.id === id ? { ...t, status: newStatus, statusLabel: newLabel } : t));
-    }catch(e){setTripError(e.message);}finally{setTripBusy(false);}
+      const updated=trips.map(t => t.id === id ? { ...t, status: newStatus, statusLabel: newLabel } : t);
+      await saveTripToDatabase(updated.find(t=>t.id===id));
+      setTrips(updated);
+    }catch(e){
+      if(allocationChanged&&trip){
+        try{
+          if(trip.status==='transito')await allocateVehicle(companyId,trip.vehiclePlate,'trip',trip.id);
+          else if(trip.vehicle_id)await vehicleCommand(companyId,'release',{vehicle_id:trip.vehicle_id,kind:'trip',reference:trip.id});
+        }catch{/* Keep the original save error; the allocation may need reconciliation. */}
+      }
+      setTripError(e.message);
+    }finally{setTripBusy(false);}
   };
 
   return (
     <div className="module-view animate-fade-in" id="trips-module-root">
       {tripError&&<p role="alert">{tripError}</p>}
+      {tripsLoading&&<p role="status">Carregando viagens da empresa…</p>}
       <div className="module-page-header">
         <div>
           <div className="module-tag">
@@ -117,7 +145,7 @@ export default function TripsModule({ user, companyId }) {
         </div>
       </div>
 
-      {trips.length === 0 ? (
+      {trips.length === 0 && !tripsLoading ? (
         <div className="card-panel" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
           <Truck size={42} style={{ color: 'var(--text-dim)', margin: '0 auto 1rem' }} />
           <h3 style={{ color: 'var(--text-main)', marginBottom: '0.5rem' }}>Nenhuma viagem despachada no momento</h3>
@@ -134,7 +162,7 @@ export default function TripsModule({ user, companyId }) {
             <span>Despachar Primeira Viagem</span>
           </button>
         </div>
-      ) : (
+      ) : trips.length > 0 ? (
         <div className="trips-cards-grid">
           {trips.map((trip) => (
             <div key={trip.id} className={`trip-card-box status-${trip.status}`}>
@@ -215,7 +243,7 @@ export default function TripsModule({ user, companyId }) {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       {showModal && (
         <div className="modal-backdrop animate-fade-in">
@@ -243,16 +271,7 @@ export default function TripsModule({ user, companyId }) {
 
                 <div className="input-group-custom">
                   <label>Tipo de Equipamento</label>
-                  <select
-                    value={newTrip.vehicleType}
-                    onChange={(e) => setNewTrip({ ...newTrip, vehicleType: e.target.value })}
-                    className="select-custom"
-                  >
-                    <option value="Carreta Tanque Químico">Carreta Tanque Químico</option>
-                    <option value="Truck Sider 6x2">Truck Sider 6x2</option>
-                    <option value="Bitrem Articulado">Bitrem Articulado</option>
-                    <option value="Vácuo Químico Pesado">Vácuo Químico Pesado</option>
-                  </select>
+                  <input value={newTrip.vehicleType} readOnly placeholder="Tipo conforme cadastro do veículo" />
                 </div>
               </div>
 

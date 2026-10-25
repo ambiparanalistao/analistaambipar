@@ -54,7 +54,6 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import PremiumSelect from './PremiumSelect';
-import { AUDITED_VEHICLES } from '../data/auditedAmbiparData';
 import { readCrlvFile } from '../utils/crlvPdfReader';
 import WhatsAppDispatchWorkspace from './WhatsAppDispatchWorkspace';
 import useFleetDirectory from '../hooks/useFleetDirectory';
@@ -124,7 +123,6 @@ export const FUEL_TYPES = [
 ];
 
 // Frota Flagship Ambipar homologada com dados operacionais auditados 2026 (21 Veículos)
-export const DEFAULT_AMBIPAR_FLEET = AUDITED_VEHICLES;
 
 export const formatPlateMercosul = (val) =>
  {

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { listCompanyOperationalRecords, saveCompanyOperationalRecord } from '../services/companyOperationalRecords';
 import {
   ShieldAlert,
   AlertTriangle,
@@ -130,7 +131,7 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
 
   // Agrupa por placa para analisar histórico sequencial
   const sortedRecords = [...records].sort((a, b) => {
-    return new Date(b.data_abastecimento || '2026-01-01') - new Date(a.data_abastecimento || '2026-01-01');
+    return new Date(b.data_abastecimento || 0) - new Date(a.data_abastecimento || 0);
   });
 
   // 1. ANÁLISE POR REGISTRO INDIVIDUAL
@@ -142,10 +143,10 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
     const precoLitro = Number(rec.preco_litro) || 0;
     const valorTotal = Number(rec.valor_total) || 0;
     const distKm = Number(rec.distancia_percorrida_km) || 0;
-    const placa = rec.placa || 'FROTA-AMBIPAR';
-    const motorista = rec.motorista || 'Motorista Não Identificado';
-    const data = rec.data_abastecimento || 'Data Indefinida';
-    const posto = rec.posto_nome || 'Posto Convênio';
+    const placa = rec.placa || 'Não informada';
+    const motorista = rec.motorista || 'Não informado';
+    const data = rec.data_abastecimento || 'Não informada';
+    const posto = rec.posto_nome || 'Não informado';
 
     const vehicleInfo = plateMap.get(placa);
     const tankCapacity=Number(vehicleInfo?.capacidadeTanque)||0;const EXPECTED_KM_L_DEFAULT=Number(vehicleInfo?.meta_consumo_kml)||0;const EXPECTED_PRICE_L_DEFAULT=Number(rec.preco_referencia_litro)||0;
@@ -407,24 +408,32 @@ export default function FuelAuditWorkspace({
   availablePlates = [],
   availableDrivers = [],
   onOpenTicketDetails,
-  onNavigateModule
+  onNavigateModule,
+  companyId,
+  user
 }) {
   const [filterSeverity, setFilterSeverity] = useState('ALL');
   const [filterType, setFilterType] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [justifiedAnomalies, setJustifiedAnomalies] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_audit_justified');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [justifiedAnomalies, setJustifiedAnomalies] = useState({});
+  const [justificationsLoading, setJustificationsLoading] = useState(true);
+  const [justificationsError, setJustificationsError] = useState('');
+  const [justificationSaving, setJustificationSaving] = useState(false);
 
   const [selectedAnomalyForModal, setSelectedAnomalyForModal] = useState(null);
   const [justificationText, setJustificationText] = useState('');
   const [notificationSentMap, setNotificationSentMap] = useState({});
+
+  useEffect(() => {
+    let cancelled = false;
+    setJustifiedAnomalies({}); setJustificationsError(''); setJustificationsLoading(true);
+    listCompanyOperationalRecords(companyId, 'fuel_audit_justifications').then(rows => {
+      if (!cancelled) setJustifiedAnomalies(Object.fromEntries(rows.map(row => [row.record_key, row.payload])));
+    }).catch(error => { if (!cancelled) setJustificationsError(error.message || 'Não foi possível carregar as justificativas da empresa.'); })
+      .finally(() => { if (!cancelled) setJustificationsLoading(false); });
+    return () => { cancelled = true; };
+  }, [companyId]);
 
   // Executa o motor analítico preditivo
   const rawAnomalies = useMemo(() => {
@@ -447,15 +456,6 @@ export default function FuelAuditWorkspace({
       return anom;
     });
   }, [rawAnomalies, justifiedAnomalies]);
-
-  // Salva justificativas
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_audit_justified', JSON.stringify(justifiedAnomalies));
-    } catch (e) {
-      console.warn('Erro ao salvar justificativas:', e);
-    }
-  }, [justifiedAnomalies]);
 
   // Filtros combinados
   const filteredAnomalies = useMemo(() => {
@@ -516,24 +516,22 @@ export default function FuelAuditWorkspace({
   };
 
   // Ação: Salvar Justificativa
-  const handleSaveJustification = () => {
+  const handleSaveJustification = async () => {
     if (!selectedAnomalyForModal || !justificationText.trim()) return;
-
-    setJustifiedAnomalies(prev => ({
-      ...prev,
-      [selectedAnomalyForModal.id]: {
-        text: justificationText.trim(),
-        user: 'Carlos Eduardo (Analista de Transporte)',
-        date: new Date().toLocaleDateString('pt-BR')
-      }
-    }));
-
-    setSelectedAnomalyForModal(null);
-    setJustificationText('');
+    setJustificationSaving(true); setJustificationsError('');
+    const payload = { text: justificationText.trim(), user: user?.user_metadata?.full_name || user?.email || 'Usuário autenticado', date: new Date().toISOString() };
+    try {
+      await saveCompanyOperationalRecord({ companyId, collection: 'fuel_audit_justifications', recordKey: selectedAnomalyForModal.id, payload, userId: user?.id });
+      setJustifiedAnomalies(prev => ({ ...prev, [selectedAnomalyForModal.id]: payload }));
+      setSelectedAnomalyForModal(null); setJustificationText('');
+    } catch (error) { setJustificationsError(error.message || 'Não foi possível salvar a justificativa.'); }
+    finally { setJustificationSaving(false); }
   };
 
   return (
     <div className="fuel-audit-workspace animate-fade-in" id="fuel-audit-workspace-root">
+      {justificationsLoading && <p role="status">Carregando justificativas da empresa…</p>}
+      {justificationsError && <p role="alert">{justificationsError}</p>}
       {/* 1. Header do Painel de Auditoria */}
       <div style={{
         display: 'flex',
@@ -1078,11 +1076,11 @@ export default function FuelAuditWorkspace({
               <button
                 type="button"
                 className="fuel-btn fuel-btn-primary"
-                disabled={!justificationText.trim()}
+                disabled={!justificationText.trim() || justificationSaving}
                 onClick={handleSaveJustification}
               >
                 <Check size={16} />
-                <span>Registrar e Aprovar Parecer</span>
+                <span>{justificationSaving ? 'Salvando…' : 'Registrar e Aprovar Parecer'}</span>
               </button>
             </div>
           </div>

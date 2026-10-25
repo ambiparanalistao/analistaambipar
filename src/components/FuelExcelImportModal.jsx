@@ -90,7 +90,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
     
     // Se for a Matriz Mensal (como a foto)
     if (sheetData.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' && sheetData.matrixResult) {
-      return sheetData.matrixResult.monthlyFuelExpenses.slice(0, 7);
+      return sheetData.matrixResult.matrixData.slice(0, 7);
     }
 
     // Se for tabela de abastecimentos padrão
@@ -131,18 +131,8 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
 
         // Caso 1: Matriz de Custos da Frota (Como a foto)
         if (sheetData.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' && sheetData.matrixResult) {
-          generatedRecords = sheetData.matrixResult.monthlyFuelExpenses;
-          totalImported = generatedRecords.length;
-
-          // Salva os custos de todas as categorias da frota (Manutenção, Pneus, IPVA, etc.)
-          try {
-            localStorage.setItem(
-              'ambipar_monthly_fleet_costs_2026', 
-              JSON.stringify(sheetData.matrixResult.matrixData)
-            );
-          } catch (e) {
-            console.warn('Erro ao salvar custos da frota:', e);
-          }
+          generatedRecords = [];
+          totalImported = sheetData.matrixResult.matrixData.length;
         } else {
           // Caso 2: Tabela de abastecimentos individuais
           const res = convertRowsToFuelRecords(
@@ -163,6 +153,8 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
           onImportComplete({
             records: generatedRecords,
             mode: importMode,
+            sheetFormat: sheetData.sheetFormat,
+            matrixData: sheetData.matrixResult?.matrixData || null,
             stats: {
               totalImported,
               skippedDuplicates,
@@ -404,9 +396,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
                       </strong>
                     </div>
                     <p style={{ margin: 0, fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.5 }}>
-                      Identificamos o <strong>Relatório de Custo Frota Mensal 2026</strong> com as categorias 
-                      (Combustíveis, Lubrificantes, Manutenção, Pneus, IPVA, Pedágios, Telemetria...). 
-                      Os custos mensais de combustível serão consolidados automaticamente nos indicadores da Central de Gestão.
+                      Identificamos uma matriz mensal de custos. Ela será copiada para revisão, sem converter totais estimados em abastecimentos ou alterar lançamentos existentes.
                     </p>
                   </div>
 
@@ -637,7 +627,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
                         checked={importMode === 'replace'} 
                         onChange={() => setImportMode('replace')}
                       />
-                      <span><strong>Substituir Tudo:</strong> define esta planilha como fonte única de dados.</span>
+                      <span><strong>Reprocessar planilha:</strong> mantém os lançamentos existentes e envia cópia para revisão.</span>
                     </label>
                   </div>
                 </div>
@@ -708,8 +698,8 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
                   <CheckCircle2 size={16} />
                   <span>
                     {sheetData.sheetFormat === 'MATRIZ_CUSTOS_MENSAL' 
-                      ? 'Confirmar e Importar Matriz da Frota Ambipar' 
-                      : `Confirmar e Importar ${(sheetData.totalRows || 0).toLocaleString('pt-BR')} Registros`}
+                      ? 'Copiar matriz para revisão' 
+                      : `Copiar ${(sheetData.totalRows || 0).toLocaleString('pt-BR')} registros para revisão`}
                   </span>
                 </>
               )}

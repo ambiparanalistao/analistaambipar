@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Route, 
   MapPin, 
@@ -24,30 +24,24 @@ import {
   Fuel,
   ShieldCheck
 } from 'lucide-react';
-import { AUDITED_RJ_ROUTES, AUDITED_RJ_CLIENTS } from '../data/auditedClientsRoutesData';
+import { supabase } from '../lib/supabaseClient';
 
-export default function RotasModule({ user, onNavigateEscala }) {
+export default function RotasModule({ user, companyId, onNavigateEscala }) {
   // Controle de Tela Cheia: 'list' (Catálogo Geral) | 'form' (Estúdio de Roteirização Tela Cheia)
   const [viewMode, setViewMode] = useState('list');
 
-  const [routes, setRoutes] = useState(() => {
-    try {
-      localStorage.removeItem('ambipar_real_routes');
-      const saved = localStorage.getItem('ambipar_user_routes_clean_v1');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const handleLoadAuditedRoutes = () => {
-    setRoutes(AUDITED_RJ_ROUTES);
-    try {
-      localStorage.setItem('ambipar_user_routes_clean_v1', JSON.stringify(AUDITED_RJ_ROUTES));
-    } catch (e) {
-      console.warn(e);
-    }
+  const [routes, setRoutes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const loadRoutes = async () => {
+    if (!supabase || !companyId) { setRoutes([]); setLoading(false); setError('Conecte uma empresa para carregar as rotas.'); return; }
+    setRoutes([]);
+    setLoading(true); setError('');
+    const { data, error: loadError } = await supabase.from('routes').select('*').eq('company_id', companyId).is('deleted_at', null).order('created_at', { ascending: false });
+    if (loadError) { setError(loadError.message); setRoutes([]); } else setRoutes((data || []).map(r => ({ ...r, tempo_estimado_horas: r.tempo_estimado_horas || '', pontos_parada: r.pontos_parada || [] })));
+    setLoading(false);
   };
+  useEffect(() => { loadRoutes(); }, [companyId]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoute, setSelectedRoute] = useState(null);
@@ -109,28 +103,23 @@ export default function RotasModule({ user, onNavigateEscala }) {
     setNewRouteForm(prev => ({ ...prev, pontos_parada: updated }));
   };
 
-  const handleSaveRoute = (e) => {
+  const handleSaveRoute = async (e) => {
     e.preventDefault();
     if (!newRouteForm.nome) {
       alert('Informe o nome da rota.');
       return;
     }
 
-    const newRoute = {
-      ...newRouteForm,
-      id: `ROTA-CUSTOM-${Date.now()}`,
-      codigo: `ROTA-RJ-${String(routes.length + 1).padStart(2, '0')}`,
-      distancia_km: Number(newRouteForm.distancia_km) || 60,
-      pedagios_previstos: 1
-    };
-
-    const updated = [newRoute, ...routes];
-    setRoutes(updated);
-    try {
-      localStorage.setItem('ambipar_user_routes_clean_v1', JSON.stringify(updated));
-    } catch (err) {
-      console.warn(err);
-    }
+    if (!supabase || !companyId) { setError('Conecte uma empresa antes de salvar.'); return; }
+    const payload = { company_id: companyId, created_by: user?.id || null, updated_by: user?.id || null,
+      nome: newRouteForm.nome.trim(), codigo: `ROTA-${String(routes.length + 1).padStart(3, '0')}`,
+      polo: newRouteForm.polo, tipo: newRouteForm.tipo, distancia_km: Number(newRouteForm.distancia_km) || null,
+      tempo_estimado_horas: newRouteForm.tempo_estimado_horas || null, pedagios_previstos: null,
+      veiculo_padrao: newRouteForm.veiculo_padrao, placa_sugerida: '', motorista_sugerido: '',
+      frequencia: newRouteForm.frequencia, pontos_parada: newRouteForm.pontos_parada };
+    const { data, error: saveError } = await supabase.from('routes').insert(payload).select('*').single();
+    if (saveError) { setError(saveError.message); return; }
+    setRoutes(rows => [data, ...rows]); setError('');
     setViewMode('list');
   };
 
@@ -461,7 +450,8 @@ export default function RotasModule({ user, onNavigateEscala }) {
       </div>
 
       {/* Grid de Cards das Rotas com Múltiplas Paradas ou Estado Limpo */}
-      {filteredRoutes.length === 0 ? (
+      {error && <div role="alert" className="card-panel">{error}<button type="button" onClick={loadRoutes}>Tentar novamente</button></div>}
+      {loading ? <div role="status" className="card-panel">Carregando rotas do banco…</div> : filteredRoutes.length === 0 ? (
         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', marginTop: '1.25rem', background: 'rgba(15, 23, 42, 0.4)', border: '1px dashed rgba(255, 255, 255, 0.12)', borderRadius: '12px' }}>
           <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(6, 182, 212, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
             <Route size={32} style={{ color: 'var(--accent-cyan)' }} />
@@ -470,7 +460,7 @@ export default function RotasModule({ user, onNavigateEscala }) {
             Nenhuma Rota Cadastrada no Sistema
           </h3>
           <p style={{ color: 'var(--text-muted)', maxWidth: '520px', margin: '0 auto 1.5rem', fontSize: '0.88rem', lineHeight: '1.5' }}>
-            O catálogo de rotas e circuitos está 100% limpo. Você pode criar novas rotas personalizadas com múltiplos endereços e paradas, ou carregar os modelos de corredores homologados do RJ.
+            Nenhuma rota cadastrada nesta empresa. Você pode criar uma rota com múltiplas paradas.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <button
@@ -481,15 +471,6 @@ export default function RotasModule({ user, onNavigateEscala }) {
             >
               <Plus size={18} />
               <span>+ Criar Nova Rota Multi-Endereços</span>
-            </button>
-            <button
-              type="button"
-              className="btn-secondary btn-icon-text"
-              onClick={handleLoadAuditedRoutes}
-              style={{ padding: '0.75rem 1.4rem', fontSize: '0.88rem' }}
-            >
-              <Sparkles size={16} />
-              <span>Carregar Modelos Homologados RJ</span>
             </button>
           </div>
         </div>

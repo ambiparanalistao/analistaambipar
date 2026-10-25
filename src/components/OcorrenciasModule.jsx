@@ -1,9 +1,10 @@
 import useFleetDirectory from '../hooks/useFleetDirectory';
 import {driverForVehicle} from '../utils/registryMatching';
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { vehicleCommand } from '../services/vehicleMaintenance';
 import { 
   AlertTriangle, 
-  PhoneCall, 
   CheckCircle2, 
   MapPin, 
   Truck,
@@ -13,14 +14,12 @@ import {
 
 export default function OcorrenciasModule({companyId}) {
  const directory=useFleetDirectory(companyId);
-  const [incidents, setIncidents] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_real_incidents');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [databaseLoading,setDatabaseLoading]=useState(true);
+  const [databaseError,setDatabaseError]=useState('');
+  const [saving,setSaving]=useState(false);
+  // Ocorrências antigas do navegador são preservadas para backup/revisão,
+  // mas não são exibidas no painel até terem vínculo confirmado com a empresa.
+  const [incidents, setIncidents] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
   const [newIncident, setNewIncident] = useState({
@@ -34,22 +33,39 @@ export default function OcorrenciasModule({companyId}) {
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_real_incidents', JSON.stringify(incidents));
-    } catch (err) {
-      console.warn('Erro ao salvar ocorrências:', err);
+    let cancelled=false;
+    async function loadOccurrences(){
+      if(!supabase||!companyId){setDatabaseLoading(false);setDatabaseError('Selecione uma empresa para consultar ocorrências.');return;}
+      setIncidents([]);setDatabaseLoading(true);setDatabaseError('');
+      const {data,error}=await supabase.from('vehicle_occurrences').select('*').eq('company_id',companyId).order('ocorreu_em',{ascending:false});
+      if(cancelled)return;
+      if(error){setDatabaseError(error.message);setDatabaseLoading(false);return;}
+      const persisted=(data||[]).map(row=>{
+        const vehicle=directory.vehicles.find(v=>v.id===row.vehicle_id),driver=directory.drivers.find(d=>d.id===row.driver_id);
+        return {id:row.id,type:row.tipo,severity:row.gravidade,vehiclePlate:vehicle?.placa||'',driver:driver?.nome||'',location:row.local||'',cargo:'',notes:row.descricao,time:new Date(row.ocorreu_em).toLocaleString('pt-BR'),status:'Registrada',createdAt:row.ocorreu_em};
+      });
+      setIncidents(persisted);
+      setDatabaseLoading(false);
     }
-  }, [incidents]);
+    loadOccurrences().catch(error=>{if(!cancelled){setDatabaseError(error.message||'Não foi possível carregar ocorrências.');setDatabaseLoading(false);}});
+    return()=>{cancelled=true;};
+  },[companyId,directory.vehicles,directory.drivers]);
 
-  const handleCreateIncident = (e) => {
+  const handleCreateIncident = async (e) => {
     e.preventDefault();
-    const created = {
-      ...newIncident,
-      id: `OC-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-      time: 'Agora mesmo',
-      status: 'Em Atendimento'
-    };
-    setIncidents([created, ...incidents]);
+    const vehicle=directory.vehicles.find(v=>v.placa===newIncident.vehiclePlate),driver=directory.drivers.find(d=>d.nome===newIncident.driver);
+    if(!vehicle){setDatabaseError('Selecione um veículo cadastrado nesta empresa.');return;}
+    if(!driver){setDatabaseError('Selecione um motorista cadastrado nesta empresa.');return;}
+    setSaving(true);setDatabaseError('');
+    const normalizedType=String(newIncident.type).toLowerCase();
+    const type=normalizedType.includes('acidente')?'acidente':normalizedType.includes('pneu')?'pneu':normalizedType.includes('elétrica')||normalizedType.includes('eletrica')?'pane_eletrica':normalizedType.includes('sinistro')?'sinistro':normalizedType.includes('quebra')?'quebra':'outros';
+    const description=[`Tipo informado: ${newIncident.type}`,`Carga transportada: ${newIncident.cargo}`,`Relato e providências: ${newIncident.notes}`].join('\n');
+    let row;
+    try{row=await vehicleCommand(companyId,'report',{vehicle_id:vehicle.id,driver_id:driver.id,tipo:type,gravidade:newIncident.severity,descricao:description,local:newIncident.location});}
+    catch(error){setDatabaseError(error.message||'Não foi possível gravar a ocorrência no Supabase.');setSaving(false);return;}
+    const created={...newIncident,id:row.id,time:new Date(row.ocorreu_em).toLocaleString('pt-BR'),createdAt:row.ocorreu_em,status:'Registrada'};
+    setIncidents(current=>[created,...current.filter(item=>String(item.id)!==String(created.id))]);
+    setSaving(false);
     setShowModal(false);
     setNewIncident({
       type: '',
@@ -86,22 +102,18 @@ export default function OcorrenciasModule({companyId}) {
             <span>Registrar Nova Ocorrência</span>
           </button>
 
-          <div className="emergency-callbox">
-            <PhoneCall size={20} className="phone-beacon" />
-            <div>
-              <span className="emergency-title">Plantão de Emergência Ambipar Response</span>
-              <strong>0800 123 4567 • 24 Horas</strong>
-            </div>
-          </div>
         </div>
       </div>
+
+      {databaseLoading&&<p role="status">Carregando ocorrências da empresa…</p>}
+      {databaseError&&<p role="alert" className="card-panel">{databaseError}</p>}
 
       {incidents.length === 0 ? (
         <div className="card-panel" style={{ textAlign: 'center', padding: '3.5rem 2rem' }}>
           <ShieldCheck size={48} style={{ color: 'var(--accent-emerald-light)', margin: '0 auto 1rem' }} />
           <h3 style={{ color: 'var(--text-main)', marginBottom: '0.5rem' }}>Nenhuma ocorrência registrada</h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', maxWidth: '500px', margin: '0 auto' }}>
-            Todas as frotas e operações de transporte estão operando normalmente e sem incidentes pendentes de atendimento.
+            Não há ocorrências registradas nesta lista.
           </p>
         </div>
       ) : (
@@ -171,7 +183,7 @@ export default function OcorrenciasModule({companyId}) {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Parada Preventiva de Freio, Vistoria Fiscal, Atraso..."
+                  placeholder="Informe o tipo de ocorrência"
                   value={newIncident.type}
                   onChange={(e) => setNewIncident({ ...newIncident, type: e.target.value })}
                 />
@@ -208,7 +220,7 @@ export default function OcorrenciasModule({companyId}) {
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Rod. Anhanguera km 120"
+                  placeholder="Informe o local ou referência"
                     value={newIncident.location}
                     onChange={(e) => setNewIncident({ ...newIncident, location: e.target.value })}
                   />
@@ -220,7 +232,7 @@ export default function OcorrenciasModule({companyId}) {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Borra Oleosa Classe I"
+                  placeholder="Informe a carga transportada, se aplicável"
                   value={newIncident.cargo}
                   onChange={(e) => setNewIncident({ ...newIncident, cargo: e.target.value })}
                 />
@@ -250,8 +262,9 @@ export default function OcorrenciasModule({companyId}) {
                 <button
                   type="submit"
                   className="btn-primary"
+                  disabled={saving}
                 >
-                  Registrar Ocorrência
+                  {saving?'Salvando…':'Registrar Ocorrência'}
                 </button>
               </div>
             </form>

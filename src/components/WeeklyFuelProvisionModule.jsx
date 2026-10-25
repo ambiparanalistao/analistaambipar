@@ -49,10 +49,6 @@ import {
 } from 'lucide-react';
 import {
   DEFAULT_CYCLE_SETTINGS,
-  AUDITED_REAL_FLEET_PROVISION,
-  INITIAL_WEEKLY_CYCLES,
-  INITIAL_APORTE_DOCUMENTS_HISTORY,
-  HISTORICAL_ACTIVE_FLEET_WEIGHTS,
   calculateCycleTotals,
   generateManagerWhatsAppMessage,
   exportCycleToCSV,
@@ -61,169 +57,113 @@ import {
   distributeByKm,
   printAporteDossierCleanWindow
 } from '../data/weeklyFuelProvisionData';
+import { supabase } from '../lib/supabaseClient';
 import './WeeklyFuelProvisionModule.css';
 
-export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
+export default function WeeklyFuelProvisionModule({ user, companyId, onNavigateModule }) {
   // Sincronização com o extrato real de abastecimentos do sistema
-  const [realFuelRecords, setRealFuelRecords] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_fuel_records_v1');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [realFuelRecords, setRealFuelRecords] = useState([]);
 
   // Estado de ciclos salvo localmente (Versão 8 - Quinta a Quarta Fechamento Quarta 17h)
-  const [cycles, setCycles] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_weekly_fuel_cycles_v8');
-      if (saved) return JSON.parse(saved);
-      ['v1','v2','v3','v4','v5','v6','v7'].forEach(v => {
-        localStorage.removeItem(`ambipar_weekly_fuel_cycles_${v}`);
-        localStorage.removeItem(`ambipar_aporte_documents_history_${v}`);
-        localStorage.removeItem(`ambipar_fuel_cycle_settings_${v}`);
-        localStorage.removeItem(`ambipar_fuel_is_global_${v}`);
-        localStorage.removeItem(`ambipar_fuel_target_total_${v}`);
-        localStorage.removeItem(`ambipar_fuel_custom_quotas_${v}`);
-      });
-      return INITIAL_WEEKLY_CYCLES;
-    } catch {
-      return INITIAL_WEEKLY_CYCLES;
-    }
-  });
+  const [cycles, setCycles] = useState([]);
 
   // Histórico de Documentos Gerados
-  const [documentsHistory, setDocumentsHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_aporte_documents_history_v8');
-      if (saved) return JSON.parse(saved);
-      return INITIAL_APORTE_DOCUMENTS_HISTORY;
-    } catch {
-      return INITIAL_APORTE_DOCUMENTS_HISTORY;
-    }
-  });
+  const [documentsHistory, setDocumentsHistory] = useState([]);
 
   // Configurações do ciclo
-  const [settings, setSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_fuel_cycle_settings_v8');
-      if (saved) return JSON.parse(saved);
-      return DEFAULT_CYCLE_SETTINGS;
-    } catch {
-      return DEFAULT_CYCLE_SETTINGS;
-    }
-  });
+  const [settings, setSettings] = useState(DEFAULT_CYCLE_SETTINGS);
 
   // OPÇÃO 1: Modalidade de Aporte (Com Divisão por Veículo OU Aporte Global Sem Divisão)
-  const [isGlobalAporte, setIsGlobalAporte] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_fuel_is_global_v8');
-      return saved !== null ? JSON.parse(saved) : false;
-    } catch {
-      return false;
-    }
-  });
+  const [isGlobalAporte, setIsGlobalAporte] = useState(false);
 
   // OPÇÃO 2: Formato de Emissão (COM Motivo Técnico Detalhado OU SEM Motivo Técnico)
   const [withTechnicalMotives, setWithTechnicalMotives] = useState(true);
 
-  // VALOR TOTAL ALVO DO APORTE (R$ 17.000,00 padrão, editável)
-  const [targetTotalAporte, setTargetTotalAporte] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_fuel_target_total_v8');
-      return saved ? Number(saved) : 17000.00;
-    } catch {
-      return 17000.00;
-    }
-  });
+  // Valor total alvo configurado pela empresa ou salvo neste navegador.
+  const [targetTotalAporte, setTargetTotalAporte] = useState(0);
 
   // COTAS CUSTOMIZADAS POR VEÍCULO (Edição Manual ou Ajuste Automático)
-  const [customVehicleQuotas, setCustomVehicleQuotas] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ambipar_fuel_custom_quotas_v8');
-      if (saved) return JSON.parse(saved);
-      const initial = {};
-      AUDITED_REAL_FLEET_PROVISION.forEach(v => {
-        initial[v.placa] = v.recebeAporteAmbipar ? v.solicitacaoAporteSugerido : 0;
+  const [customVehicleQuotas, setCustomVehicleQuotas] = useState({});
+  const [databaseLoading, setDatabaseLoading] = useState(true);
+  const [databaseError, setDatabaseError] = useState('');
+  const [databaseReady, setDatabaseReady] = useState(false);
+  const [settingsCompanyId, setSettingsCompanyId] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    const loadHistory = async () => {
+      if (!supabase || !companyId) {
+        setDatabaseReady(false); setSettingsCompanyId(''); setCycles([]); setDocumentsHistory([]); setRealFuelRecords([]);
+        setSettings(DEFAULT_CYCLE_SETTINGS); setIsGlobalAporte(false); setTargetTotalAporte(0); setCustomVehicleQuotas({});
+        setDatabaseLoading(false); return;
+      }
+      setDatabaseLoading(true); setDatabaseError('');
+      setDatabaseReady(false); setSettingsCompanyId(''); setCycles([]); setDocumentsHistory([]); setRealFuelRecords([]);
+      setSettings(DEFAULT_CYCLE_SETTINGS); setIsGlobalAporte(false); setTargetTotalAporte(0); setCustomVehicleQuotas({});
+      const [cycleResult, documentResult, settingsResult, fuelResult] = await Promise.all([
+        supabase.from('fuel_provision_cycles').select('*').eq('company_id', companyId).order('periodo_inicio', { ascending: false }),
+        supabase.from('fuel_provision_documents').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
+        supabase.from('fuel_provision_settings').select('settings').eq('company_id', companyId).maybeSingle(),
+        supabase.from('fuel_transactions').select('*').eq('company_id', companyId).order('occurred_at', { ascending: false }),
+      ]);
+      if (cancelled) return;
+      if (cycleResult.error || documentResult.error || settingsResult.error || fuelResult.error) {
+        setDatabaseError(cycleResult.error?.message || documentResult.error?.message || settingsResult.error?.message || fuelResult.error?.message || 'Não foi possível carregar o histórico financeiro.');
+        setDatabaseLoading(false); return;
+      }
+      const importedCycles = (cycleResult.data || []).map(row => {
+        const source = row.source_payload || {};
+        return { ...source, id: source.id || row.id, databaseId: row.id, nome: row.nome || source.nome || '',
+          periodoInicio: source.periodoInicio || row.periodo_inicio, periodoFim: source.periodoFim || row.periodo_fim,
+          dataCorteQuarta: source.dataCorteQuarta || row.data_corte, dataEnvioQuinta: source.dataEnvioQuinta || row.data_envio,
+          margemSegurancaPct: Number(row.margem_seguranca_pct) || 0, valorTotalAporteAlvo: Number(row.valor_total_aporte_alvo) || 0,
+          motivoGeralSolicitacao: row.motivo_geral || source.motivoGeralSolicitacao || '', veiculosAbastecidos: source.veiculosAbastecidos || [] };
       });
-      return initial;
-    } catch {
-      const initial = {};
-      AUDITED_REAL_FLEET_PROVISION.forEach(v => {
-        initial[v.placa] = v.recebeAporteAmbipar ? v.solicitacaoAporteSugerido : 0;
-      });
-      return initial;
-    }
-  });
+      setCycles(importedCycles);
+      const importedDocuments = (documentResult.data || []).map(row => ({ ...(row.snapshot || {}), id: row.snapshot?.id || row.id, databaseId: row.id,
+        numeroProtocolo: row.numero_protocolo || row.snapshot?.numeroProtocolo || '' }));
+      setDocumentsHistory(importedDocuments);
+      const savedSettings = settingsResult.data?.settings || {};
+      setSettings(savedSettings.profile || DEFAULT_CYCLE_SETTINGS);
+      setIsGlobalAporte(typeof savedSettings.isGlobalAporte === 'boolean' ? savedSettings.isGlobalAporte : false);
+      setTargetTotalAporte(Number(savedSettings.targetTotalAporte) || 0);
+      setCustomVehicleQuotas(savedSettings.customVehicleQuotas || {});
+      setRealFuelRecords((fuelResult.data || []).map(row => ({ ...(row.source_payload || {}), id: row.source_payload?.id || row.source_key || row.id,
+        placa: row.source_payload?.placa || row.placa_snapshot || '', data_abastecimento: row.source_payload?.data_abastecimento || row.occurred_at?.slice(0,10) || '',
+        tipo_combustivel: row.source_payload?.tipo_combustivel || row.combustivel || '', litros: row.source_payload?.litros ?? row.litros ?? 0,
+        valor_total: row.source_payload?.valor_total ?? row.valor_total ?? 0 })));
+      setSettingsCompanyId(companyId);
+      setDatabaseReady(true);
+      setDatabaseLoading(false);
+    };
+    loadHistory().catch(error => { if (!cancelled) { setDatabaseError(error.message || 'Falha ao carregar o histórico.'); setDatabaseLoading(false); } });
+    return () => { cancelled = true; };
+  }, [companyId]);
 
+  useEffect(() => {
+    if (!databaseReady || settingsCompanyId !== companyId || !supabase || !companyId) return;
+    supabase.from('fuel_provision_settings').upsert({ company_id: companyId, updated_by: user?.id || null,
+      settings: { profile: settings, isGlobalAporte, targetTotalAporte, customVehicleQuotas } }, { onConflict: 'company_id' })
+      .then(({ error }) => { if (error) setDatabaseError(error.message); });
+  }, [databaseReady, settingsCompanyId, companyId, user?.id, settings, isGlobalAporte, targetTotalAporte, customVehicleQuotas]);
   // Modo de distribuição ativo ('historical' | 'equal' | 'km' | 'manual')
   const [distributionMode, setDistributionMode] = useState('historical');
 
   // Trava de segurança para veículos da Vale (evita edição acidental)
   const [allowValeOverride, setAllowValeOverride] = useState(false);
 
-  // Persistência no LocalStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_weekly_fuel_cycles_v8', JSON.stringify(cycles));
-    } catch (e) {
-      console.warn('Erro ao salvar ciclos:', e);
-    }
-  }, [cycles]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_aporte_documents_history_v8', JSON.stringify(documentsHistory));
-    } catch (e) {
-      console.warn('Erro ao salvar documentos:', e);
-    }
-  }, [documentsHistory]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_fuel_cycle_settings_v8', JSON.stringify(settings));
-    } catch (e) {
-      console.warn('Erro ao salvar configurações do ciclo:', e);
-    }
-  }, [settings]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_fuel_is_global_v8', JSON.stringify(isGlobalAporte));
-    } catch (e) {
-      console.warn('Erro ao salvar modalidade de aporte:', e);
-    }
-  }, [isGlobalAporte]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_fuel_target_total_v8', String(targetTotalAporte));
-    } catch (e) {
-      console.warn('Erro ao salvar valor alvo do aporte:', e);
-    }
-  }, [targetTotalAporte]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('ambipar_fuel_custom_quotas_v8', JSON.stringify(customVehicleQuotas));
-    } catch (e) {
-      console.warn('Erro ao salvar cotas customizadas:', e);
-    }
-  }, [customVehicleQuotas]);
-
   // Ciclo Ativo
-  const [selectedCycleId, setSelectedCycleId] = useState(cycles[0]?.id || 'CICLO-2026-W43');
+  const [selectedCycleId, setSelectedCycleId] = useState(cycles[0]?.id || '');
+  useEffect(() => { if (!selectedCycleId && cycles[0]?.id) setSelectedCycleId(cycles[0].id); }, [cycles, selectedCycleId]);
   const activeCycle = useMemo(() => {
-    return cycles.find(c => c.id === selectedCycleId) || cycles[0];
+    return cycles.find(c => c.id === selectedCycleId) || cycles[0] || { id: '', nome: '', veiculosAbastecidos: [] };
   }, [cycles, selectedCycleId]);
 
   // NOVO: FILTRO AMIGÁVEL POR DIA / PERÍODO
-  // Ciclo Operacional Central de Gestão: Quinta a Quarta (Quinta 15/10 a Quarta 21/10)
+  // O período é lido do ciclo selecionado.
   // 'ALL' = Semana Completa de Quinta a Quarta
   // 'YYYY-MM-DD' = Filtro de dia específico
   const [selectedDayFilter, setSelectedDayFilter] = useState('ALL');
-  const [customDateInput, setCustomDateInput] = useState('2026-10-21');
+  const [customDateInput, setCustomDateInput] = useState(() => new Date().toISOString().slice(0, 10));
 
   // REGRA DE OURO SOLICITADA PELO USUÁRIO:
   // "O ideal era aparecer no aporte somente os veículos que foram abastecidos naquele período"
@@ -231,11 +171,11 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   const [onlyFueledVehicles, setOnlyFueledVehicles] = useState(true);
 
   // Margem de contingência operacional ajustável (padrão 11.8%)
-  const [contingencyPct, setContingencyPct] = useState(activeCycle?.margemSegurancaPct || 11.8);
+  const [contingencyPct, setContingencyPct] = useState(activeCycle?.margemSegurancaPct || 0);
 
   // Formatação amigável de datas
   const formatDateFriendly = (dateStr) => {
-    if (!dateStr || dateStr === 'ALL') return 'Semana Completa (15 a 21/10/2026 · Qui a Qua)';
+    if (!dateStr || dateStr === 'ALL') return 'Período completo';
     const [ano, mes, dia] = dateStr.split('-');
     const d = new Date(Number(ano), Number(mes) - 1, Number(dia));
     const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -243,18 +183,17 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     return `${nomeDia}, ${dia}/${mes}/${ano}`;
   };
 
-  // Os 7 dias do ciclo operacional Central de Gestão: Quinta a Quarta
   const cycleDays = useMemo(() => {
-    return [
-      { date: '2026-10-15', label: 'Quinta (15/10)', dia: 'Quinta-feira' },
-      { date: '2026-10-16', label: 'Sexta (16/10)', dia: 'Sexta-feira' },
-      { date: '2026-10-17', label: 'Sábado (17/10)', dia: 'Sábado' },
-      { date: '2026-10-18', label: 'Domingo (18/10)', dia: 'Domingo' },
-      { date: '2026-10-19', label: 'Segunda (19/10)', dia: 'Segunda-feira' },
-      { date: '2026-10-20', label: 'Terça (20/10)', dia: 'Terça-feira' },
-      { date: '2026-10-21', label: 'Quarta (21/10)', dia: 'Quarta-feira', isClosing: true }
-    ];
-  }, []);
+    const start = new Date(`${activeCycle.periodoInicio || activeCycle.dataCorteQuarta || ''}T00:00:00`);
+    const end = new Date(`${activeCycle.periodoFim || activeCycle.dataCorteQuarta || ''}T00:00:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return [];
+    const days = [];
+    for (const date = new Date(start); date <= end && days.length < 31; date.setDate(date.getDate() + 1)) {
+      const iso = date.toISOString().slice(0, 10);
+      days.push({ date: iso, label: date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }), dia: date.toLocaleDateString('pt-BR', { weekday: 'long' }), isClosing: iso === String(activeCycle.dataCorteQuarta || '').slice(0, 10) });
+    }
+    return days;
+  }, [activeCycle]);
 
   // Contagem de abastecimentos por dia no ciclo ativo
   const dayCounts = useMemo(() => {
@@ -270,14 +209,15 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   }, [activeCycle]);
 
   // Alerta de abastecimento após o corte da quarta-feira 17h
-  const isAfterCutoff = selectedDayFilter !== 'ALL' && selectedDayFilter >= '2026-10-22';
+  const cutoffDay = String(activeCycle.dataCorteQuarta || activeCycle.periodoFim || '').slice(0, 10);
+  const isAfterCutoff = Boolean(cutoffDay && selectedDayFilter !== 'ALL' && selectedDayFilter > cutoffDay);
 
   // Processamento dinâmico da frota com base no período e data de abastecimento
   const processedFleet = useMemo(() => {
     if (!activeCycle?.veiculosAbastecidos) return [];
 
     return activeCycle.veiculosAbastecidos.map(v => {
-      const isVale = !v.recebeAporteAmbipar;
+      const isVale = v.recebeAporteAmbipar === false || v.isValeOperation === true;
       const allSupplies = v.abastecimentosDetalhe || [];
 
       // Filtra abastecimentos pela data se um dia específico foi selecionado
@@ -304,10 +244,10 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         suppliesInPeriod,
         hasSupplies,
         periodSuppliesCount: suppliesInPeriod.length,
-        periodGasto: selectedDayFilter === 'ALL' ? v.valorTotalGasto : periodGasto,
-        periodDiesel: selectedDayFilter === 'ALL' ? v.litrosDieselTotal : periodDiesel,
-        periodArla: selectedDayFilter === 'ALL' ? v.litrosArlaTotal : periodArla,
-        periodKm: selectedDayFilter === 'ALL' ? v.kmRodado : (hasSupplies ? Math.round(v.kmRodado / (allSupplies.length || 1)) : 0),
+        periodGasto: selectedDayFilter === 'ALL' ? Number(v.valorTotalGasto) || 0 : periodGasto,
+        periodDiesel: selectedDayFilter === 'ALL' ? Number(v.litrosDieselTotal) || 0 : periodDiesel,
+        periodArla: selectedDayFilter === 'ALL' ? Number(v.litrosArlaTotal) || 0 : periodArla,
+        periodKm: selectedDayFilter === 'ALL' ? Number(v.kmRodado) || 0 : (hasSupplies ? Math.round((Number(v.kmRodado) || 0) / (allSupplies.length || 1)) : 0),
         periodMargin: selectedDayFilter === 'ALL' ? (v.margemSegurancaRS || 0) : Number((periodGasto * (contingencyPct / 100)).toFixed(2)),
         periodDias: periodDias.length > 0 ? periodDias : v.diasAbastecimento
       };
@@ -326,7 +266,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   // Filtros e busca
   const [searchTerm, setSearchTerm] = useState('');
-  const [operationFilter, setOperationFilter] = useState('Todas as Operações (21)');
+  const [operationFilter, setOperationFilter] = useState('Todas');
   const [copySuccess, setCopySuccess] = useState(false);
   const [showMotivoDetails, setShowMotivoDetails] = useState(true);
 
@@ -374,17 +314,14 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
       }
 
       const matchSearch =
-        v.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.prefixo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.operacao.toLowerCase().includes(searchTerm.toLowerCase());
+        String(v.placa || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(v.modelo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(v.prefixo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(v.operacao || '').toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchOp =
-        operationFilter === 'Todas as Operações (21)' ||
         operationFilter === 'Todas' ||
-        (operationFilter === 'Ambipar Abank (15)' && v.recebeAporteAmbipar) ||
-        (operationFilter === 'Contrato Vale S.A. (6)' && v.isValeOperation) ||
-        (operationFilter === 'Amazon Meriti GIG 1/7' && (v.isSporadicGIG || v.operacao.includes('Amazon')));
+        operationFilter === v.operacao;
       return matchSearch && matchOp;
     });
   }, [processedFleet, onlyFueledVehicles, searchTerm, operationFilter]);
@@ -409,12 +346,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   }, [filteredVehicles]);
 
   // Operações para filtro rápido
-  const availableOperations = [
-    'Todas as Operações (21)',
-    'Ambipar Abank (15)',
-    'Contrato Vale S.A. (6)',
-    'Amazon Meriti GIG 1/7'
-  ];
+  const availableOperations = ['Todas', ...new Set(processedFleet.map(v => v.operacao).filter(Boolean))];
 
   // AÇÕES DO ASSISTENTE AUTOMÁTICO DE DISTRIBUIÇÃO
   const handleApplyHistorical = () => {
@@ -436,8 +368,9 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   };
 
   const handleResetDefault = () => {
-    setTargetTotalAporte(17000.00);
-    const quotas = distributeByHistoricalWeight(17000.00, activeCycle.veiculosAbastecidos);
+    const defaultTarget = Number(activeCycle.valorTotalAporteAlvo) || 0;
+    setTargetTotalAporte(defaultTarget);
+    const quotas = distributeByHistoricalWeight(defaultTarget, activeCycle.veiculosAbastecidos);
     setCustomVehicleQuotas(quotas);
     setDistributionMode('historical');
   };
@@ -452,13 +385,14 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   };
 
   const handleAutoBalanceDifference = () => {
-    // Aloca a diferença pendente no cavalo mecânico rodoviário (EWX-0I82), maior consumidor
+    const vehicle = activeCycle.veiculosAbastecidos.find(v => v.recebeAporteAmbipar !== false);
+    if (!vehicle) return;
     setCustomVehicleQuotas(prev => {
-      const currentEwx = prev['EWX-0I82'] !== undefined ? Number(prev['EWX-0I82']) : 6200;
-      const adjusted = Math.max(0, currentEwx + balanceDifference);
+      const current = Number(prev[vehicle.placa] ?? vehicle.solicitacaoAporteSugerido) || 0;
+      const adjusted = Math.max(0, current + balanceDifference);
       return {
         ...prev,
-        'EWX-0I82': Number(adjusted.toFixed(2))
+        [vehicle.placa]: Number(adjusted.toFixed(2))
       };
     });
   };
@@ -491,12 +425,13 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   };
 
   // GERAR DOCUMENTO OFICIAL DE APORTE (Abre em tela cheia com protocolo oficial salvo)
-  const handleGenerateOfficialDocument = () => {
+  const handleGenerateOfficialDocument = async () => {
+    if (!activeCycle.id || !companyId || !supabase) { setDatabaseError('Selecione uma empresa e um ciclo antes de emitir o documento.'); return; }
     const nextSeq = documentsHistory.length + 1;
-    const protocolCode = `AMB-APORTE-${activeCycle.id.replace('CICLO-', '')}/${String(nextSeq).padStart(3, '0')}`;
+    const protocolCode = `APORTE-${String(activeCycle.periodoInicio || new Date().toISOString().slice(0,10)).replaceAll('-', '')}-${String(nextSeq).padStart(3, '0')}`;
     
     const newDoc = {
-      id: `DOC-APORTE-ABK-${Date.now()}`,
+      id: crypto.randomUUID(),
       numeroProtocolo: protocolCode,
       cicloId: activeCycle.id,
       cicloNome: activeCycle.nome,
@@ -519,12 +454,15 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
       customQuotas: customVehicleQuotas,
       status: 'PRONTO_ENVIO',
       statusLabel: 'Emitido · Aguardando Liberação Abank pelo Gestor',
-      motivoGeral: isGlobalAporte
-        ? `Aporte Global Unificado de R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} na Conta Master Abank sem divisão rígida por veículo. Veículos da Vale mantidos em R$ 0,00.`
-        : `Aporte Semanal com Divisão de Cotas individuais nos cartões Abank da frota ativa. Veículos da Vale mantidos em R$ 0,00.`,
+      motivoGeral: activeCycle.motivoGeralSolicitacao || '',
       veiculos: filteredVehicles
     };
-
+    const { error } = await supabase.from('fuel_provision_documents').insert({ company_id: companyId,
+      source_key: newDoc.id, cycle_id: activeCycle.databaseId || null, numero_protocolo: protocolCode,
+      data_fechamento: String(activeCycle.dataCorteQuarta || '').slice(0,10) || null,
+      data_solicitacao: new Date().toISOString().slice(0,10), snapshot: newDoc, created_by: user?.id || null });
+    if (error) { setDatabaseError(error.message || 'Não foi possível salvar o relatório no Supabase.'); return; }
+    setDatabaseError('');
     setDocumentsHistory(prev => [newDoc, ...prev]);
     setActiveDossierDocument(newDoc);
     setViewMode('dossier');
@@ -547,9 +485,11 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   };
 
   // SE ESTIVER EM MODO DOSSIÊ TIMBRADO PARA IMPRESSÃO / PDF (TELA CHEIA, ZERO POP-UP)
+  if (databaseLoading && !cycles.length) return <section className="weekly-fuel-provision-module" role="status">Carregando histórico financeiro da empresa…</section>;
+  if (!activeCycle.id && viewMode !== 'dossier') return <section className="weekly-fuel-provision-module"><h1>Aporte semanal</h1>{databaseError && <p role="alert">{databaseError}</p>}<p>Nenhum ciclo de aporte está cadastrado para esta empresa.</p></section>;
   if (viewMode === 'dossier') {
     const docToDisplay = activeDossierDocument || {
-      numeroProtocolo: 'AMB-APORTE-2026-W43/001',
+      numeroProtocolo: '',
       dataFechamento: activeCycle.dataCorteQuarta,
       dataSolicitacao: activeCycle.dataEnvioQuinta,
       gestorNome: settings.gestorNome,
@@ -678,7 +618,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <strong style={{ color: '#166534', fontSize: '1.18rem' }}>
                   R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </strong>
-                <span>{isDocGlobal ? 'Conta Master Central Abank' : '5 Veículos Abank | 2 Vale (R$ 0,00)'}</span>
+                <span>{isDocGlobal ? 'Aporte global' : `${docToDisplay.totalVeiculos || 0} veículos no ciclo`}</span>
               </div>
             </div>
 
@@ -690,9 +630,9 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                   O saldo de <strong>R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> é solicitado como aporte único e centralizado na <strong>Conta Master Abank Frota Corporativa</strong>, sem divisões rígidas prévias de limites por cartão.
                 </p>
                 <div className="global-motivos-list">
-                  <div>• <strong>Flexibilidade Dinâmica:</strong> Permite à Torre de Controle Central de Gestão suprir as demandas diárias dos 5 caminhões ativos da frota Ambipar sem travas rígidas de teto individual por cartão, adaptando-se a itinerários que demandem mais quilometragem na semana.</div>
-                  <div>• <strong>Cobertura sob Demanda (Amazon CD Meriti - GIG 1 e GIG 7):</strong> Absorve saídas e viagens esporádicas imediatamente assim que solicitadas, sem necessidade de remanejamento burocrático de saldos entre cartões.</div>
-                  <div>• <strong>Isenção da Vale S.A. (Cota R$ 0,00):</strong> Os veículos <strong>RHU-6I87</strong> e <strong>GEB-8C37</strong> NÃO consomem este saldo global, pois são 100% abastecidos nos terminais do cliente Vale.</div>
+                  <div>• <strong>Alocação centralizada:</strong> O valor fica disponível para distribuição conforme os abastecimentos registrados no ciclo.</div>
+                  <div>• <strong>Referência do período:</strong> {activeCycle.periodoInicio || 'Não informado'} a {activeCycle.periodoFim || 'Não informado'}.</div>
+                  <div>• <strong>Veículos incluídos:</strong> {(docToDisplay.veiculos || activeCycle.veiculosAbastecidos || []).length} registros associados ao ciclo.</div>
                 </div>
               </div>
             )}
@@ -703,20 +643,20 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <h3>1. JUSTIFICATIVA TÉCNICA E OPERACIONAL DO VALOR SOLICITADO (R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</h3>
                 <div className="motivo-content">
                   <p>
-                    <strong>Fundamentação de Cálculo:</strong> O valor semanal de <strong>R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> é dimensionado com base no consumo histórico das transferências rodoviárias, coletas industriais e contingências da frota da Ambipar.
+                    <strong>Justificativa informada:</strong> {docToDisplay.motivoGeral || 'Nenhuma justificativa foi informada para este ciclo.'}
                   </p>
                   <div className="motivo-bullets">
                     <div className="bullet-row">
-                      <strong>• Veículos da Operação Vale S.A. (Cota R$ 0,00):</strong> Os veículos <strong>RHU-6I87</strong> (Poli Duplo TIG Guaíba) e <strong>GEB-8C37</strong> (Delivery Baú Niterói) <em>NÃO recebem abastecimento da nossa parte e não possuem Cartão Abank</em>. O abastecimento desses veículos é 100% fornecido internamente pela Vale em seus terminais/minas e, por isso, suas cotas estão devidamente zeradas no aporte financeiro da Ambipar.
+                      <strong>• Registros sem aporte:</strong> {(docToDisplay.veiculos || activeCycle.veiculosAbastecidos || []).filter(v => v.recebeAporteAmbipar === false || v.isValeOperation === true).length} veículos estão marcados no ciclo como não elegíveis ao aporte.
                     </div>
                     <div className="bullet-row">
-                      <strong>• Amazon CD Meriti (GIG 1 / GIG 7 - Solicitação Esporádica):</strong> O atendimento aos CDs da Amazon GIG 1 e GIG 7 ocorre em caráter esporádico e sob demanda (não é rota fixa diária). A provisão alocada contempla saldo de prontidão no Cartão Abank para saídas imediatas quando a solicitação é emitida.
+                      <strong>• Operações especiais:</strong> {docToDisplay.motivoGeral || 'Nenhuma regra operacional especial foi registrada para este ciclo.'}
                     </div>
                     <div className="bullet-row">
-                      <strong>• Consumo em Tomada de Força (PTO):</strong> Caminhão de Hidrovácuo (FMB-1H09) opera com motor a 1.400 RPM em sucção contínua e basculamento sem rodar odômetro.
+                      <strong>• Consumo com veículo parado:</strong> Registre essa condição na justificativa do ciclo quando aplicável.
                     </div>
                     <div className="bullet-row">
-                      <strong>• Margem Significativa de Segurança (+11.8% = R$ {docToDisplay.valorMargemSeguranca.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}):</strong> Margem técnica indispensável para cobrir retenções de trânsito intenso na Rodovia Presidente Dutra, Avenida Brasil e Linha Vermelha, garantindo que nenhum caminhão de resíduos perigosos sofra pane seca em trânsito.
+                      <strong>• Margem de segurança:</strong> R$ {docToDisplay.valorMargemSeguranca.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}, conforme a taxa configurada para este ciclo.
                     </div>
                   </div>
                 </div>
@@ -741,7 +681,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 </thead>
                 <tbody>
                   {(docToDisplay.veiculos || activeCycle.veiculosAbastecidos).map(v => {
-                    const isVale = !v.recebeAporteAmbipar;
+                    const isVale = v.recebeAporteAmbipar === false || v.isValeOperation === true;
                     const quota = quotasInDoc && quotasInDoc[v.placa] !== undefined 
                       ? quotasInDoc[v.placa] 
                       : v.solicitacaoAporteSugerido;
@@ -906,7 +846,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <span>
                   {v.recebeAporteAmbipar 
                     ? 'Comprovantes de Abastecimento Realizados na Semana (Corte Quarta 17h)' 
-                    : 'Registro de Abastecimento Interno pelo Cliente Vale S.A.'}
+                    : 'Sem registro de cartão/aporte neste ciclo'}
                 </span>
               </h3>
               <span className="count-badge">
@@ -962,7 +902,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                   <div>
                     <h4 style={{ color: '#ffffff', margin: '0 0 4px 0' }}>Veículo com Abastecimento Fornecido pela Vale</h4>
                     <p style={{ margin: 0, color: '#94a3b8' }}>
-                      Este caminhão opera dedicado ao contrato da Vale S.A. Os abastecimentos ocorrem diretamente na estrutura do cliente e não geram transações no Cartão Abank da Ambipar, justificando a cota R$ 0,00 no aporte semanal.
+                      Este veículo está marcado como não elegível ao aporte neste ciclo. Confira o cadastro e a justificativa operacional antes de emitir o relatório.
                     </p>
                   </div>
                 </div>
@@ -1057,12 +997,11 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         <div className="banner-badge-col">
           <div className="status-pulse-pill">
             <span className="pulse-dot"></span>
-            <span>FECHAMENTO QUARTA-FEIRA À TARDE (17:00H) · CARTÃO ABANK FROTA</span>
+            <span>{activeCycle.dataCorteQuarta ? `Fechamento: ${new Date(activeCycle.dataCorteQuarta).toLocaleString('pt-BR')}` : 'Ciclo de aporte da empresa'}</span>
           </div>
           <h1>Aporte Semanal & Solicitação de Saldo de Combustível</h1>
           <p>
-            Consolidação dos gastos reais para solicitação de <strong>R$ {targetTotalAporte.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> no Cartão Abank toda <strong>quinta-feira pela manhã</strong>.
-            Matriz completa com os <strong>21 veículos da base</strong> (15 veículos Ambipar + 6 veículos dedicados à Vale S.A. com cota R$ 0,00).
+            Consolidação dos dados do ciclo selecionado para preparar a solicitação de aporte. Convênio: <strong>{settings.convenioPadrao || 'não informado'}</strong>.
           </p>
         </div>
 
@@ -1085,9 +1024,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 >
                   {cycles.map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.nome || (c.id === 'CICLO-2026-W43' 
-                        ? 'Semana Atual · 15 a 21/Out/2026 (Quinta a Quarta · Fechamento Quarta)' 
-                        : 'Semana Anterior · 08 a 14/Out/2026 (Quinta a Quarta)')}
+                      {c.nome || `${c.periodoInicio || 'Início não informado'} a ${c.periodoFim || 'fim não informado'}`}
                     </option>
                   ))}
                 </select>
@@ -1095,7 +1032,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
               <div className="period-routine-tag">
                 <Clock size={13} className="text-cyan" />
-                <span>Ciclo: Quinta a Quarta · Fechamento Quarta 17:00h ➔ Solicitação Quinta 08:00h</span>
+                <span>Período: {activeCycle.periodoInicio || '—'} a {activeCycle.periodoFim || '—'} · Envio: {activeCycle.dataEnvioQuinta ? new Date(activeCycle.dataEnvioQuinta).toLocaleString('pt-BR') : 'não informado'}</span>
               </div>
             </div>
 
@@ -1109,7 +1046,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               >
                 <CalendarDays size={14} />
                 <span>Semana Completa</span>
-                <span className="day-count-badge">15 veíc.</span>
+                <span className="day-count-badge">{activeCycle.veiculosAbastecidos.length} veículos</span>
               </button>
 
               {cycleDays.map(cd => {
@@ -1146,8 +1083,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                     setCustomDateInput(val);
                     setSelectedDayFilter(val);
                   }}
-                  min="2026-10-01"
-                  max="2026-10-31"
+                  min={activeCycle.periodoInicio || undefined}
                 />
                 {selectedDayFilter !== 'ALL' && (
                   <button
@@ -1178,7 +1114,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               type="button"
               className="btn-action-clean-pdf"
               onClick={() => handlePrintCleanStandalone({
-                numeroProtocolo: 'AMB-APORTE-2026-W43/PREVIEW',
+                numeroProtocolo: 'PRÉVIA',
                 valorTotalSolicitado: totals.totalAporteSugerido,
                 valorGastoReal: totals.totalGasto,
                 valorMargemSeguranca: totals.margemTotalRS,
@@ -1240,7 +1176,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <strong>Abastecimento de Quinta-feira ({formatDateFriendly(selectedDayFilter)}) em Diante:</strong>
             <p>
               Conforme a regra do Central de Gestão, o fechamento dos abastecimentos para o aporte de quinta-feira encerra na <strong>quarta-feira às 17h00</strong>. 
-              Abastecimentos a partir de quinta-feira <strong>já pertencem ao próximo ciclo semanal</strong>. O aporte atual contempla exclusivamente o período de <strong>Quinta (15/10) a Quarta (21/10)</strong>.
+              O período considerado é o intervalo cadastrado no ciclo selecionado. Registros fora desse intervalo pertencem a outro ciclo.
             </p>
           </div>
           <button
@@ -1328,7 +1264,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               type="button"
               className={`btn-toggle-option ${withTechnicalMotives ? 'active' : ''}`}
               onClick={() => setWithTechnicalMotives(true)}
-              title="Inclui os 4 pilares técnicos, justificativa de cota R$ 0,00 na Vale e notas da Amazon"
+              title="Inclui a justificativa e as observações cadastradas no ciclo"
             >
               <CheckCircle2 size={14} />
               <span>COM Motivo Técnico Detalhado</span>
@@ -1380,11 +1316,11 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           <div className="global-banner-footer">
             <div className="global-rule-pill">
               <ShieldCheck size={14} color="#f59e0b" />
-              <span><strong>Regra Vale S.A.:</strong> Caminhões RHU-6I87 e GEB-8C37 estão excluídos deste aporte (abastecimento 100% pelo cliente na mina/terminal).</span>
+              <span><strong>Veículos não elegíveis:</strong> os marcados no cadastro como fora do aporte serão excluídos da divisão.</span>
             </div>
             <div className="global-rule-pill">
               <Sparkles size={14} color="#38bdf8" />
-              <span><strong>Amazon Meriti (GIG 1 / GIG 7):</strong> Viagens esporádicas e sob demanda são atendidas diretamente pelo saldo Master.</span>
+              <span><strong>Aporte global:</strong> o valor permanece centralizado quando essa modalidade estiver selecionada.</span>
             </div>
           </div>
         </section>
@@ -1440,7 +1376,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 title="Divide o total igualmente entre os 5 veículos ativos da Ambipar"
               >
                 <Sliders size={15} />
-                <span>⚖️ Dividir Igualmente entre os 5 Veículos Ativos</span>
+                <span>⚖️ Dividir igualmente entre os veículos elegíveis</span>
               </button>
 
               <button
@@ -1457,10 +1393,10 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 type="button"
                 className="btn-preset-reset"
                 onClick={handleResetDefault}
-                title="Restaura a grade oficial calibrada de R$ 17.000,00 da Ambipar"
+                title="Restaura o valor alvo cadastrado para o ciclo selecionado"
               >
                 <RefreshCw size={15} />
-                <span>🔄 Restaurar Padrão Central de Gestão (R$ 17.000,00)</span>
+                <span>🔄 Restaurar valor do ciclo</span>
               </button>
             </div>
 
@@ -1488,9 +1424,9 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                     type="button"
                     className="btn-balance-fix"
                     onClick={handleAutoBalanceDifference}
-                    title="Aloca o saldo excedente/faltante automaticamente no EWX-0I82 (cavalo mecânico de maior percurso)"
+                    title="Aloca o saldo excedente ou faltante no primeiro veículo elegível"
                   >
-                    <span>⚡ Ajustar Diferença no EWX-0I82</span>
+                    <span>⚡ Ajustar diferença automaticamente</span>
                   </button>
 
                   <button
@@ -1508,7 +1444,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         </section>
       )}
 
-      {/* Card Oficial do Motivo da Solicitação dos R$ 17.000,00 e Margem Técnica */}
+      {/* Justificativa registrada para o ciclo ativo */}
       <section className="motivo-solicitacao-card">
         <div className="motivo-card-header" onClick={() => setShowMotivoDetails(!showMotivoDetails)}>
           <div className="motivo-header-left">
@@ -1517,7 +1453,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             </div>
             <div>
               <h3>Justificativa Operacional do Aporte & Regras de Atendimento</h3>
-              <p>Critérios técnicos do valor solicitado no Abank, isenção da Vale e atendimento esporádico da Amazon Meriti.</p>
+              <p>Justificativa e critérios operacionais informados para este ciclo.</p>
             </div>
           </div>
           <button type="button" className="btn-toggle-motivo">
@@ -1531,16 +1467,16 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               <div className="pillar-item pillar-vale">
                 <div className="pillar-num" style={{ background: '#f59e0b' }}>1</div>
                 <div>
-                  <strong style={{ color: '#fbbf24' }}>Veículos da Vale S.A. (Cota R$ 0,00):</strong>
-                  <span>Os caminhões dedicados à Vale (RHU-6I87 e GEB-8C37) <strong>não recebem abastecimento da nossa parte e não têm Cartão Abank</strong>. O diesel é 100% fornecido internamente pelo cliente em seus terminais.</span>
+                  <strong style={{ color: '#fbbf24' }}>Veículos sem aporte:</strong>
+                  <span>{totals.veiculosValeZero} veículo(s) estão marcados como não elegíveis neste ciclo.</span>
                 </div>
               </div>
 
               <div className="pillar-item pillar-amazon">
                 <div className="pillar-num" style={{ background: '#0284c7' }}>2</div>
                 <div>
-                  <strong style={{ color: '#38bdf8' }}>Amazon CD Meriti (GIG 1 / GIG 7 - Esporádico):</strong>
-                  <span>A demanda com os CDs GIG 1 e GIG 7 da Amazon é <strong>esporádica / sob demanda</strong> (não é rota fixa diária). A provisão do aporte garante saldo de prontidão no Abank para quando o chamado for aberto.</span>
+                  <strong style={{ color: '#38bdf8' }}>Observações do ciclo:</strong>
+                  <span>{activeCycle.motivoGeralSolicitacao || 'Nenhuma observação adicional foi cadastrada.'}</span>
                 </div>
               </div>
 
@@ -1562,7 +1498,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             </div>
 
             <div className="motivo-summary-bar">
-              <span><strong>Memória de Cálculo:</strong> 5 Veículos Ativos Ambipar (R$ {totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} gasto previsto + R$ {totals.margemTotalRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} margem técnica) = <strong>R$ {totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} no Abank</strong> | 2 Veículos Vale = <strong>R$ 0,00</strong></span>
+              <span><strong>Memória de cálculo:</strong> gasto do período R$ {totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} + margem R$ {totals.margemTotalRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} = <strong>R$ {totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>.</span>
             </div>
           </div>
         )}
@@ -1736,7 +1672,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             </thead>
             <tbody>
               {filteredVehicles.map(v => {
-                const isVale = !v.recebeAporteAmbipar;
+                const isVale = v.recebeAporteAmbipar === false || v.isValeOperation === true;
                 const quota = customVehicleQuotas[v.placa] !== undefined 
                   ? customVehicleQuotas[v.placa] 
                   : v.solicitacaoAporteSugerido;
@@ -1791,7 +1727,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                           )}
                         </div>
                       ) : (
-                        <span className="badge-vale-no-card">Interno Vale S.A.</span>
+                        <span className="badge-vale-no-card">Não elegível ao aporte</span>
                       )}
                     </td>
 
@@ -1901,7 +1837,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           <div className="proc-step-num">1</div>
           <div>
             <h4>Quarta-feira (até 17:00h)</h4>
-            <p>O analista confere os cupons da semana. Escolha entre <strong>Aporte com Divisão por Veículo</strong> ou <strong>Aporte Global Sem Divisão</strong>. Os carros da Vale constam com R$ 0,00 e o FVV-0E16 cobre a prontidão da Amazon GIG 1/7.</p>
+            <p>Confira os abastecimentos do período e escolha entre aporte global ou divisão por veículo. A elegibilidade e os valores vêm dos dados cadastrados no ciclo.</p>
           </div>
         </div>
 

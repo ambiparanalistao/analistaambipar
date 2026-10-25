@@ -668,10 +668,10 @@ export default function LogisticsDashboard({
                             color: "var(--accent-cyan)",
                           }}
                         >
-                          {r.placa_veiculo || "AMB-FROTA"}
+                          {r.placa_veiculo || "Não informada"}
                         </span>
                         <small style={{ color: "var(--text-muted)" }}>
-                          {r.motorista || "Motorista Central de Gestão"}
+                          {r.motorista || "Não informado"}
                         </small>
                       </div>
                     </td>

@@ -34,6 +34,7 @@ import MaintenanceModule from './components/maintenance/MaintenanceModule';
 import {MAINTENANCE_PAGES} from './components/maintenance/maintenanceRoutes';
 import useMaintenanceAccess from './hooks/useMaintenanceAccess';
 import WeeklyFuelProvisionModule from './components/WeeklyFuelProvisionModule';
+import OperationalDataCentralization from './components/OperationalDataCentralization';
 import './App.css';
 
 // Mapeamento de Rotas Web para cada Módulo
@@ -41,6 +42,7 @@ export const MODULE_ROUTES = {
   ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.id,p.path])),
   driver_maintenance: '/motorista/manutencao',
   automacao: '/automacao',
+  centralizacao_dados: '/centralizacao-dados',
   dashboard: '/dashboard',
   escala: '/escala',
   rotas: '/rotas',
@@ -65,6 +67,7 @@ export const PATH_TO_MODULE = {
   '/motorista/manutencao':'driver_maintenance',
   '/manutencao':'maintenance_partners',
   '/automacao': 'automacao',
+  '/centralizacao-dados': 'centralizacao_dados',
   '/': 'dashboard',
   '/dashboard': 'dashboard',
   '/escala': 'escala',
@@ -402,7 +405,7 @@ export default function App() {
                 {currentModule === 'auditoria_vencimentos' && <ComplianceAuditModule key={maintenanceAccess.companyId} access={maintenanceAccess} />}
                 {currentModule === 'manutencao_preventiva' && <PreventiveMaintenanceModule key={maintenanceAccess.companyId} access={maintenanceAccess} user={session.user} onNavigateFleet={() => handleSelectModule('frotas')} />}
                 {currentModule === 'escala' && <EscalaModule key={maintenanceAccess.companyId} companyId={maintenanceAccess.companyId} user={session.user} onNavigateRotas={() => handleSelectModule('rotas')} />}
-                {currentModule === 'rotas' && <RotasModule user={session.user} onNavigateEscala={() => handleSelectModule('escala')} />}
+                {currentModule === 'rotas' && <RotasModule key={maintenanceAccess.companyId} companyId={maintenanceAccess.companyId} user={session.user} onNavigateEscala={() => handleSelectModule('escala')} />}
                 {currentModule.startsWith('maintenance_') && <MaintenanceModule access={maintenanceAccess} page={currentModule} />}
                 {currentModule === 'dashboard' && (
                   <LogisticsDashboard maintenanceAccess={maintenanceAccess} key={maintenanceAccess.companyId}
@@ -427,7 +430,7 @@ export default function App() {
                 )}
                 {currentModule === 'viagens' && <TripsModule companyId={maintenanceAccess.companyId} user={session.user} />}
                 {currentModule === 'combustivel' && <FuelModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId} user={session.user} initialView="dashboard" onNavigateModule={handleSelectModule} />}
-                {currentModule === 'aporte_combustivel' && <WeeklyFuelProvisionModule user={session.user} onNavigateModule={handleSelectModule} />}
+                {currentModule === 'aporte_combustivel' && <WeeklyFuelProvisionModule key={maintenanceAccess.companyId} companyId={maintenanceAccess.companyId} user={session.user} onNavigateModule={handleSelectModule} />}
                 {currentModule === 'simulador_autonomia' && <FuelModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId} user={session.user} initialView="simulator" onNavigateModule={handleSelectModule} />}
                 {currentModule === 'clientes' && (
                   <ClientsModule 
@@ -438,11 +441,12 @@ export default function App() {
                   />
                 )}
                 {currentModule === 'mtr' && <MtrModule user={session.user} />}
-                {currentModule === 'calculadora_frete' && <FreightCarbonCalculator onNavigateMtr={() => handleSelectModule('mtr')} />}
+                {currentModule === 'calculadora_frete' && <FreightCarbonCalculator companyId={maintenanceAccess.companyId} user={session.user} onNavigateMtr={() => handleSelectModule('mtr')} />}
                 {currentModule === 'antt_formulas' && <AnttFormulasModule />}
                 {currentModule === 'ocorrencias' && <OcorrenciasModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId}/>}
                 {currentModule === 'esg' && <EsgModule />}
                 {currentModule === 'automacao' && <AutomationModule user={session.user} />}
+                {currentModule === 'centralizacao_dados' && <OperationalDataCentralization companyId={maintenanceAccess.companyId} user={session.user} />}
               </ErrorBoundary>
             </main>
           </div>
