@@ -95,7 +95,7 @@ export const FREQUENCY_OPTIONS = [
   { value: 'Semanal (1x)', label: 'Semanal (1x por semana)', sublabel: 'Volume programado semanal' },
   { value: 'Quinzenal', label: 'Quinzenal', sublabel: 'Atendimento sob batelada' },
   { value: 'Mensal', label: 'Mensal Programada', sublabel: 'Fechamento de ciclo mensal' },
-  { value: 'Sob Demanda / Spot', label: 'Sob Demanda (Chamado CCO)', sublabel: 'Despacho acionado conforme enchimento' }
+  { value: 'Sob Demanda / Spot', label: 'Sob Demanda (Chamada Central de Gestão)', sublabel: 'Despacho acionado conforme enchimento' }
 ];
 
 // Formatadores seguros
@@ -234,7 +234,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
   // Carrega do Supabase se configurado
   const fetchSupabaseClients = async () => {
     if (!isSupabaseConfigured || !supabase) {
-      setFeedback({ type: 'info', text: 'Operação CCO ativa. Dados sincronizados com sucesso.' });
+      setFeedback({ type: 'info', text: 'Operação Central de Gestão ativa. Dados sincronizados com sucesso.' });
       setTimeout(() => setFeedback(null), 3000);
       return;
     }
@@ -389,7 +389,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
 
   // Exclusão
   const handleDeleteClient = async (clientId, name) => {
-    if (!window.confirm(`Confirma a exclusão do cliente "${name}" da carteira ativa CCO?`)) return;
+    if (!window.confirm(`Confirma a exclusão do cliente "${name}" da carteira ativa Central de Gestão?`)) return;
     try {
       if (!isSupabaseConfigured || !supabase || !companyId) throw new Error('Conecte-se à empresa para confirmar a exclusão.');
       const target=clients.find(c=>c.id===clientId);
@@ -473,7 +473,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
     const cleanNumber = phoneStr.replace(/\D/g, '');
     if (!cleanNumber) return null;
     const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`;
-    const text = encodeURIComponent(`Olá, sou do CCO Ambipar Logistics referente ao contrato e operações de ${clientName || 'sua unidade'}.`);
+    const text = encodeURIComponent(`Olá, sou da Central de Gestão Ambipar Logistics referente ao contrato e operações de ${clientName || 'sua unidade'}.`);
     return `https://wa.me/${fullNumber}?text=${text}`;
   };
 
@@ -651,7 +651,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                   <Building size={20} className="icon-emerald" />
                   <div>
                     <h4>1. Identificação Jurídica & Segmento</h4>
-                    <p>Registro empresarial, dados fiscais e enquadramento CCO</p>
+                    <p>Registro empresarial, dados fiscais e enquadramento Central de Gestão</p>
                   </div>
                 </div>
               </div>
@@ -833,7 +833,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
               </div>
             </div>
 
-            {/* PAINEL 3: Roteirização Dedicada & Logística CCO (FULL ROW) */}
+            {/* PAINEL 3: Roteirização Dedicada & Logística Central de Gestão (FULL ROW) */}
             <div className="card-panel card-z-mid" style={{ gridColumn: '1 / -1', position: 'relative', zIndex: 30 }}>
               <div className="panel-header">
                 <div className="header-icon-label">
@@ -849,7 +849,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
               {registeredRoutes.length > 0 && (
                 <div style={{ marginBottom: '1.25rem', background: 'rgba(0, 0, 0, 0.25)', padding: '0.9rem 1.15rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-                    Reaproveitar Rota Existente na Carteira CCO (Opcional)
+                    Reaproveitar Rota Existente na Carteira Central de Gestão (Opcional)
                   </label>
                   <select
                     className="styled-native-select"
@@ -926,7 +926,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Base Ambipar CCO / Central de Tratamento"
+                    placeholder="Ex: Base Ambipar Central de Gestão / Central de Tratamento"
                     value={formData.destino}
                     onChange={e => setFormData({ ...formData, destino: e.target.value })}
                   />
@@ -1003,7 +1003,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
               </div>
 
               <div className="input-group-custom">
-                <label>Motorista Homologado CCO (Opcional)</label>
+                <label>Motorista Homologada Central de Gestão (Opcional)</label>
                 <input
                   type="text"
                   placeholder="Nome do motorista com certificado MOPP"
@@ -1082,7 +1082,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
               </div>
             </div>
 
-            {/* PAINEL 5: Interlocutor da Planta & Governança CCO */}
+            {/* PAINEL 5: Interlocutor da Planta & Governança Central de Gestão */}
             <div className="card-panel card-z-low" style={{ position: 'relative', zIndex: 10 }}>
               <div className="panel-header">
                 <div className="header-icon-label">
@@ -1276,7 +1276,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                 </div>
                 <div className="dossier-data-item">
                   <span className="lbl">Veículo / Motorista:</span>
-                  <span className="val">{selectedClientDossier.veiculo_alocado_placa || 'Frota CCO'} • {selectedClientDossier.motorista_preferencial || 'Escala CCO'}</span>
+                  <span className="val">{selectedClientDossier.veiculo_alocado_placa || 'Frota'} • {selectedClientDossier.motorista_preferencial || 'Escala Operacional'}</span>
                 </div>
               </div>
 
@@ -1544,7 +1544,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                 <span className="unit-suffix">cadastrados</span>
               </div>
               <div className="kpi-footer-status">
-                {totalClients === 0 ? 'Nenhum cliente na carteira' : `${activeCount} ativos na carteira CCO`}
+                {totalClients === 0 ? 'Nenhum cliente na carteira' : `${activeCount} ativos na carteira Central de Gestão`}
               </div>
             </div>
 
@@ -1744,7 +1744,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
               <h3 className="empty-state-title">
                 {searchTerm || statusFilter !== 'Todos' || routeFilter !== 'Todas'
                   ? 'Nenhum cliente encontrado com os filtros selecionados'
-                  : 'Carteira de Clientes CCO Pronta para Operação'}
+                  : 'Carteira de Clientes Central de Gestão Pronta para Operação'}
               </h3>
 
               <p className="empty-state-desc">
@@ -1862,7 +1862,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                       <div className="route-cockpit-top">
                         <div className="route-cockpit-title">
                           <Route size={15} color="#10b981" />
-                          <span className="route-main-name">{client.rota_nome || 'Rota Operacional CCO'}</span>
+                          <span className="route-main-name">{client.rota_nome || 'Rota Operacional Central de Gestão'}</span>
                         </div>
                         <button
                           type="button"
@@ -1907,12 +1907,12 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                         </div>
                         <div className="dispatch-cell">
                           <span className="dispatch-lbl"><Truck size={11} /> Veículo Alocado</span>
-                          <span className="dispatch-val">{client.veiculo_alocado_placa || 'Frota CCO'}</span>
+                          <span className="dispatch-val">{client.veiculo_alocado_placa || 'Frota'}</span>
                         </div>
                         <div className="dispatch-cell">
                           <span className="dispatch-lbl"><UserCheck size={11} /> Condutor MOPP</span>
                           <span className="dispatch-val" title={client.motorista_preferencial}>
-                            {client.motorista_preferencial?.split(' ')[0] || 'Escala CCO'}
+                            {client.motorista_preferencial?.split(' ')[0] || 'Escala Operacional'}
                           </span>
                         </div>
                       </div>
@@ -2031,7 +2031,7 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
             </div>
           ) : (
             /* ============================================================== */
-            /* VISUALIZAÇÃO 2: TABELA OPERACIONAL CCO                         */
+            /* VISUALIZAÇÃO 2: TABELA OPERACIONAL Central de Gestão                         */
             /* ============================================================== */
             <div className="table-responsive-wrapper animate-fade-in">
               <table className="styled-executive-table">
@@ -2082,8 +2082,8 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
                         </td>
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.76rem' }}>
-                            <span style={{ color: '#ffffff' }}>{client.veiculo_alocado_placa || 'Frota CCO'}</span>
-                            <span style={{ color: 'var(--text-dim)' }}>{client.motorista_preferencial || 'Escala CCO'}</span>
+                            <span style={{ color: '#ffffff' }}>{client.veiculo_alocado_placa || 'Frota'}</span>
+                            <span style={{ color: 'var(--text-dim)' }}>{client.motorista_preferencial || 'Escala Operacional'}</span>
                           </div>
                         </td>
                         <td>

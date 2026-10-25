@@ -180,7 +180,7 @@ export default function App() {
     ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.id,{title:'Manutenção · '+p.label,subtitle:'Gestão de manutenção e oficinas parceiras'}])),
     automacao: { title: 'Automação · Conexão WhatsApp', subtitle: 'Autenticação, status e reconexão da instância WhatsApp Corporativo' },
     escala: { 
-      title: 'Escala Operacional & Despacho CCO', 
+      title: 'Escala Operacional & Despacho Central de Gestão', 
       subtitle: 'Alocação diária de motoristas homologados e veículos a circuitos com múltiplos clientes e endereços' 
     },
     rotas: { 
@@ -220,7 +220,7 @@ export default function App() {
       subtitle: 'Fechamento Quarta-feira 17h ➔ Relatório e Solicitação de Saldo Abank toda Quinta-feira Manhã'
     },
     simulador_autonomia: { 
-      title: 'Simulador Analítico de Autonomia & Consumo de Rota CCO', 
+      title: 'Simulador Analítico de Autonomia & Consumo de Rota Central de Gestão', 
       subtitle: 'Planejamento preditivo de abastecimento para despacho, cálculo de ARLA 32, paradas na rodovia e CPK' 
     },
     clientes: { 

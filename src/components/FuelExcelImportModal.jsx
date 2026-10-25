@@ -406,7 +406,7 @@ export default function FuelExcelImportModal({ isOpen, onClose, existingRecords 
                     <p style={{ margin: 0, fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.5 }}>
                       Identificamos o <strong>Relatório de Custo Frota Mensal 2026</strong> com as categorias 
                       (Combustíveis, Lubrificantes, Manutenção, Pneus, IPVA, Pedágios, Telemetria...). 
-                      Os custos mensais de combustível serão consolidados automaticamente nos indicadores do CCO.
+                      Os custos mensais de combustível serão consolidados automaticamente nos indicadores da Central de Gestão.
                     </p>
                   </div>
 
