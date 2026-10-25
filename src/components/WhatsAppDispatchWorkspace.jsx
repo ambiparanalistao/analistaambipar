@@ -266,14 +266,14 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
         driver: vehicle.motorista_vinculado || 'Condutor',
         phone: targetPhone,
         preview: messageText.slice(0, 65) + '...',
-        status: 'Enviado via Evolution API'
+        status: 'Enviado via WhatsApp Corporativo'
       };
 
       setDispatchHistory(prev => [logEntry, ...prev]);
 
       setFeedback({
         type: 'success',
-        text: `✅ Mensagem disparada com sucesso via Evolution API! (Protocolo: ${result.messageId})`
+        text: `✅ Mensagem disparada com sucesso via WhatsApp Corporativo! (Protocolo: ${result.messageId})`
       });
 
       if (phone && phone !== vehicle.motorista_telefone && onUpdateVehiclePhone) {
@@ -294,7 +294,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
 
       setFeedback({
         type: 'warning',
-        text: `Disparo direto processado pelo módulo Evolution API! Nota do gateway: ${err.message}`
+        text: `Disparo direto processado pelo módulo WhatsApp! Nota do gateway: ${err.message}`
       });
     } finally {
       setDispatching(false);
@@ -307,7 +307,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
     e.preventDefault();
     saveEvolutionSettings(apiSettings);
     setShowSettingsModal(false);
-    setFeedback({ type: 'success', text: 'Configurações da Evolution API salvas com sucesso!' });
+    setFeedback({ type: 'success', text: 'Configurações do WhatsApp salvas com sucesso!' });
     setTimeout(() => setFeedback(null), 3500);
   };
 
@@ -349,16 +349,16 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
             <div className="dispatch-badges-row">
               <span className="cco-status-pill online">
                 <span className="beacon-dot"></span>
-                <span>Evolution API Integrada • Disparo Direto Ativo</span>
+                <span>WhatsApp Integrado • Disparo Direto Ativo</span>
               </span>
               <button 
                 type="button" 
                 className="btn-settings-pill" 
                 onClick={() => setShowSettingsModal(true)}
-                title="Configurar servidor Evolution API"
+                title="Configurar servidor WhatsApp"
               >
                 <Settings size={13} />
-                <span>Configurar Servidor Evolution</span>
+                <span>Configurar Servidor WhatsApp</span>
               </button>
             </div>
           </div>
@@ -386,12 +386,12 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
             {dispatching ? (
               <>
                 <RefreshCw size={17} className="animate-spin" />
-                <span>Disparando via Evolution API...</span>
+                <span>Disparando via WhatsApp...</span>
               </>
             ) : (
               <>
                 <Zap size={17} />
-                <span>Disparar via Evolution API</span>
+                <span>Disparar via WhatsApp</span>
               </>
             )}
           </button>
@@ -679,12 +679,12 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
                   {dispatching ? (
                     <>
                       <RefreshCw size={18} className="animate-spin" />
-                      <span>Disparando via Evolution API...</span>
+                      <span>Disparando via WhatsApp...</span>
                     </>
                   ) : (
                     <>
                       <Zap size={18} />
-                      <span>Enviar via Evolution API (Disparo Direto)</span>
+                      <span>Enviar via WhatsApp (Disparo Direto)</span>
                     </>
                   )}
                 </button>
@@ -751,7 +751,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
                 <div 
                   className="chat-mic-btn" 
                   onClick={handleSendViaEvolutionApi} 
-                  title="Disparar via Evolution API"
+                  title="Disparar via WhatsApp"
                   style={{ cursor: 'pointer' }}
                 >
                   <Send size={14} color="#ffffff" />
@@ -763,7 +763,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
             <div className="dispatch-audit-trail-box">
               <span className="audit-trail-title">Auditoria de Disparos CCO:</span>
               <p className="audit-preview" style={{ color: '#94a3b8' }}>
-                Disparos realizados diretamente pelo Gateway Evolution API (sem abrir Web ou App).
+                Disparos realizados diretamente pelo Gateway de WhatsApp Corporativo (sem abrir Web ou App).
               </p>
               {dispatchHistory.length > 0 ? (
                 <div className="audit-list" style={{ marginTop: '0.4rem' }}>
@@ -796,7 +796,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
             <div className="evolution-modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Zap size={20} color="#25d366" />
-                <h4>Configuração do Gateway Evolution API</h4>
+                <h4>Configuração do Gateway WhatsApp Corporativo</h4>
               </div>
               <button 
                 type="button" 
@@ -809,11 +809,11 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
 
             <form onSubmit={handleSaveApiSettings} className="evolution-modal-form">
               <p className="settings-intro">
-                O envio de mensagens é feito diretamente via requisição HTTP para a sua instância da Evolution API, sem abrir o WhatsApp Web ou aplicativo.
+                O envio de mensagens é feito diretamente via requisição HTTP para a sua instância de WhatsApp Corporativo, sem abrir o WhatsApp Web ou aplicativo.
               </p>
 
               <div className="input-group-custom">
-                <label>URL Base da Evolution API *</label>
+                <label>URL Base do Gateway WhatsApp *</label>
                 <input
                   type="text"
                   required
@@ -839,7 +839,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
                 <input
                   type="password"
                   required
-                  placeholder="Informe o token da Evolution API"
+                  placeholder="Informe o token de acesso do WhatsApp"
                   value={apiSettings.apiKey}
                   onChange={(e) => setApiSettings({ ...apiSettings, apiKey: e.target.value })}
                 />

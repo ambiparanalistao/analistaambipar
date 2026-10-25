@@ -178,7 +178,7 @@ export default function App() {
   // Nomes e descrições dos módulos para o cabeçalho superior
   const moduleInfo = {
     ...Object.fromEntries(MAINTENANCE_PAGES.map(p=>[p.id,{title:'Manutenção · '+p.label,subtitle:'Gestão de manutenção e oficinas parceiras'}])),
-    automacao: { title: 'Automação · Conexão WhatsApp', subtitle: 'Autenticação, status e reconexão da instância Evolution API' },
+    automacao: { title: 'Automação · Conexão WhatsApp', subtitle: 'Autenticação, status e reconexão da instância WhatsApp Corporativo' },
     escala: { 
       title: 'Escala Operacional & Despacho CCO', 
       subtitle: 'Alocação diária de motoristas homologados e veículos a circuitos com múltiplos clientes e endereços' 

@@ -78,11 +78,11 @@ export default function AutomationModule({ user }) {
   return (
     <section className="automation-module" aria-labelledby="automation-title">
       <div className="automation-heading">
-        <div><span className="automation-eyebrow">EVOLUTION API · WHATSAPP</span><h2 id="automation-title">Automação · Conexão</h2>
+        <div><span className="automation-eyebrow">GATEWAY WHATSAPP CORPORATIVO</span><h2 id="automation-title">Automação · Conexão</h2>
           <p>Conecte o WhatsApp e acompanhe a disponibilidade da instância.</p></div>
         <span className="automation-security"><ShieldCheck size={16} /> Acesso protegido</span>
       </div>
-      {demo && <div className="automation-alert" role="alert">Entre com seu e-mail e senha para gerenciar a conexão. O modo demonstrativo não tem acesso à Evolution.</div>}
+      {demo && <div className="automation-alert" role="alert">Entre com seu e-mail e senha para gerenciar a conexão. O modo demonstrativo não tem acesso ao WhatsApp Corporativo.</div>}
       {error && <div className="automation-alert" role="alert">{error}</div>}
       {notice && <div className="automation-notice" role="status">{notice}</div>}
       <div className="automation-grid">
@@ -105,11 +105,11 @@ export default function AutomationModule({ user }) {
           {connection.state === 'open' ? <div className="automation-pairing-placeholder"><Wifi size={48} /><strong>WhatsApp conectado</strong><p>A instância está disponível.</p></div> :
             qrValid ? <><img className="automation-qr" src={qr} alt="QR Code para conectar a instância WhatsApp" /><p>Leia em até {Math.max(0, Math.ceil((qrExpires - now) / 1000))} segundos. Se expirar, gere outro.</p></> :
               <div className="automation-pairing-placeholder"><QrCode size={64} /><strong>{qr ? 'QR Code expirado' : 'Conecte seu aparelho'}</strong><p>Clique em Conectar / gerar QR Code. No WhatsApp, abra Aparelhos conectados → Conectar um aparelho.</p></div>}
-          <p className="automation-muted">Mantenha esta tela aberta durante o pareamento. O status será confirmado pela Evolution.</p>
+          <p className="automation-muted">Mantenha esta tela aberta durante o pareamento. O status será confirmado pelo servidor WhatsApp.</p>
         </article>
       </div>
       <article className="automation-card automation-maintenance">
-        <h3>Gerenciamento da instância</h3><p>Se ela ainda não existe na Evolution, crie-a uma única vez. Desconectar encerra a sessão do WhatsApp e exige novo pareamento.</p>
+        <h3>Gerenciamento da instância</h3><p>Se a instância ainda não existe no servidor, crie-a uma única vez. Desconectar encerra a sessão do WhatsApp e exige novo pareamento.</p>
         <div className="automation-actions">
           <button type="button" className="btn-secondary" disabled={unavailable || connection.state === 'open' || connection.state === 'connecting'} onClick={() => perform('create')}><Plus size={16} />{busy === 'create' ? 'Criando…' : 'Criar instância'}</button>
           <button type="button" className="btn-secondary automation-danger" disabled={unavailable || connection.state !== 'open'} onClick={() => { if (window.confirm('Desconectar o WhatsApp? Será necessário ler um novo QR Code.')) perform('logout'); }}><Power size={16} />Desconectar WhatsApp</button>
