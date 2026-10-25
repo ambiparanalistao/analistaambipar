@@ -1,6 +1,6 @@
 import CenteredDialog from './CenteredDialog';
 import PreventiveProgress from './maintenance/plans/PreventiveProgress';
-import {OdometerEditor,PreventiveReferenceEditor} from './maintenance/plans/PreventiveEditors';
+import {OdometerEditor} from './maintenance/plans/PreventiveEditors';
 import React, { useEffect, useState } from "react";
 import {
   Wrench,
@@ -15,7 +15,6 @@ import {
 import useFleetDirectory from "../hooks/useFleetDirectory";
 import useMaintenancePlans from "../hooks/useMaintenancePlans";
 import { listOrders } from "../services/maintenanceOrders";
-import { PREVENTIVE_RULES } from "../data/preventiveMaintenanceData";
 import { ORDER_STATUS, PRIORITIES } from "../utils/orderValidation";
 import "./PreventiveMaintenance.css";
 const requestUrl = (id) =>
@@ -141,19 +140,18 @@ export default function PreventiveMaintenanceModule({
         preservado; a execução será registrada no fluxo da manutenção.
       </div>
       <section className="pm-panel">
-        <h2>Serviços incluídos na solicitação</h2>
+        <h2>Planos cadastrados no Supabase</h2>
         <p>
-          Os itens abaixo são um roteiro para orçamento. Revise a aplicação ao
-          veículo no formulário; os planos ativos do veículo também serão
-          descritos.
+          Somente serviços cadastrados pela empresa são sugeridos na S.D.O.
         </p>
         <div className="pm-services">
-          {PREVENTIVE_RULES.map((r) => (
-            <details key={r.id}>
-              <summary>{r.nome}</summary>
-              <p>{r.descricao}</p>
+          {[...new Map((plans.data?.rows || []).map(plan => [plan.nome.toLocaleLowerCase('pt-BR'), plan])).values()].map((plan) => (
+            <details key={plan.id}>
+              <summary>{plan.nome}</summary>
+              <p>{plan.intervalo_km ? `Intervalo: ${Number(plan.intervalo_km).toLocaleString('pt-BR')} km` : ''}{plan.intervalo_km && plan.intervalo_dias ? ' ou ' : ''}{plan.intervalo_dias ? `${plan.intervalo_dias} dias` : ''}</p>
             </details>
           ))}
+          {!plans.loading && !plans.error && !plans.data?.rows?.length && <p>Nenhum plano preventivo cadastrado. <a href="/manutencao/planos-preventivos">Cadastrar planos preventivos</a>.</p>}
         </div>
       </section>
       <div className="pm-heading">
@@ -199,7 +197,7 @@ export default function PreventiveMaintenanceModule({
                   </strong>
                   <small>Odômetro salvo no cadastro</small>
                 </div>
-                <PreventiveProgress vehicle={v} rows={alerts} loading={plans.loading} error={plans.error} canConfigure={access.canWrite} onConfigure={rule=>setEditor({kind:'reference',vehicle:v,rule})}/>
+                <PreventiveProgress vehicle={v} rows={alerts} loading={plans.loading} error={plans.error}/>
                 <div className="pm-actions">
                   {canCreate &&
                     (v.status === "Em Viagem" ? (
@@ -279,7 +277,8 @@ export default function PreventiveMaintenanceModule({
           </div>
         )}
       </section>
-      {editor&&<CenteredDialog title={editor.kind==='km'?'Atualizar odômetro · '+editor.vehicle.placa:'Configurar próxima preventiva'} className="pm-page" theme={theme} themeAttribute="data-pm-theme" busy={modalBusy} onClose={()=>setEditor(null)}>{editor.kind==='km'?<OdometerEditor vehicle={editor.vehicle} company={company} onBusy={setModalBusy} onSaved={message=>{setEditor(null);setNotice(message);refresh();}} onCancel={()=>setEditor(null)}/>:<PreventiveReferenceEditor vehicle={editor.vehicle} rule={editor.rule} company={company} onBusy={setModalBusy} onSaved={message=>{setEditor(null);setNotice(message);refresh();}} onCancel={()=>setEditor(null)}/>}</CenteredDialog>}
+      {editor&&<CenteredDialog title={'Atualizar odômetro · '+editor.vehicle.placa} className="pm-page" theme={theme} themeAttribute="data-pm-theme" busy={modalBusy} onClose={()=>setEditor(null)}><OdometerEditor vehicle={editor.vehicle} company={company} onBusy={setModalBusy} onSaved={message=>{setEditor(null);setNotice(message);refresh();}} onCancel={()=>setEditor(null)}/></CenteredDialog>}
     </section>
   );
 }
+

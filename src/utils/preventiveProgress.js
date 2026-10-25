@@ -34,19 +34,4 @@ export function preventiveProgress(plan, currentKm, today) {
       : null,
   };
 }
-export function preventiveRuleMatches(rule, name) {
-  const text = String(name)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-  return rule.id === "oleo_filtros"
-    ? text.includes("oleo")
-    : rule.id === "engraxamento"
-      ? text.includes("engrax") || text.includes("lubrificacao")
-      : rule.id === "freios"
-        ? text.includes("freio")
-        : rule.id === "filtro_ar_racor"
-          ? (text.includes("filtro") && !text.includes("oleo")) ||
-            text.includes("racor")
-          : rule.nome === name;
-}
+

@@ -1,18 +1,12 @@
 import React from "react";
-import {
-  preventiveProgress,
-  preventiveRuleMatches,
-} from "../../../utils/preventiveProgress";
+import { preventiveProgress } from "../../../utils/preventiveProgress";
 import { complianceToday, displayDate } from "../../../utils/compliance";
-import { PREVENTIVE_RULES } from "../../../data/preventiveMaintenanceData";
 const km = (n) => Number(n).toLocaleString("pt-BR");
 export default function PreventiveProgress({
   vehicle,
   rows,
   loading,
   error,
-  canConfigure,
-  onConfigure,
 }) {
   if (loading && !rows.length)
     return <p role="status">Calculando próximas preventivas…</p>;
@@ -23,9 +17,6 @@ export default function PreventiveProgress({
         novamente.
       </p>
     );
-  const missing = PREVENTIVE_RULES.filter(
-    (rule) => !rows.some((p) => preventiveRuleMatches(rule, p.nome)),
-  );
   return (
     <section
       className="pm-progress-list"
@@ -102,20 +93,8 @@ export default function PreventiveProgress({
           </article>
         );
       })}
-      {missing.map((rule) => (
-        <article className="pm-progress-item pending" key={rule.id}>
-          <strong>{rule.nome}</strong>
-          <p>Defina a referência da revisão para calcular o próximo KM.</p>
-          {canConfigure &&
-            (vehicle.km_atual == null ? (
-              <small>Informe o KM atual primeiro.</small>
-            ) : (
-              <button onClick={() => onConfigure(rule)}>
-                Definir referência · {rule.nome}
-              </button>
-            ))}
-        </article>
-      ))}
+      {!rows.length && <p>Nenhum plano preventivo cadastrado para este veículo. <a href="/manutencao/planos-preventivos">Cadastrar ou consultar planos</a>.</p>}
     </section>
   );
 }
+

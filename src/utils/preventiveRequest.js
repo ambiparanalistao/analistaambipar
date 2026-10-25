@@ -1,10 +1,5 @@
-import { PREVENTIVE_RULES } from "../data/preventiveMaintenanceData.js";
 export function preventiveRequestDescription(plans = []) {
   const items = [
-    ...PREVENTIVE_RULES.map((r) => ({
-      name: r.nome,
-      description: r.descricao,
-    })),
     ...plans.map((p) => ({ name: p.nome, description: "" })),
   ];
   const unique = [
@@ -14,7 +9,9 @@ export function preventiveRequestDescription(plans = []) {
   ];
   return [
     "SDO — SOLICITAÇÃO DE ORÇAMENTO PREVENTIVO",
-    "Solicitar avaliação e orçamento dos serviços abaixo, conforme aplicação ao veículo e especificações do fabricante. Não executar sem aprovação.",
+    unique.length
+      ? "Solicitar avaliação e orçamento dos planos cadastrados abaixo, conforme aplicação ao veículo e especificações do fabricante. Não executar sem aprovação."
+      : "Não há plano preventivo cadastrado para este veículo. Descreva os serviços que devem ser avaliados antes de enviar às oficinas.",
     ...unique.map(
       (i, n) =>
         n + 1 + ". " + i.name + (i.description ? ": " + i.description : ""),
@@ -32,3 +29,4 @@ export function preventiveRequestInitial(vehicle, plans = []) {
     descricao_problema: preventiveRequestDescription(plans),
   };
 }
+
