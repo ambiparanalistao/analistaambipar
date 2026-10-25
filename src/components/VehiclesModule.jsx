@@ -64,7 +64,7 @@ import {driverForVehicle} from '../utils/registryMatching';
 export const VEHICLE_STATUS_OPTIONS = [
   { 
     value: 'Disponível', 
-    label: 'Disponível no Pátio / CCO', 
+    label: 'Disponível no Pátio / Central de Gestão', 
     sublabel: 'Pronto para escala e alocação imediata', 
     color: '#10b981',
     badge: 'Liberado'
@@ -85,7 +85,7 @@ export const VEHICLE_STATUS_OPTIONS = [
   },
   { 
     value: 'Bloqueado', 
-    label: 'Bloqueado (Documentação / CCO)', 
+    label: 'Bloqueado (Documentação / Central de Gestão)', 
     sublabel: 'Pendência em CRLV, CIPP, CIV, Tacógrafo ou Sinistro', 
     color: '#f43f5e',
     badge: 'Bloqueado'
@@ -189,7 +189,7 @@ export const getCountdown = (dateStr) => {
 };
 
 /* ============================================================== */
-/* GATILHOS FUNCIONAIS & VARIÁVEIS DINÂMICAS PARA WHATSAPP CCO    */
+/* GATILHOS FUNCIONAIS & VARIÁVEIS DINÂMICAS PARA WHATSAPP Central de Gestão    */
 /* ============================================================== */
 export const DYNAMIC_TRIGGERS = [
   { tag: '{MOTORISTA}', label: 'Motorista', desc: 'Nome do condutor titular alocado' },
@@ -201,11 +201,11 @@ export const DYNAMIC_TRIGGERS = [
   { tag: '{TIPO_CARGA}', label: 'Carga', desc: 'Tipo de carga homologada' },
   { tag: '{COMBUSTIVEL}', label: 'Combustível', desc: 'Diesel S10 / Biodiesel B100' },
   { tag: '{STATUS_CCO}', label: 'Status', desc: 'Status operacional no pátio ou rota' },
-  { tag: '{HORA_ATUAL}', label: 'Hora CCO', desc: 'Horário do registro' }
+  { tag: '{HORA_ATUAL}', label: 'Hora Central de Gestão', desc: 'Horário do registro' }
 ];
 
 /* ============================================================== */
-/* MODELOS PRÉ-DEFINIDOS DE MENSAGENS OPERACIONAIS (TEMPLATES CCO) */
+/* MODELOS PRÉ-DEFINIDOS DE MENSAGENS OPERACIONAIS (TEMPLATES Central de Gestão) */
 /* ============================================================== */
 export const WHATSAPP_TEMPLATES = [
   {
@@ -214,7 +214,7 @@ export const WHATSAPP_TEMPLATES = [
     badge: 'Prioritário',
     title: 'Ordem de Carregamento & Escala Imediata',
     description: 'Convocação para apresentação na base e início de rota',
-    template: 'Olá, {MOTORISTA}! Aqui é a Torre de Operações CCO Ambipar.\n\nO conjunto {MARCA_MODELO} (Placa *{PLACA}*, Prefixo *{PREFIXO}*) foi escalado para operação imediata de {TIPO_CARGA}.\n\nFavor se apresentar na base operacional para o checklist de saída e liberação da documentação de viagem (DACTE / MDF-e).\n\nTorre de Controle Ambipar CCO • {HORA_ATUAL}'
+    template: 'Olá, {MOTORISTA}! Aqui é a Torre de Operações Central de Gestão Ambipar.\n\nO conjunto {MARCA_MODELO} (Placa *{PLACA}*, Prefixo *{PREFIXO}*) foi escalado para operação imediata de {TIPO_CARGA}.\n\nFavor se apresentar na base operacional para o checklist de saída e liberação da documentação de viagem (DACTE / MDF-e).\n\nTorre de Controle Ambipar Central de Gestão • {HORA_ATUAL}'
   },
   {
     id: 'revisao',
@@ -222,7 +222,7 @@ export const WHATSAPP_TEMPLATES = [
     badge: 'Oficina',
     title: 'Alerta de Revisão Preventiva por Odômetro',
     description: 'Notificação de aproximação do limite de quilometragem',
-    template: 'Olá, {MOTORISTA}! Gestão de Manutenção de Frotas Ambipar informando:\n\nIdentificamos pelo odômetro cadastrado que o veículo *{PLACA}* atingiu *{KM_ATUAL} km*. A próxima revisão preventiva está programada para *{PROXIMA_REVISAO} km*.\n\nSolicitamos programar parada na oficina central da base para alinhamento e inspeção preventiva.\n\nGestão de Frotas & Manutenção CCO'
+    template: 'Olá, {MOTORISTA}! Gestão de Manutenção de Frotas Ambipar informando:\n\nIdentificamos pelo odômetro cadastrado que o veículo *{PLACA}* atingiu *{KM_ATUAL} km*. A próxima revisão preventiva está programada para *{PROXIMA_REVISAO} km*.\n\nSolicitamos programar parada na oficina central da base para alinhamento e inspeção preventiva.\n\nGestão de Frotas & Manutenção Central de Gestão'
   },
   {
     id: 'vistorias',
@@ -242,11 +242,11 @@ export const WHATSAPP_TEMPLATES = [
   },
   {
     id: 'posicao',
-    category: 'Torre de Controle CCO',
+    category: 'Torre de Controle Central de Gestão',
     badge: 'Monitoramento',
     title: 'Solicitação de Posição & Status de Viagem',
     description: 'Confirmação de rota, trânsito e descanso da Lei 13.103',
-    template: 'Olá, {MOTORISTA}! Torre de Controle Ambipar CCO em contato.\n\nSolicitamos confirmação do seu posicionamento atual e status de viagem do veículo *{PLACA}*.\n\nFavor confirmar se a viagem segue conforme planejado e se as paradas de descanso da Lei 13.103 estão sendo cumpridas.\n\nTorre de Controle 24h Ambipar'
+    template: 'Olá, {MOTORISTA}! Torre de Controle Ambipar Central de Gestão em contato.\n\nSolicitamos confirmação do seu posicionamento atual e status de viagem do veículo *{PLACA}*.\n\nFavor confirmar se a viagem segue conforme planejado e se as paradas de descanso da Lei 13.103 estão sendo cumpridas.\n\nTorre de Controle 24h Ambipar'
   },
   {
     id: 'combustivel',
@@ -254,7 +254,7 @@ export const WHATSAPP_TEMPLATES = [
     badge: 'Combustível',
     title: 'Comprovante de Abastecimento & Odômetro',
     description: 'Solicitação de foto do comprovante e km da bomba',
-    template: 'Olá, {MOTORISTA}! Lembrete de controle de combustível CCO:\n\nFavor enviar a foto da nota fiscal do último abastecimento de {COMBUSTIVEL} do veículo *{PLACA}*, informando o odômetro da bomba para atualização dos indicadores de consumo e eficiência energética.\n\nObrigado pela colaboração!'
+    template: 'Olá, {MOTORISTA}! Lembrete de controle de combustível Central de Gestão:\n\nFavor enviar a foto da nota fiscal do último abastecimento de {COMBUSTIVEL} do veículo *{PLACA}*, informando o odômetro da bomba para atualização dos indicadores de consumo e eficiência energética.\n\nObrigado pela colaboração!'
   }
 ];
 
@@ -295,7 +295,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   const [feedback, setFeedback] = useState(null);
   const [fleetSaving,setFleetSaving]=useState(false);
 
-  // Estado para a Central de Despacho WhatsApp CCO (Tela Completa)
+  // Estado para a Central de Despacho WhatsApp Central de Gestão (Tela Completa)
   const [dispatchVehicle, setDispatchVehicle] = useState(null);
 
   // Estados para importação automática via CRLV-e (Processamento em RAM)
@@ -487,7 +487,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
     return `https://wa.me/${fullNumber}`;
   };
 
-  // KPIs da Frota & Telemetria Executiva CCO
+  // KPIs da Frota & Telemetria Executiva Central de Gestão
   const totalVehicles = vehicles.length;
   const availableCount = vehicles.filter(v => v.status === 'Disponível').length;
   const tripCount = vehicles.filter(v => v.status === 'Em Viagem').length;
@@ -511,7 +511,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   };
 
   /* ============================================================== */
-  /* CONTROLADORES DA CENTRAL DE DESPACHO WHATSAPP CCO (WORKSPACE)   */
+  /* CONTROLADORES DA CENTRAL DE DESPACHO WHATSAPP Central de Gestão (WORKSPACE)   */
   /* ============================================================== */
   const handleOpenWhatsAppWorkspace = (vehicle) => {
     setDispatchVehicle(vehicle);
@@ -988,7 +988,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
               </div>
 
               <div className="input-group-custom">
-                <label>Observações do Analista de Frota / Kit PAE / CCO</label>
+                <label>Observações do Analista de Frota / Kit PAE / Central de Gestão</label>
                 <textarea
                   rows={3}
                   className="select-custom"
@@ -1020,7 +1020,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
         </form>
       ) : viewMode === 'dispatch' && dispatchVehicle ? (
         /* ============================================================== */
-        /* MODO 3: CENTRAL DE DESPACHO WHATSAPP CCO - TELA COMPLETA       */
+        /* MODO 3: CENTRAL DE DESPACHO WHATSAPP Central de Gestão - TELA COMPLETA       */
         /* ============================================================== */
         <WhatsAppDispatchWorkspace
           companyId={companyId}
@@ -1041,7 +1041,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
               <div className="readiness-header">
                 <div className="readiness-title-wrap">
                   <span className="readiness-beacon"></span>
-                  <span className="readiness-kicker">Torre de Operações & CCO Ambipar</span>
+                  <span className="readiness-kicker">Torre de Operações & Central de Gestão Ambipar</span>
                 </div>
                 <div className="readiness-percentage-wrap">
                   <span className="readiness-val">{readinessRate}%</span>
@@ -1157,7 +1157,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                 </span>
               </div>
               <div className="kpi-footer-status">
-                <span>Prontos para escala imediata CCO</span>
+                <span>Prontos para escala imediata Central de Gestão</span>
                 {statusFilter === 'Disponível' ? (
                   <span className="kpi-badge-selected emerald"><Check size={10} /> Ativo</span>
                 ) : (
@@ -1469,7 +1469,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                         <UserCheck size={16} />
                       </div>
                       <div className="driver-info-meta">
-                        <span className="driver-role-tag">Condutor Alocado CCO:</span>
+                        <span className="driver-role-tag">Condutor Alocada Central de Gestão:</span>
                         <strong className="driver-name-text">
                           {vehicle.motorista_vinculado || 'Nenhum condutor fixo alocado'}
                         </strong>
@@ -1479,7 +1479,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                         type="button"
                         onClick={() => handleOpenWhatsAppWorkspace(vehicle)}
                         className="btn-whatsapp-mini"
-                        title="Abrir Central de Despacho WhatsApp CCO em Tela Completa"
+                        title="Abrir Central de Despacho WhatsApp Central de Gestão em Tela Completa"
                         id={`btn-whatsapp-card-${vehicle.id}`}
                       >
                         <MessageCircle size={14} />
@@ -1538,7 +1538,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                     <div className="vehicle-actions-cockpit-footer">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: 1, minWidth: 0 }}>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
-                          Status CCO:
+                          Status Operacional:
                         </span>
                         <PremiumSelect
                           value={vehicle.status || 'Disponível'}
@@ -1590,7 +1590,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                     <th style={{ minWidth: '160px' }}>Odômetro & Revisão</th>
                     <th style={{ minWidth: '180px' }}>Condutor Vinculado</th>
                     <th style={{ minWidth: '180px' }}>Vistorias (CIPP / CIV)</th>
-                    <th style={{ minWidth: '150px' }}>Status CCO</th>
+                    <th style={{ minWidth: '150px' }}>Status Operacional</th>
                     <th style={{ minWidth: '80px', textAlign: 'center' }}>Ações</th>
                   </tr>
                 </thead>
@@ -1668,7 +1668,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                               type="button"
                               onClick={() => handleOpenWhatsAppWorkspace(vehicle)}
                               className="table-wa-direct-btn"
-                              title="Abrir Central de Despacho WhatsApp CCO em Tela Completa"
+                              title="Abrir Central de Despacho WhatsApp Central de Gestão em Tela Completa"
                               id={`btn-whatsapp-tbl-${vehicle.id}`}
                             >
                               <MessageCircle size={12} />

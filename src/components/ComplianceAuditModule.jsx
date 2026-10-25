@@ -1,5 +1,6 @@
+import CenteredDialog from './CenteredDialog';
 import ComplianceDossier from "./ComplianceDossier";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ShieldCheck,
   CalendarClock,
@@ -196,7 +197,7 @@ function DatesEditor({ entry, kind, busy, onSave, onCancel }) {
   );
 }
 export default function ComplianceAuditModule({ access }) {
-  const editorAnchor = useRef(null);
+
   const [dossier, setDossier] = useState(false);
   const company = access?.companyId,
     licenses = useCompliance(company),
@@ -217,14 +218,6 @@ export default function ComplianceAuditModule({ access }) {
         return "dark";
       }
     });
-  useEffect(() => {
-    if (editor) {
-      editorAnchor.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }
-  }, [editor]);
   useEffect(() => {
     const refreshDay = () => setToday(complianceToday());
     window.addEventListener("focus", refreshDay);
@@ -520,7 +513,7 @@ export default function ComplianceAuditModule({ access }) {
               </button>
             )}
           </div>
-          {error && (
+          {error && !editor && (
             <p className="ca-error" role="alert">
               {error}
             </p>
@@ -530,9 +523,9 @@ export default function ComplianceAuditModule({ access }) {
               {notice}
             </p>
           )}
-          <div ref={editorAnchor} />
-          {editor &&
-            (editor.kind === "license" ? (
+          
+          {editor && <CenteredDialog title={editor.kind==='license'?(editor.row.id?'Editar licença':'Nova licença'):'Atualizar documentos · '+(editor.row.placa||editor.row.nome)} className="ca-page" theme={theme} busy={busy} error={error} onClose={()=>setEditor(null)}>
+            {editor.kind === "license" ? (
               <LicenseEditor
                 key={editor.row.id || "new"}
                 license={editor.row}
@@ -549,7 +542,7 @@ export default function ComplianceAuditModule({ access }) {
                 onSave={save}
                 onCancel={() => setEditor(null)}
               />
-            ))}
+            )}</CenteredDialog>}
           {history && (
             <section className="ca-panel">
               <div className="ca-heading">

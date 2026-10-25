@@ -1,3 +1,4 @@
+import { presentCentralText } from '../utils/centralBranding';
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   DollarSign,
@@ -218,7 +219,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   }, [cycles, selectedCycleId]);
 
   // NOVO: FILTRO AMIGÁVEL POR DIA / PERÍODO
-  // Ciclo Operacional CCO: Quinta a Quarta (Quinta 15/10 a Quarta 21/10)
+  // Ciclo Operacional Central de Gestão: Quinta a Quarta (Quinta 15/10 a Quarta 21/10)
   // 'ALL' = Semana Completa de Quinta a Quarta
   // 'YYYY-MM-DD' = Filtro de dia específico
   const [selectedDayFilter, setSelectedDayFilter] = useState('ALL');
@@ -242,7 +243,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     return `${nomeDia}, ${dia}/${mes}/${ano}`;
   };
 
-  // Os 7 dias do ciclo operacional CCO: Quinta a Quarta
+  // Os 7 dias do ciclo operacional Central de Gestão: Quinta a Quarta
   const cycleDays = useMemo(() => {
     return [
       { date: '2026-10-15', label: 'Quinta (15/10)', dia: 'Quinta-feira' },
@@ -504,7 +505,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
       gestorNome: settings.gestorNome,
       gestorCargo: settings.gestorCargo,
       analistaNome: settings.analistaResponsavel,
-      analistaCargo: settings.analistaCargo,
+      analistaCargo: presentCentralText(settings.analistaCargo),
       convenio: settings.convenioPadrao,
       valorTotalSolicitado: totals.totalAporteSugerido,
       valorGastoReal: totals.totalGasto,
@@ -554,7 +555,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
       gestorNome: settings.gestorNome,
       gestorCargo: settings.gestorCargo,
       analistaNome: settings.analistaResponsavel,
-      analistaCargo: settings.analistaCargo,
+      analistaCargo: presentCentralText(settings.analistaCargo),
       convenio: settings.convenioPadrao,
       valorTotalSolicitado: totals.totalAporteSugerido,
       valorGastoReal: totals.totalGasto,
@@ -637,7 +638,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <div className="doc-logo-pill">AMBIPAR</div>
                 <div className="doc-brand-text">
                   <h2>AMBIPAR LOGISTICS & ENVIRONMENTAL SOLUTIONS</h2>
-                  <p>Gestão Integrada de Frotas & Torre de Controle CCO · Base Duque de Caxias / RJ</p>
+                  <p>Gestão Integrada de Frotas & Torre de Controle Central de Gestão · Base Duque de Caxias / RJ</p>
                 </div>
               </div>
               <div className="doc-meta-box">
@@ -663,9 +664,9 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <span>{docToDisplay.gestorCargo}</span>
               </div>
               <div className="doc-info-item">
-                <label>ANALISTA CCO SOLICITANTE:</label>
+                <label>ANALISTA Central de Gestão SOLICITANTE:</label>
                 <strong>{docToDisplay.analistaNome}</strong>
-                <span>{docToDisplay.analistaCargo}</span>
+                <span>{presentCentralText(docToDisplay.analistaCargo)}</span>
               </div>
               <div className="doc-info-item">
                 <label>CARTÃO / MEIO DE PAGAMENTO:</label>
@@ -689,7 +690,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                   O saldo de <strong>R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> é solicitado como aporte único e centralizado na <strong>Conta Master Abank Frota Corporativa</strong>, sem divisões rígidas prévias de limites por cartão.
                 </p>
                 <div className="global-motivos-list">
-                  <div>• <strong>Flexibilidade Dinâmica:</strong> Permite à Torre de Controle CCO suprir as demandas diárias dos 5 caminhões ativos da frota Ambipar sem travas rígidas de teto individual por cartão, adaptando-se a itinerários que demandem mais quilometragem na semana.</div>
+                  <div>• <strong>Flexibilidade Dinâmica:</strong> Permite à Torre de Controle Central de Gestão suprir as demandas diárias dos 5 caminhões ativos da frota Ambipar sem travas rígidas de teto individual por cartão, adaptando-se a itinerários que demandem mais quilometragem na semana.</div>
                   <div>• <strong>Cobertura sob Demanda (Amazon CD Meriti - GIG 1 e GIG 7):</strong> Absorve saídas e viagens esporádicas imediatamente assim que solicitadas, sem necessidade de remanejamento burocrático de saldos entre cartões.</div>
                   <div>• <strong>Isenção da Vale S.A. (Cota R$ 0,00):</strong> Os veículos <strong>RHU-6I87</strong> e <strong>GEB-8C37</strong> NÃO consomem este saldo global, pois são 100% abastecidos nos terminais do cliente Vale.</div>
                 </div>
@@ -812,7 +813,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               <div className="sig-block">
                 <div className="sig-line"></div>
                 <strong>{docToDisplay.analistaNome}</strong>
-                <span>{docToDisplay.analistaCargo} (Solicitante CCO)</span>
+                <span>{presentCentralText(docToDisplay.analistaCargo)} (Solicitante Central de Gestão)</span>
                 <small>Protocolo emitido em: {new Date(docToDisplay.dataSolicitacao).toLocaleDateString('pt-BR')} · Sistema Ambipar</small>
               </div>
 
@@ -1186,7 +1187,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 gestorNome: settings.gestorNome,
                 gestorCargo: settings.gestorCargo,
                 analistaNome: settings.analistaResponsavel,
-                analistaCargo: settings.analistaCargo,
+                analistaCargo: presentCentralText(settings.analistaCargo),
                 convenio: settings.convenioPadrao,
                 isGlobalAporte: isGlobalAporte,
                 withTechnicalMotives: withTechnicalMotives,
@@ -1238,7 +1239,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           <div>
             <strong>Abastecimento de Quinta-feira ({formatDateFriendly(selectedDayFilter)}) em Diante:</strong>
             <p>
-              Conforme a regra do CCO, o fechamento dos abastecimentos para o aporte de quinta-feira encerra na <strong>quarta-feira às 17h00</strong>. 
+              Conforme a regra do Central de Gestão, o fechamento dos abastecimentos para o aporte de quinta-feira encerra na <strong>quarta-feira às 17h00</strong>. 
               Abastecimentos a partir de quinta-feira <strong>já pertencem ao próximo ciclo semanal</strong>. O aporte atual contempla exclusivamente o período de <strong>Quinta (15/10) a Quarta (21/10)</strong>.
             </p>
           </div>
@@ -1356,7 +1357,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               </div>
               <div>
                 <h3>Modalidade Ativa: Aporte Global Unificado na Conta Master Abank (Sem Divisão por Veículo)</h3>
-                <p>O saldo total fica centralizado na conta corporativa Master da Abank, permitindo à Torre CCO gerenciar os abastecimentos da frota ativa de forma dinâmica sem bloquear caminhões por travas individuais.</p>
+                <p>O saldo total fica centralizado na conta corporativa Master da Abank, permitindo à Torre Central de Gestão gerenciar os abastecimentos da frota ativa de forma dinâmica sem bloquear caminhões por travas individuais.</p>
               </div>
             </div>
 
@@ -1429,7 +1430,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 title="Aplica pesos históricos de consumo da frota ativa: EWX ~36.5%, FVV ~25.3%, FMB ~20.6%, RAW ~8.8%, GBU ~8.8%"
               >
                 <Sparkles size={15} />
-                <span>⚡ Ajuste Automático por Consumo Histórico (Recomendado CCO)</span>
+                <span>⚡ Ajuste Automático por Consumo Histórico (Recomendado Central de Gestão)</span>
               </button>
 
               <button
@@ -1459,7 +1460,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 title="Restaura a grade oficial calibrada de R$ 17.000,00 da Ambipar"
               >
                 <RefreshCw size={15} />
-                <span>🔄 Restaurar Padrão CCO (R$ 17.000,00)</span>
+                <span>🔄 Restaurar Padrão Central de Gestão (R$ 17.000,00)</span>
               </button>
             </div>
 

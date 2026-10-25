@@ -366,7 +366,7 @@ export const parseFleetCostMatrix = (rawJson, headerIndex, headers, sheetName) =
             hora_abastecimento: '12:00',
             placa: `FROTA-${sheetName?.slice(0, 8).toUpperCase() || 'DCX'}`,
             modelo_veiculo: fleetType,
-            motorista: 'Gestão de Frota CCO',
+            motorista: 'Gestão de Frota',
             tipo_combustivel: 'Diesel S10',
             litros: litrosEst,
             preco_litro: precoMedioEst.toFixed(2),
@@ -561,7 +561,7 @@ export const convertRowsToFuelRecords = (rawRows, mapping, existingRecords = [],
       hora_abastecimento: horaAbast,
       placa: placaRaw,
       modelo_veiculo: String(getVal('modelo_veiculo') || 'Veículo Frota').trim(),
-      motorista: String(getVal('motorista') || 'Escala CCO').trim(),
+      motorista: String(getVal('motorista') || 'Escala Operacional').trim(),
       tipo_combustivel: fuelType,
       litros: litrosNum,
       preco_litro: precoLitro > 0 ? precoLitro.toFixed(3) : '6.15',
@@ -575,7 +575,7 @@ export const convertRowsToFuelRecords = (rawRows, mapping, existingRecords = [],
       tanque_cheio: true,
       posto_nome: String(getVal('posto_nome') || 'Rede Credenciada').trim(),
       posto_cnpj: '',
-      cidade: String(getVal('cidade') || 'Base CCO').trim(),
+      cidade: String(getVal('cidade') || 'Base Central de Gestão').trim(),
       uf: String(getVal('uf') || 'SP').trim().toUpperCase().slice(0, 2),
       rodovia_km: '',
       nota_fiscal: nf,
@@ -651,13 +651,13 @@ export const exportFuelRecordsToExcel = (records, fileName = 'abastecimentos_fro
   const cpkGeral = totalKm > 0 && totalValor > 0 ? (totalValor / totalKm).toFixed(2) : '0.00';
 
   const summaryRows = [
-    { 'Indicador Executivo CCO': 'Total de Abastecimentos Registrados', 'Valor Consolidado': records.length },
-    { 'Indicador Executivo CCO': 'Volume Total Abastecido (Litros)', 'Valor Consolidado': Number(totalLitros.toFixed(2)) },
-    { 'Indicador Executivo CCO': 'Custo Financeiro Total (R$)', 'Valor Consolidado': Number(totalValor.toFixed(2)) },
-    { 'Indicador Executivo CCO': 'Distância Percorrida Total (KM)', 'Valor Consolidado': Number(totalKm.toFixed(2)) },
-    { 'Indicador Executivo CCO': 'Média Geral de Rendimento (KM/L)', 'Valor Consolidado': Number(mediaGeral) },
-    { 'Indicador Executivo CCO': 'Custo Médio por KM (R$/KM)', 'Valor Consolidado': Number(cpkGeral) },
-    { 'Indicador Executivo CCO': 'Data da Exportação', 'Valor Consolidado': new Date().toLocaleString('pt-BR') }
+    { 'Indicador Executivo Central de Gestão': 'Total de Abastecimentos Registrados', 'Valor Consolidado': records.length },
+    { 'Indicador Executivo Central de Gestão': 'Volume Total Abastecido (Litros)', 'Valor Consolidado': Number(totalLitros.toFixed(2)) },
+    { 'Indicador Executivo Central de Gestão': 'Custo Financeiro Total (R$)', 'Valor Consolidado': Number(totalValor.toFixed(2)) },
+    { 'Indicador Executivo Central de Gestão': 'Distância Percorrida Total (KM)', 'Valor Consolidado': Number(totalKm.toFixed(2)) },
+    { 'Indicador Executivo Central de Gestão': 'Média Geral de Rendimento (KM/L)', 'Valor Consolidado': Number(mediaGeral) },
+    { 'Indicador Executivo Central de Gestão': 'Custo Médio por KM (R$/KM)', 'Valor Consolidado': Number(cpkGeral) },
+    { 'Indicador Executivo Central de Gestão': 'Data da Exportação', 'Valor Consolidado': new Date().toLocaleString('pt-BR') }
   ];
 
   const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
@@ -699,7 +699,7 @@ export const generateBlankTemplateExcel = () => {
 
 // Código do Google Apps Script
 export const GOOGLE_APPS_SCRIPT_TEMPLATE = `/**
- * Sincronização Automática Ambipar CCO <-> Google Sheets
+ * Sincronização Automática Ambipar Central de Gestão <-> Google Sheets
  */
 function doPost(e) {
   try {

@@ -154,7 +154,7 @@ export default function RotasModule({ user, onNavigateEscala }) {
                 <span>Voltar ao Catálogo</span>
               </button>
               <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 800, background: 'rgba(6, 182, 212, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
-                ROTEIRIZAÇÃO CCO • CIRUCTOS MULTI-PARADAS
+                ROTEIRIZAÇÃO Central de Gestão • CIRUCTOS MULTI-PARADAS
               </span>
             </div>
             <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
@@ -278,7 +278,7 @@ export default function RotasModule({ user, onNavigateEscala }) {
             <div className="card-panel" style={{ background: 'rgba(6, 182, 212, 0.05)', border: '1px solid rgba(6, 182, 212, 0.2)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <ShieldCheck size={18} color="var(--accent-cyan)" />
-                <strong style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>Normas Operacionais CCO RJ</strong>
+                <strong style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>Normas Operacionais Central de Gestão RJ</strong>
               </div>
               <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
                 <li>Todas as rotas iniciam e encerram na <strong>Base Ambipar DCX (Rod. Washington Luís, km 114)</strong>.</li>
@@ -424,7 +424,7 @@ export default function RotasModule({ user, onNavigateEscala }) {
         <div className="tower-header-text">
           <div className="tower-badge-live" style={{ background: 'rgba(6, 182, 212, 0.15)', borderColor: 'rgba(6, 182, 212, 0.3)', color: 'var(--accent-cyan)' }}>
             <span className="live-dot" style={{ background: 'var(--accent-cyan)' }}></span>
-            <span>CENTRAL DE ROTAS & ROTEIRIZAÇÃO INTELIGENTE RJ • CCO AMBIPAR</span>
+            <span>CENTRAL DE ROTAS & ROTEIRIZAÇÃO INTELIGENTE RJ • Central de Gestão AMBIPAR</span>
           </div>
           <h2>Corredores Logísticos & Circuitos Multi-Endereços</h2>
           <p>
