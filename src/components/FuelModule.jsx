@@ -919,6 +919,32 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
     };
   }, [simulatorData]);
 
+  const handleCopySimulationSummary = async () => {
+    const money = value => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const summary = [
+      'RESUMO CCO — SIMULAÇÃO DE AUTONOMIA',
+      'Estimativa de planejamento; não constitui autorização de abastecimento.',
+      'Origem: ' + (simulatorData.origem || 'Não informada'),
+      'Destino: ' + (simulatorData.destino || 'Não informado'),
+      'Veículo / conjunto: ' + (simulatorData.veiculoTipo || 'Não informado'),
+      'Distância total: ' + simCalculations.distTotal + ' km',
+      'Diesel estimado: ' + simCalculations.litrosDieselTotal + ' L',
+      'ARLA 32 estimado: ' + simCalculations.litrosArlaTotal + ' L',
+      'Custo estimado: ' + money(simCalculations.custoTotalMisto),
+      'Autonomia segura: ' + simCalculations.autonomiaSeguraKm + ' km',
+      'Reserva de segurança: ' + simulatorData.reservaSegurancaPct + '%',
+      'Paradas estimadas: ' + simCalculations.numParadas
+    ].join('\n');
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard indisponível');
+      await navigator.clipboard.writeText(summary);
+      setFeedback({ type: 'success', text: 'Resumo da simulação copiado.' });
+    } catch {
+      setFeedback({ type: 'error', text: 'Não foi possível copiar o resumo. Permita o acesso à área de transferência no navegador e tente novamente.' });
+    }
+  };
+
+
   return (
     <div className="module-page-container animate-fade-in" id="fuel-module-root">
       {/* 1. Header do Módulo */}
