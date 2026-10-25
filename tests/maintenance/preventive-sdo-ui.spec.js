@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 const company = "12000000-0000-4000-8000-000000000001",
   vehicleId = "33000000-0000-4000-8000-000000000001",
   partnerId = "43000000-0000-4000-8000-000000000001";
-async function boot(page, { km = 123456, role = "admin_geral" } = {}) {
+async function boot(page, { km = 123456, role = "admin_geral", preventivePlans = [] } = {}) {
   const user = {
     id: "22000000-0000-4000-8000-000000000001",
     email: "preventive@example.invalid",
@@ -54,7 +54,15 @@ async function boot(page, { km = 123456, role = "admin_geral" } = {}) {
     km_atual: km,
   };
   const calls = [];
-  let order = null;const savedPlans=[];
+  let order = null;
+  const savedPlans = preventivePlans.map((plan, index) => ({
+    id: plan.id || `plan-${index}`,
+    company_id: company,
+    vehicle_id: vehicleId,
+    categoria_veiculo: "caminhao",
+    ativo: true,
+    ...plan,
+  }));
   await page.route(
     "https://maintenance-fixture.supabase.co/**",
     async (route) => {
@@ -95,7 +103,40 @@ async function boot(page, { km = 123456, role = "admin_geral" } = {}) {
       else if (table === "maintenance_plan_command") {
         const b = request.postDataJSON();
         calls.push(b);
-        if(b.command==='save'){const plan={id:'plan-'+savedPlans.length,...b.body};savedPlans.push(plan);data=plan;}else{data={rows:savedPlans.map((p,n)=>{const next=Number(p.ultima_execucao_km)+Number(p.intervalo_km),left=next-Number(vehicle.km_atual);return{id:'plan-vehicle-'+n,plan_id:p.id,vehicle_id:vehicleId,nome:p.nome,km_atual:vehicle.km_atual,ultima_execucao_km:Number(p.ultima_execucao_km),ultima_execucao_data:p.ultima_execucao_data,proxima_km:next,proxima_data:null,estado:left<=0?'vencida':left<=500?'breve':'dia'};})};}
+        if (b.command === "save") {
+          const plan = { id: `plan-${savedPlans.length}`, company_id: company, ...b.body };
+          savedPlans.push(plan);
+          data = plan;
+        } else if (b.command === "context") {
+          data = {
+            plans: savedPlans,
+            vehicles: [vehicle],
+            settings: { antecedencia_alerta_dias: 7, antecedencia_alerta_km: 500, version: 1 },
+          };
+        } else if (b.command === "count") {
+          data = { count: 0 };
+        } else {
+          data = {
+            rows: savedPlans
+              .filter((plan) => !b.body?.vehicle_id || plan.vehicle_id === b.body.vehicle_id)
+              .map((plan, index) => {
+                const next = Number(plan.ultima_execucao_km) + Number(plan.intervalo_km || 0);
+                const left = next - Number(vehicle.km_atual || 0);
+                return {
+                  id: `plan-vehicle-${index}`,
+                  plan_id: plan.id,
+                  vehicle_id: plan.vehicle_id || vehicleId,
+                  nome: plan.nome,
+                  km_atual: vehicle.km_atual,
+                  ultima_execucao_km: Number(plan.ultima_execucao_km),
+                  ultima_execucao_data: plan.ultima_execucao_data,
+                  proxima_km: next,
+                  proxima_data: null,
+                  estado: left <= 0 ? "vencida" : left <= 500 ? "breve" : "dia",
+                };
+              }),
+          };
+        }
       } else if (table === "maintenance_vehicle_command")
         data = { preferences: {} };
       else if (table === "maintenance_order_command") {
@@ -139,7 +180,14 @@ test("preventiva gera solicitação persistida com serviços, adicionais e urgê
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  const f = await boot(page);
+  const f = await boot(page, {
+    preventivePlans: [
+      { nome: "Troca de Óleo de Motor & Filtros", intervalo_km: 15000, ultima_execucao_km: 110000, ultima_execucao_data: "2026-01-01" },
+      { nome: "Engraxamento & Lubrificação de Articulações", intervalo_km: 15000, ultima_execucao_km: 110000, ultima_execucao_data: "2026-01-01" },
+      { nome: "Revisão de Freios", intervalo_km: 15000, ultima_execucao_km: 110000, ultima_execucao_data: "2026-01-01" },
+      { nome: "Separador de Água", intervalo_km: 15000, ultima_execucao_km: 110000, ultima_execucao_data: "2026-01-01" },
+    ],
+  });
   await page.goto("/manutencao-preventiva");
   const module = page.locator(".pm-page");
   await expect(
@@ -235,5 +283,48 @@ test("KM desconhecido exige informação real e permite modo claro em celular", 
   ).toBeVisible();
 });
 
-test('KM e referência persistem e recalculam barras, próximo KM e alerta',async({page})=>{const f=await boot(page,{km:140000});await page.goto('/manutencao-preventiva');await page.getByRole('button',{name:'Definir referência · Troca de Óleo de Motor & Filtros',exact:true}).click();const setup=page.getByRole('dialog',{name:'Configurar próxima preventiva'});await expect(setup.getByLabel('Intervalo em KM',{exact:true})).toHaveValue('15000');await setup.getByLabel('KM de referência',{exact:true}).fill('130000');await setup.getByLabel('Data de referência',{exact:true}).fill('2026-01-01');await setup.getByRole('button',{name:'Salvar referência',exact:true}).click();await expect(setup).toHaveCount(0);const progress=page.getByRole('progressbar',{name:'Troca de Óleo de Motor & Filtros — ABC1D23',exact:true});await expect(progress).toHaveAttribute('aria-valuenow','67');await expect(page.getByText('Próxima: 145.000 km',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Atualizar KM',exact:true}).click();const kmDialog=page.getByRole('dialog',{name:'Atualizar odômetro · ABC1D23'});await kmDialog.getByLabel('KM atual do veículo',{exact:true}).fill('144600');await kmDialog.getByRole('button',{name:'Salvar KM',exact:true}).click();await expect(kmDialog).toHaveCount(0);await expect(progress).toHaveAttribute('aria-valuenow','97');await expect(page.getByText('400 km restantes',{exact:true})).toBeVisible();await expect(page.locator('.pm-progress-item.breve')).toContainText('Vence em breve');expect(f.vehicle.km_atual).toBe(144600);await page.reload();await expect(progress).toHaveAttribute('aria-valuenow','97');await page.screenshot({path:'test-results/preventive-progress-desktop.png',fullPage:true});await page.getByRole('button',{name:'Atualizar KM',exact:true}).click();await page.getByRole('dialog').getByLabel('KM atual do veículo',{exact:true}).fill('145100');await page.getByRole('dialog').getByRole('button',{name:'Salvar KM',exact:true}).click();await expect(progress).toHaveAttribute('aria-valuenow','100');await expect(page.locator('.pm-progress-item.vencida')).toContainText('Vencida');await expect(page.getByText('100 km em atraso',{exact:true})).toBeVisible();});
-test('início de acompanhamento exige confirmação e não registra execução',async({page})=>{const f=await boot(page,{km:200000});await page.goto('/manutencao-preventiva');await page.getByRole('button',{name:'Definir referência · Engraxamento & Lubrificação de Articulações',exact:true}).click();const dialog=page.getByRole('dialog');await expect(dialog.getByLabel('KM de referência',{exact:true})).toHaveValue('');await dialog.getByRole('button',{name:'Salvar referência',exact:true}).click();await expect(dialog.getByRole('alert')).toBeVisible();await dialog.getByLabel('Iniciar acompanhamento no KM atual, sem registrar revisão executada').check();await dialog.getByRole('button',{name:'Salvar referência',exact:true}).click();await expect(page.getByRole('progressbar',{name:'Engraxamento & Lubrificação de Articulações — ABC1D23'})).toHaveAttribute('aria-valuenow','0');await expect(page.getByText('Próxima: 205.000 km',{exact:true})).toBeVisible();expect(f.vehicle.km_atual).toBe(200000);expect(f.calls.filter(c=>c.command==='create_order'||c.command==='create')).toEqual([]);});
+test('KM e referência persistem e recalculam barras, próximo KM e alerta', async ({ page }) => {
+  const f = await boot(page, { km: 140000 });
+  await page.goto('/manutencao/planos-preventivos');
+  await page.getByRole('button', { name: 'Novo plano', exact: true }).click();
+  await page.getByLabel('Veículo *', { exact: true }).selectOption(vehicleId);
+  await page.getByLabel('Item *').fill('Troca de Óleo de Motor & Filtros');
+  await page.getByLabel('Intervalo em KM', { exact: true }).fill('15000');
+  await page.getByLabel('KM da última execução / base *', { exact: true }).fill('130000');
+  await page.getByLabel('Data da última execução / base *', { exact: true }).fill('2026-01-01');
+  await page.getByRole('button', { name: 'Salvar plano', exact: true }).click();
+  await expect(page.getByText('Plano salvo com auditoria.')).toBeVisible();
+
+  await page.goto('/manutencao-preventiva');
+  const progress = page.getByRole('progressbar', { name: 'Troca de Óleo de Motor & Filtros — ABC1D23', exact: true });
+  await expect(progress).toHaveAttribute('aria-valuenow', '67');
+  await expect(page.getByText('Próxima: 145.000 km', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Atualizar KM', exact: true }).click();
+  const kmDialog = page.getByRole('dialog', { name: 'Atualizar odômetro · ABC1D23' });
+  await kmDialog.getByLabel('KM atual do veículo', { exact: true }).fill('144600');
+  await kmDialog.getByRole('button', { name: 'Salvar KM', exact: true }).click();
+  await expect(kmDialog).toHaveCount(0);
+  await expect(progress).toHaveAttribute('aria-valuenow', '97');
+  await expect(page.getByText('400 km restantes', { exact: true })).toBeVisible();
+  await expect(page.locator('.pm-progress-item.breve')).toContainText('Vence em breve');
+  expect(f.vehicle.km_atual).toBe(144600);
+  await page.reload();
+  await expect(progress).toHaveAttribute('aria-valuenow', '97');
+  await page.screenshot({ path: 'test-results/preventive-progress-desktop.png', fullPage: true });
+  await page.getByRole('button', { name: 'Atualizar KM', exact: true }).click();
+  await page.getByRole('dialog').getByLabel('KM atual do veículo', { exact: true }).fill('145100');
+  await page.getByRole('dialog').getByRole('button', { name: 'Salvar KM', exact: true }).click();
+  await expect(progress).toHaveAttribute('aria-valuenow', '100');
+  await expect(page.locator('.pm-progress-item.vencida')).toContainText('Vencida');
+  await expect(page.getByText('100 km em atraso', { exact: true })).toBeVisible();
+});
+
+test('sem plano cadastrado, a solicitação pede os serviços reais e não inventa manutenções', async ({ page }) => {
+  await boot(page, { km: 200000 });
+  await page.goto('/manutencao-preventiva');
+  await expect(page.getByText('Nenhum plano preventivo cadastrado para este veículo.')).toBeVisible();
+  await page.getByRole('link', { name: 'Gerar S.D.O preventiva' }).click();
+  const description = page.getByLabel('Serviços preventivos e adicionais *');
+  await expect(description).toHaveValue(/Não há plano preventivo cadastrado/);
+  await expect(description).not.toHaveValue(/Troca de Óleo|Engraxamento|Revisão de Freios/);
+});
