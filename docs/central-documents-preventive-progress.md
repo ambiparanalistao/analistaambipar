@@ -13,7 +13,7 @@ Atualizar KM altera somente km_atual no cadastro original, por persistFleetVehic
 
 Os quatro itens do roteiro sem plano têm Definir referência. O usuário confirma o intervalo e informa KM/data de referência. Também pode marcar explicitamente início de acompanhamento no KM atual: isso cria uma base de acompanhamento, sem registrar serviço executado ou gerar baixa. O plano é salvo por maintenance_plan_command com auditoria. Nenhuma referência ou periodicidade é criada automaticamente em produção. Os intervalos sugeridos devem ser confirmados para o veículo.
 
-A abertura de SDO permanece independente da execução da revisão e não reinicia o odômetro. Planos existentes continuam no fluxo de encerramento já implementado.
+A abertura de S.D.O permanece independente da execução da revisão e não reinicia o odômetro. Planos existentes continuam no fluxo de encerramento já implementado.
 
 ## Testar
 Editar e salvar uma licença no pop-up; reabrir e conferir a data e o histórico. Cancelar e verificar que nada foi alterado. Em preventiva, informar KM, definir referência para um item e conferir próximo KM e barra. Atualizar a leitura até a proximidade e além do limite; verificar amarelo/vermelho e recarregar para confirmar persistência. Testes cobrem foco, centralização, falha de gravação, início de acompanhamento, campos ausentes, porcentagem e salvamento compartilhado.

@@ -84,7 +84,7 @@ export default function PreventiveMaintenanceModule({
           </span>
           <h1>Manutenção preventiva</h1>
           <p>
-            Gere uma SDO com os serviços já descritos, acrescente outras
+            Gere uma S.D.O com os serviços já descritos, acrescente outras
             necessidades e defina a urgência antes de enviar às oficinas.
           </p>
         </div>
@@ -203,10 +203,10 @@ export default function PreventiveMaintenanceModule({
                 <div className="pm-actions">
                   {canCreate &&
                     (v.status === "Em Viagem" ? (
-                      <span>Finalize a viagem para gerar a SDO.</span>
+                      <span>Finalize a viagem para gerar a S.D.O.</span>
                     ) : (
                       <a className="pm-primary" href={requestUrl(v.id)}>
-                        Gerar SDO preventiva
+                        Gerar S.D.O preventiva
                         <ArrowUpRight size={16} />
                       </a>
                     ))}
