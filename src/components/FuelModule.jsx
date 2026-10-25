@@ -979,6 +979,38 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
       <div className="fuel-mode-switch-bar">
         <button
           type="button"
+          className="fuel-mode-tab-btn"
+          onClick={() => {
+            if (onNavigateModule) {
+              onNavigateModule('aporte_combustivel');
+            }
+          }}
+          id="btn-tab-aporte-semanal"
+          style={{
+            background: 'rgba(16, 185, 129, 0.14)',
+            borderColor: 'rgba(16, 185, 129, 0.4)',
+            color: '#34d399',
+            fontWeight: 700
+          }}
+          title="Aporte Semanal e Solicitação de Saldo de Combustível (Quarta 17h / Quinta Manhã)"
+        >
+          <DollarSign size={17} />
+          <span>Aporte Semanal & Saldo</span>
+          <span style={{
+            marginLeft: '6px',
+            fontSize: '0.68rem',
+            padding: '2px 7px',
+            background: '#10b981',
+            color: '#ffffff',
+            borderRadius: '6px',
+            fontWeight: 800
+          }}>
+            Quinta
+          </span>
+        </button>
+
+        <button
+          type="button"
           className={`fuel-mode-tab-btn ${viewMode === 'dashboard' ? 'active' : ''}`}
           onClick={() => setViewMode('dashboard')}
           id="btn-tab-dashboard-analytics"

@@ -21,7 +21,8 @@ import {
   Building2,
   Fuel,
   Compass,
-  Wifi, Wrench
+  Wifi, Wrench,
+  DollarSign
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -94,6 +95,12 @@ export default function Sidebar({
           id: 'combustivel',
           label: 'Controle de Combustível & ARLA',
           icon: Fuel
+        },
+        {
+          id: 'aporte_combustivel',
+          label: 'Aporte Semanal Combustível',
+          icon: DollarSign,
+          badge: 'Quinta'
         },
         {
           id: 'mtr',

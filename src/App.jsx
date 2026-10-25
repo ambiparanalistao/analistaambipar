@@ -33,6 +33,7 @@ import AutomationModule from './components/AutomationModule';
 import MaintenanceModule from './components/maintenance/MaintenanceModule';
 import {MAINTENANCE_PAGES} from './components/maintenance/maintenanceRoutes';
 import useMaintenanceAccess from './hooks/useMaintenanceAccess';
+import WeeklyFuelProvisionModule from './components/WeeklyFuelProvisionModule';
 import './App.css';
 
 // Mapeamento de Rotas Web para cada Módulo
@@ -49,6 +50,7 @@ export const MODULE_ROUTES = {
   motoristas: '/motoristas',
   viagens: '/viagens',
   combustivel: '/combustivel',
+  aporte_combustivel: '/aporte-combustivel',
   simulador_autonomia: '/simulador-autonomia',
   clientes: '/clientes',
   mtr: '/mtr',
@@ -92,6 +94,11 @@ export const PATH_TO_MODULE = {
   '/abastecimentos': 'combustivel',
   '/diesel': 'combustivel',
   '/arla': 'combustivel',
+  '/aporte-combustivel': 'aporte_combustivel',
+  '/aporte': 'aporte_combustivel',
+  '/reporte-combustivel': 'aporte_combustivel',
+  '/saldo-combustivel': 'aporte_combustivel',
+  '/aporte-semanal': 'aporte_combustivel',
   '/simulador-autonomia': 'simulador_autonomia',
   '/simulador': 'simulador_autonomia',
   '/autonomia': 'simulador_autonomia',
@@ -207,6 +214,10 @@ export default function App() {
     combustivel: { 
       title: 'Controle de Combustível, ARLA 32 & Eficiência Energética', 
       subtitle: 'Auditoria de abastecimentos, rendimento médio (km/l), custo por quilômetro (CPK) e conformidade fiscal' 
+    },
+    aporte_combustivel: {
+      title: 'Aporte Semanal & Solicitação de Saldo de Combustível',
+      subtitle: 'Fechamento Quarta-feira 17h ➔ Relatório e Solicitação de Saldo Ticket Log toda Quinta-feira Manhã'
     },
     simulador_autonomia: { 
       title: 'Simulador Analítico de Autonomia & Consumo de Rota CCO', 
@@ -416,6 +427,7 @@ export default function App() {
                 )}
                 {currentModule === 'viagens' && <TripsModule companyId={maintenanceAccess.companyId} user={session.user} />}
                 {currentModule === 'combustivel' && <FuelModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId} user={session.user} initialView="dashboard" onNavigateModule={handleSelectModule} />}
+                {currentModule === 'aporte_combustivel' && <WeeklyFuelProvisionModule user={session.user} onNavigateModule={handleSelectModule} />}
                 {currentModule === 'simulador_autonomia' && <FuelModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId} user={session.user} initialView="simulator" onNavigateModule={handleSelectModule} />}
                 {currentModule === 'clientes' && (
                   <ClientsModule 
