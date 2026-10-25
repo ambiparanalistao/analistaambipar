@@ -1,3 +1,5 @@
+import useCompliance from '../hooks/useCompliance';
+import {validity} from '../utils/compliance';
 import PreventiveIndicator from './maintenance/plans/PreventiveIndicator';
 import React,{useState} from 'react';
 import {MAINTENANCE_PAGES} from './maintenance/maintenanceRoutes';
@@ -35,6 +37,8 @@ export default function Sidebar({
   onOpenConfig,
   isSupabaseOnline, maintenanceAccess
 }) {
+  const compliance=useCompliance(maintenanceAccess?.canRead?maintenanceAccess.companyId:undefined);
+  const complianceAlerts=compliance.rows.filter(l=>['vencida','breve'].includes(validity(l.vencimento,l.indeterminada).key)).length;
   const [maintenanceOpen,setMaintenanceOpen]=useState(true);
   const userInitial = user?.email ? user.email.charAt(0).toUpperCase() : 'A';
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Analista';
@@ -51,9 +55,9 @@ export default function Sidebar({
         },
         {
           id: 'auditoria_vencimentos',
-          label: 'Central de Vencimentos & CIPP',
+          label: 'Auditoria e Vencimentos',
           icon: ShieldAlert,
-          badge: 'Regulatório'
+          badge: complianceAlerts?complianceAlerts+' alertas':null
         },
         {
           id: 'manutencao_preventiva',

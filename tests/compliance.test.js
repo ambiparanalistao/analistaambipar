@@ -1,0 +1,6 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {validity,displayDate} from '../src/utils/compliance.js';
+test('validity updates from stored date rather than fixed audit label',()=>{assert.equal(validity('2026-10-23',false,'2026-10-24').key,'vencida');assert.equal(validity('2026-10-24',false,'2026-10-24').days,0);assert.equal(validity('2026-11-23',false,'2026-10-24').key,'breve');assert.equal(validity('2026-11-24',false,'2026-10-24').key,'regular');assert.equal(validity(null,false).key,'pendente');assert.equal(validity(null,true).key,'indeterminada');});
+test('unknown dates stay unknown and malformed dates do not become regular',()=>{assert.equal(displayDate(null),'Não informada');assert.equal(displayDate('2028-09-10'),'10/09/2028');assert.equal(validity('not a date').key,'pendente');});
+
+import {complianceExportRows} from '../src/utils/complianceExports.js';
+test('exports use canonical dates and preserve explicit missing data',()=>{const rows=complianceExportRows('veiculos',[{placa:'ABC1D23',status:'Disponível',validade_civ:'2030-09-10'}]);assert.equal(rows[0].CIV,'10/09/2030');assert.equal(rows[0]['CRLV / Licenciamento'],'Não informada');assert.equal(complianceExportRows('motoristas',[{nome:'Motorista',status:'Disponível'}])[0].MOPP,'Validade indeterminada');});

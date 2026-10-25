@@ -36,9 +36,10 @@ import {
   AUDITED_RJ_CLIENTS, 
   INITIAL_SCHEDULE_DATA 
 } from '../data/auditedClientsRoutesData';
-import { AUDITED_VEHICLES, AUDITED_DRIVERS } from '../data/auditedAmbiparData';
+import useFleetDirectory from '../hooks/useFleetDirectory';
 
-export default function EscalaModule({ user, onNavigateRotas }) {
+export default function EscalaModule({ user, onNavigateRotas,companyId }) {
+  const directory=useFleetDirectory(companyId);const AUDITED_VEHICLES=directory.vehicles,AUDITED_DRIVERS=directory.drivers;
   // Controle de Visualização em Tela Inteira: 'list' (Quadro Geral), 'form' (Montar Escala Tela Cheia), 'romaneio' (Ficha de Despacho Tela Cheia)
   const [viewMode, setViewMode] = useState('list');
   const [selectedRomaneio, setSelectedRomaneio] = useState(null);
@@ -555,7 +556,7 @@ export default function EscalaModule({ user, onNavigateRotas }) {
                 >
                   <option value="">-- Selecione o Veículo Liberado na Frota --</option>
                   {AUDITED_VEHICLES.map(v => (
-                    <option key={v.placa} value={v.placa} disabled={v.status === 'Bloqueado'}>
+                    <option key={v.placa} value={v.placa} disabled={v.status !== 'Disponível'}>
                       {v.placa} • {v.tipo} ({v.marca_modelo}) [{v.status}]
                     </option>
                   ))}
@@ -575,7 +576,7 @@ export default function EscalaModule({ user, onNavigateRotas }) {
                       ...formData,
                       motorista_nome: e.target.value,
                       motorista_telefone: m?.telefone || '',
-                      motorista_cnh: m ? `Cat. ${m.categoria_cnh} (MOPP ${m.status_mopp})` : ''
+                      motorista_cnh: m ? `Cat. ${m.categoria_cnh || 'Não informada'} (MOPP: validade indeterminada)` : ''
                     });
                   }}
                   style={{ width: '100%', padding: '0.65rem 0.85rem', background: '#070b12', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '0.9rem' }}
@@ -583,7 +584,7 @@ export default function EscalaModule({ user, onNavigateRotas }) {
                   <option value="">-- Selecione o Motorista Homologado MOPP --</option>
                   {AUDITED_DRIVERS.map(d => (
                     <option key={d.id} value={d.nome}>
-                      {d.nome} (Cat. {d.categoria_cnh} • MOPP {d.status_mopp})
+                      {d.nome} (Cat. {d.categoria_cnh || 'Não informada'} • MOPP: validade indeterminada)
                     </option>
                   ))}
                 </select>
