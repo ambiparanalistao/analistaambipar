@@ -30,11 +30,16 @@ import {
   Droplets,
   Gauge,
   Wallet,
-  Settings
+  Settings,
+  History,
+  HelpCircle,
+  FileCheck
 } from 'lucide-react';
 import {
   DEFAULT_CYCLE_SETTINGS,
+  AUDITED_REAL_FLEET_PROVISION,
   INITIAL_WEEKLY_CYCLES,
+  INITIAL_APORTE_DOCUMENTS_HISTORY,
   calculateCycleTotals,
   generateManagerWhatsAppMessage,
   exportCycleToCSV
@@ -42,24 +47,43 @@ import {
 import './WeeklyFuelProvisionModule.css';
 
 export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
-  // Estado de ciclos salvo localmente (Versão 2 - Abank)
+  // Sincronização com o extrato real de abastecimentos do sistema
+  const [realFuelRecords, setRealFuelRecords] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ambipar_fuel_records_v1');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Estado de ciclos salvo localmente (Versão 3 - Real 17k Abank)
   const [cycles, setCycles] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_weekly_fuel_cycles_v2');
+      const saved = localStorage.getItem('ambipar_weekly_fuel_cycles_v3');
       if (saved) return JSON.parse(saved);
-      // Limpa chave v1 antiga se existir
-      localStorage.removeItem('ambipar_weekly_fuel_cycles_v1');
       return INITIAL_WEEKLY_CYCLES;
     } catch {
       return INITIAL_WEEKLY_CYCLES;
     }
   });
 
+  // Histórico de Documentos Gerados
+  const [documentsHistory, setDocumentsHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ambipar_aporte_documents_history_v2');
+      if (saved) return JSON.parse(saved);
+      return INITIAL_APORTE_DOCUMENTS_HISTORY;
+    } catch {
+      return INITIAL_APORTE_DOCUMENTS_HISTORY;
+    }
+  });
+
+  // Configurações do ciclo
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_fuel_cycle_settings_v2');
+      const saved = localStorage.getItem('ambipar_fuel_cycle_settings_v3');
       if (saved) return JSON.parse(saved);
-      localStorage.removeItem('ambipar_fuel_cycle_settings_v1');
       return DEFAULT_CYCLE_SETTINGS;
     } catch {
       return DEFAULT_CYCLE_SETTINGS;
@@ -69,7 +93,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Salva no localStorage quando alterado
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_weekly_fuel_cycles_v2', JSON.stringify(cycles));
+      localStorage.setItem('ambipar_weekly_fuel_cycles_v3', JSON.stringify(cycles));
     } catch (e) {
       console.warn('Erro ao salvar ciclos:', e);
     }
@@ -77,7 +101,15 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_fuel_cycle_settings_v2', JSON.stringify(settings));
+      localStorage.setItem('ambipar_aporte_documents_history_v2', JSON.stringify(documentsHistory));
+    } catch (e) {
+      console.warn('Erro ao salvar documentos:', e);
+    }
+  }, [documentsHistory]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ambipar_fuel_cycle_settings_v3', JSON.stringify(settings));
     } catch (e) {
       console.warn('Erro ao salvar configurações do ciclo:', e);
     }
@@ -89,18 +121,23 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     return cycles.find(c => c.id === selectedCycleId) || cycles[0];
   }, [cycles, selectedCycleId]);
 
-  // Margem de contingência operacional ajustável
-  const [contingencyPct, setContingencyPct] = useState(activeCycle?.margemSegurancaPct || 8);
+  // Margem de contingência operacional ajustável (padrão 11.2%)
+  const [contingencyPct, setContingencyPct] = useState(activeCycle?.margemSegurancaPct || 11.2);
+
+  // Valor Alvo do Aporte Semanal (padrão R$ 17.000,00)
+  const [aporteTargetValue, setAporteTargetValue] = useState(activeCycle?.valorTotalAporteAlvo || 17000.00);
 
   // Modo de visualização de tela cheia (SEM NENHUM POP-UP!)
-  // viewMode: 'dashboard' | 'dossier' | 'vehicle_detail' | 'new_entry' | 'settings'
+  // viewMode: 'dashboard' | 'dossier' | 'vehicle_detail' | 'documents_history' | 'new_entry' | 'settings'
   const [viewMode, setViewMode] = useState('dashboard');
   const [selectedVehicleForDetail, setSelectedVehicleForDetail] = useState(null);
+  const [activeDossierDocument, setActiveDossierDocument] = useState(null);
 
   // Filtros e busca
   const [searchTerm, setSearchTerm] = useState('');
   const [operationFilter, setOperationFilter] = useState('Todas');
   const [copySuccess, setCopySuccess] = useState(false);
+  const [showMotivoDetails, setShowMotivoDetails] = useState(true);
 
   // Totais consolidados do ciclo ativo
   const totals = useMemo(() => {
@@ -151,16 +188,55 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     exportCycleToCSV(activeCycle, contingencyPct);
   };
 
-  // Novo abastecimento adicionado
+  // GERAR DOCUMENTO OFICIAL DE APORTE (Abre em tela cheia com protocolo oficial salvo)
+  const handleGenerateOfficialDocument = () => {
+    const nextSeq = documentsHistory.length + 1;
+    const protocolCode = `AMB-APORTE-${activeCycle.id.replace('CICLO-', '')}/${String(nextSeq).padStart(3, '0')}`;
+    
+    const newDoc = {
+      id: `DOC-APORTE-ABK-${Date.now()}`,
+      numeroProtocolo: protocolCode,
+      cicloId: activeCycle.id,
+      cicloNome: activeCycle.nome,
+      dataFechamento: activeCycle.dataCorteQuarta,
+      dataSolicitacao: new Date().toISOString(),
+      gestorNome: settings.gestorNome,
+      gestorCargo: settings.gestorCargo,
+      analistaNome: settings.analistaResponsavel,
+      analistaCargo: settings.analistaCargo,
+      convenio: settings.convenioPadrao,
+      valorTotalSolicitado: totals.totalAporteSugerido,
+      valorGastoReal: totals.totalGasto,
+      valorMargemSeguranca: totals.margemTotalRS,
+      margemPct: contingencyPct,
+      totalVeiculos: totals.totalVeiculos,
+      status: 'PRONTO_ENVIO',
+      statusLabel: 'Emitido · Aguardando Liberação Abank pelo Gestor',
+      motivoGeral: activeCycle.motivoGeralSolicitacao,
+      veiculos: activeCycle.veiculosAbastecidos
+    };
+
+    setDocumentsHistory(prev => [newDoc, ...prev]);
+    setActiveDossierDocument(newDoc);
+    setViewMode('dossier');
+  };
+
+  // Reabrir documento existente do histórico
+  const handleOpenExistingDocument = (doc) => {
+    setActiveDossierDocument(doc);
+    setViewMode('dossier');
+  };
+
+  // Formulário de Novo Abastecimento no Ciclo
   const [newEntryData, setNewEntryData] = useState({
     placa: 'RHU-6I87',
     data: new Date().toISOString().split('T')[0],
     hora: '10:00',
     posto: 'Auto Posto Arco Metropolitano (Duque de Caxias)',
     cidade: 'Duque de Caxias / RJ',
-    dieselLitros: 350,
+    dieselLitros: 150,
     precoDiesel: 6.29,
-    arlaLitros: 15,
+    arlaLitros: 7,
     precoArla: 3.80,
     kmNoAto: 142400,
     nfNumero: 'NF-e 88921',
@@ -212,8 +288,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           litrosArlaTotal: novoArlaTotal,
           valorTotalGasto: novoGastoTotal,
           kmFinal: novoKmFinal,
-          kmRodado: novoKmRodado,
-          solicitacaoAporteSugerido: Math.round((novoGastoTotal * (1 + contingencyPct / 100)) / 50) * 50
+          kmRodado: novoKmRodado
         };
       });
       return { ...c, veiculosAbastecidos: veiculos };
@@ -223,8 +298,25 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     setViewMode('dashboard');
   };
 
-  // Se a tela estiver em modo Dossiê Timbrado para Impressão / PDF
+  // SE ESTIVER EM MODO DOSSIÊ TIMBRADO PARA IMPRESSÃO / PDF (TELA CHEIA, ZERO POP-UP)
   if (viewMode === 'dossier') {
+    const docToDisplay = activeDossierDocument || {
+      numeroProtocolo: 'AMB-APORTE-2026-W43/001',
+      dataFechamento: activeCycle.dataCorteQuarta,
+      dataSolicitacao: activeCycle.dataEnvioQuinta,
+      gestorNome: settings.gestorNome,
+      gestorCargo: settings.gestorCargo,
+      analistaNome: settings.analistaResponsavel,
+      analistaCargo: settings.analistaCargo,
+      convenio: settings.convenioPadrao,
+      valorTotalSolicitado: totals.totalAporteSugerido,
+      valorGastoReal: totals.totalGasto,
+      valorMargemSeguranca: totals.margemTotalRS,
+      margemPct: contingencyPct,
+      motivoGeral: activeCycle.motivoGeralSolicitacao,
+      veiculos: activeCycle.veiculosAbastecidos
+    };
+
     return (
       <div className="dossier-fullscreen-workspace animate-fade-in" id="dossier-fullscreen-workspace">
         <header className="dossier-topbar no-print">
@@ -237,7 +329,9 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               <ArrowLeft size={18} />
               <span>Voltar ao Painel de Aporte</span>
             </button>
-            <div className="dossier-tag">Dossiê Executivo Oficial de Solicitação de Saldo</div>
+            <div className="dossier-tag">
+              Documento Oficial: <strong>{docToDisplay.numeroProtocolo}</strong>
+            </div>
           </div>
           <div className="dossier-topbar-right">
             <button
@@ -254,7 +348,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               onClick={handleCopyWhatsAppMessage}
             >
               <Copy size={18} />
-              <span>{copySuccess ? 'Copiado!' : 'Copiar Texto'}</span>
+              <span>{copySuccess ? 'Copiado!' : 'Copiar Texto p/ Gestor'}</span>
             </button>
           </div>
         </header>
@@ -266,67 +360,91 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               <div className="doc-brand">
                 <div className="doc-logo-pill">AMBIPAR</div>
                 <div className="doc-brand-text">
-                  <h2>AMBIPAR ENVIRONMENTAL SOLUTIONS</h2>
-                  <p>Operações de Logística & Gestão Integrada de Frotas · Polo Duque de Caxias / RJ</p>
+                  <h2>AMBIPAR LOGISTICS & ENVIRONMENTAL SOLUTIONS</h2>
+                  <p>Gestão Integrada de Frotas & Torre de Controle CCO · Base Duque de Caxias / RJ</p>
                 </div>
               </div>
               <div className="doc-meta-box">
-                <span className="doc-code">{activeCycle.id}</span>
+                <span className="doc-code">PROTOCOLO: {docToDisplay.numeroProtocolo}</span>
                 <span className="doc-date">Fechamento: Quarta-feira 17:00h</span>
-                <span className="doc-report-date">Aporte: Quinta-feira 08:00h</span>
+                <span className="doc-report-date">Aporte Solicitado: Quinta-feira 08:00h</span>
               </div>
             </div>
 
             <div className="doc-title-banner">
-              <h1>RELATÓRIO & APORTE SEMANAL DE COMBUSTÍVEL · CARTÃO ABANK FROTA</h1>
-              <p>Demonstrativo consolidado de abastecimentos realizados, quilometragens aferidas e solicitação de saldo financeiro para a semana seguinte.</p>
+              <h1>SOLICITAÇÃO OFICIAL DE APORTE SEMANAL · CARTÃO ABANK FROTA</h1>
+              <p>
+                Demonstrativo auditado dos abastecimentos realizados no ciclo, memória de cálculo da divisão da cota de <strong>R$ 17.000,00</strong> entre os veículos ativos e justificativa técnica da margem de segurança.
+              </p>
             </div>
 
             {/* Informações de Gestão */}
             <div className="doc-info-grid">
               <div className="doc-info-item">
                 <label>GESTOR RESPONSÁVEL / APROVADOR:</label>
-                <strong>{settings.gestorNome}</strong>
-                <span>{settings.gestorCargo}</span>
+                <strong>{docToDisplay.gestorNome}</strong>
+                <span>{docToDisplay.gestorCargo}</span>
               </div>
               <div className="doc-info-item">
                 <label>ANALISTA CCO SOLICITANTE:</label>
-                <strong>{settings.analistaResponsavel}</strong>
-                <span>{settings.analistaCargo}</span>
+                <strong>{docToDisplay.analistaNome}</strong>
+                <span>{docToDisplay.analistaCargo}</span>
               </div>
               <div className="doc-info-item">
-                <label>CONVÊNIO & MEIO DE PAGAMENTO:</label>
-                <strong>{settings.convenioPadrao}</strong>
-                <span>Cartões Frota com Faturamento Quinzenal</span>
+                <label>CARTÃO / MEIO DE PAGAMENTO:</label>
+                <strong>{docToDisplay.convenio}</strong>
+                <span>Recarga Programada nas Contas Abank</span>
               </div>
               <div className="doc-info-item">
-                <label>PERÍODO OPERACIONAL:</label>
-                <strong>{activeCycle.nome}</strong>
-                <span>Corte programado em Quarta-feira à tarde</span>
+                <label>VALOR TOTAL DO APORTE:</label>
+                <strong style={{ color: '#166534', fontSize: '1.1rem' }}>
+                  R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </strong>
+                <span>Margem de Segurança: +{docToDisplay.margemPct}%</span>
               </div>
             </div>
 
-            {/* Tabela Oficial Consolidada dos Veículos */}
-            <div className="doc-table-section">
-              <h3>1. DEMONSTRATIVO ANALÍTICO DOS VEÍCULOS ABASTECIDOS NO CICLO</h3>
+            {/* 1. Motivo Técnico Fundamentado da Solicitação */}
+            <div className="doc-motivo-box">
+              <h3>1. JUSTIFICATIVA TÉCNICA E OPERACIONAL DO VALOR SOLICITADO (R$ 17.000,00)</h3>
+              <div className="motivo-content">
+                <p>
+                  <strong>Objetivo Operacional:</strong> A solicitação semanal de <strong>R$ 17.000,00</strong> no Cartão Abank Frota é dimensionada para suprir o ciclo ininterrupto de 7 dias da frota pesada alocada nos contratos estratégicos da <strong>Vale S.A. (TIG Guaíba / CPBS)</strong>, <strong>Amazon CD Meriti (GIG 1 / GIG 7)</strong> e contratos municipais de logística reversa.
+                </p>
+                <div className="motivo-bullets">
+                  <div className="bullet-row">
+                    <strong>• Consumo em Tomada de Força (PTO):</strong> Caminhões como o Poliguindaste Duplo (RHU-6I87) e Tanque Hidrovácuo (FMB-1H09) mantêm motores operando a rotações elevadas durante operações de carga, içamento e sucção com o veículo estacionado, gerando queima de combustível necessária à execução do contrato sem progressão de hodômetro.
+                  </div>
+                  <div className="bullet-row">
+                    <strong>• Margem Significativa de Segurança (+{docToDisplay.margemPct}% = R$ {docToDisplay.valorMargemSeguranca.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}):</strong> Provisão técnica mandatória para absorver congestionamentos crônicos nas principais artérias logísticas fluminenses (Avenida Brasil, Rodovia Presidente Dutra e Arco Metropolitano) e variações de preço do Diesel S10 entre postos de rota.
+                  </div>
+                  <div className="bullet-row">
+                    <strong>• Proteção Anti-Desabastecimento:</strong> Veículos transportando resíduos perigosos Classe I e efluentes industriais são proibidos por regulamento da ANTT/IBAMA e SLA de clientes de sofrerem qualquer interrupção por pane seca em trânsito rodoviário.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Tabela de Divisão dos R$ 17.000,00 por Veículo */}
+            <div className="doc-table-section" style={{ marginTop: '24px' }}>
+              <h3>2. MATRIZ DE ALOCAÇÃO DOS R$ 17.000,00 POR VEÍCULO / CARTÃO ABANK</h3>
               <table className="doc-table">
                 <thead>
                   <tr>
-                    <th>Placa</th>
-                    <th>Modelo / Operação</th>
+                    <th>Placa / Prefixo</th>
+                    <th>Modelo & Operação</th>
+                    <th>Cartão Abank</th>
                     <th>Dias Abastecidos</th>
-                    <th>KM Inicial</th>
-                    <th>KM Final</th>
                     <th>KM Rodado</th>
-                    <th>Diesel S10</th>
-                    <th>ARLA 32</th>
+                    <th>Diesel (L)</th>
                     <th>Média</th>
-                    <th>Gasto Realizado (R$)</th>
-                    <th className="highlight-col">Aporte Sugerido (R$)</th>
+                    <th>Gasto Real (R$)</th>
+                    <th>Margem (+11%)</th>
+                    <th className="highlight-col">Cota Aporte (R$)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {activeCycle.veiculosAbastecidos.map((v, i) => (
+                  {(docToDisplay.veiculos || activeCycle.veiculosAbastecidos).map(v => (
                     <tr key={v.placa}>
                       <td className="bold-cell">
                         <div>{v.placa}</div>
@@ -336,20 +454,25 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                         <div className="model-name">{v.modelo}</div>
                         <div className="op-tag">{v.operacao}</div>
                       </td>
-                      <td className="center-cell days-col">
+                      <td className="center-cell bold-cell" style={{ color: '#0284c7' }}>
+                        {v.cartaoNumero}
+                      </td>
+                      <td className="center-cell">
                         {v.diasAbastecimento.map(d => (
                           <span key={d} className="day-badge">{d}</span>
                         ))}
                       </td>
-                      <td className="right-cell">{v.kmInicial.toLocaleString('pt-BR')}</td>
-                      <td className="right-cell">{v.kmFinal.toLocaleString('pt-BR')}</td>
                       <td className="right-cell bold-cell">{v.kmRodado.toLocaleString('pt-BR')} km</td>
                       <td className="right-cell">{v.litrosDieselTotal} L</td>
-                      <td className="right-cell">{v.litrosArlaTotal} L</td>
-                      <td className="center-cell bold-cell">
+                      <td className="center-cell">
                         {v.litrosDieselTotal > 0 ? (v.kmRodado / v.litrosDieselTotal).toFixed(2) : '-'} km/l
                       </td>
-                      <td className="right-cell">R$ {v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td className="right-cell">
+                        R$ {v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="right-cell" style={{ color: '#059669' }}>
+                        + R$ {(v.margemSegurancaRS || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </td>
                       <td className="right-cell highlight-col bold-cell">
                         R$ {v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
@@ -358,56 +481,36 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 </tbody>
                 <tfoot>
                   <tr className="tfoot-totals">
-                    <td colSpan="5"><strong>TOTAL CONSOLIDADO DA FROTA</strong></td>
+                    <td colSpan="4"><strong>TOTAL CONSOLIDADO DA FROTA (ALOCAÇÃO EXATA)</strong></td>
                     <td className="right-cell"><strong>{totals.totalKm.toLocaleString('pt-BR')} km</strong></td>
                     <td className="right-cell"><strong>{totals.totalDiesel.toLocaleString('pt-BR')} L</strong></td>
-                    <td className="right-cell"><strong>{totals.totalArla.toLocaleString('pt-BR')} L</strong></td>
                     <td className="center-cell"><strong>{totals.mediaFrotaKmL} km/l</strong></td>
-                    <td className="right-cell"><strong>R$ {totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></td>
-                    <td className="right-cell highlight-col">
-                      <strong>R$ {totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                    <td className="right-cell"><strong>R$ {docToDisplay.valorGastoReal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></td>
+                    <td className="right-cell" style={{ color: '#059669' }}>
+                      <strong>+ R$ {docToDisplay.valorMargemSeguranca.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                    </td>
+                    <td className="right-cell highlight-col" style={{ fontSize: '1rem' }}>
+                      <strong>R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
                     </td>
                   </tr>
                 </tfoot>
               </table>
             </div>
 
-            {/* Justificativa e Quadro de Contingência */}
-            <div className="doc-contingency-box">
-              <h3>2. MEMÓRIA DE CÁLCULO & RECARGA SOLICITADA PARA A SEMANA SEGUINTE</h3>
-              <div className="contingency-grid">
-                <div className="contingency-card">
-                  <span>Gasto Realizado no Período Encerrado:</span>
-                  <strong>R$ {totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                </div>
-                <div className="contingency-card">
-                  <span>Margem Técnica de Contingência (+{contingencyPct}%):</span>
-                  <strong>R$ {(totals.totalAporteSugerido - totals.totalGasto).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                </div>
-                <div className="contingency-card highlight-card">
-                  <span>VALOR TOTAL REQUERIDO DE APORTE ABANK FROTA:</span>
-                  <strong>R$ {totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                </div>
-              </div>
-              <p className="contingency-note">
-                * A margem de segurança de {contingencyPct}% cobre variações de itinerário, manobras com tomada de força (PTO) nos caminhões de sucção/poliguindaste e contingências de tráfego no Arco Metropolitano e Rodovia Presidente Dutra.
-              </p>
-            </div>
-
             {/* Assinaturas Formais */}
             <div className="doc-signatures">
               <div className="sig-block">
                 <div className="sig-line"></div>
-                <strong>{settings.analistaResponsavel}</strong>
-                <span>Analista de Operações & CCO (Solicitante)</span>
-                <small>Emitido em: {new Date().toLocaleDateString('pt-BR')} · Sistema CCO Ambipar</small>
+                <strong>{docToDisplay.analistaNome}</strong>
+                <span>{docToDisplay.analistaCargo} (Solicitante CCO)</span>
+                <small>Protocolo emitido em: {new Date(docToDisplay.dataSolicitacao).toLocaleDateString('pt-BR')} · Sistema Ambipar</small>
               </div>
 
               <div className="sig-block">
                 <div className="sig-line"></div>
-                <strong>{settings.gestorNome}</strong>
-                <span>{settings.gestorCargo} (Aprovador)</span>
-                <small>Status: Aguardando Autorização no Portal / App Abank</small>
+                <strong>{docToDisplay.gestorNome}</strong>
+                <span>{docToDisplay.gestorCargo} (Aprovador)</span>
+                <small>Status: Aguardando Liberação do Saldo Abank</small>
               </div>
             </div>
           </div>
@@ -416,7 +519,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     );
   }
 
-  // Se a tela estiver em modo Detalhes de um Veículo Específico
+  // SE ESTIVER EM MODO AUDITORIA DE CUPONS DO VEÍCULO (TELA CHEIA, ZERO POP-UP)
   if (viewMode === 'vehicle_detail' && selectedVehicleForDetail) {
     const v = selectedVehicleForDetail;
     return (
@@ -428,11 +531,11 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             onClick={() => setViewMode('dashboard')}
           >
             <ArrowLeft size={18} />
-            <span>Voltar ao Resumo Semanal de Aporte</span>
+            <span>Voltar ao Painel do Aporte</span>
           </button>
           <div className="detail-title-box">
-            <h2>Auditoria de Abastecimento · {v.placa} ({v.prefixo})</h2>
-            <span className="badge-cycle">{activeCycle.nome}</span>
+            <h2>Auditoria de Abastecimento & Motivo · {v.placa} ({v.prefixo})</h2>
+            <span className="badge-cycle">{activeCycle.nome} · Cota Abank: R$ {v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
           </div>
         </header>
 
@@ -443,13 +546,16 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               <div className="v-plate-badge">{v.placa}</div>
               <div>
                 <h3>{v.modelo}</h3>
-                <p className="v-op-sub">{v.operacao} · Cartão {v.cartaoTipo} ({v.cartaoNumero})</p>
+                <p className="v-op-sub">{v.operacao} · Cartão Abank ({v.cartaoNumero})</p>
+                <div style={{ marginTop: '8px', color: '#94a3b8', fontSize: '0.85rem' }}>
+                  <strong>Justificativa da Cota de R$ {v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}:</strong> {v.motivoTecnico}
+                </div>
               </div>
             </div>
 
             <div className="v-kpi-group">
               <div className="v-kpi">
-                <span>KM Rodado na Semana</span>
+                <span>KM Rodado no Ciclo</span>
                 <strong>{v.kmRodado.toLocaleString('pt-BR')} km</strong>
                 <small>{v.kmInicial.toLocaleString('pt-BR')} ➔ {v.kmFinal.toLocaleString('pt-BR')}</small>
               </div>
@@ -459,26 +565,26 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <small>Média: {(v.kmRodado / v.litrosDieselTotal).toFixed(2)} km/l (Meta: {v.metaKmL})</small>
               </div>
               <div className="v-kpi">
-                <span>ARLA 32 Total</span>
-                <strong>{v.litrosArlaTotal} L</strong>
-                <small>Proporção: {((v.litrosArlaTotal / v.litrosDieselTotal) * 100).toFixed(1)}%</small>
+                <span>Gasto Real + Margem</span>
+                <strong>R$ {v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                <small>+ R$ {v.margemSegurancaRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} reserva</small>
               </div>
               <div className="v-kpi highlight-kpi">
-                <span>Aporte Sugerido Próxima Semana</span>
+                <span>Cota Aporte Abank</span>
                 <strong>R$ {v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                <small>Gasto Realizado: R$ {v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</small>
+                <small>Saldo est. atual: R$ {v.saldoCartaoAtual.toFixed(2)}</small>
               </div>
             </div>
           </div>
 
-          {/* Histórico dos Cupons / Abastecimentos no Período */}
+          {/* Cupons e Comprovantes */}
           <div className="tickets-section">
             <div className="tickets-header">
               <h3>
                 <Fuel size={20} className="icon-emerald" />
-                <span>Comprovantes de Abastecimento Realizados na Semana (Fechamento Quarta-feira)</span>
+                <span>Comprovantes de Abastecimento Realizados na Semana (Corte Quarta-feira 17h)</span>
               </h3>
-              <span className="count-badge">{v.abastecimentosDetalhe?.length || 0} abastecimentos registrados</span>
+              <span className="count-badge">{v.abastecimentosDetalhe?.length || 0} comprovantes Abank registrados</span>
             </div>
 
             <div className="tickets-list">
@@ -516,7 +622,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                       <div className="ticket-cost">
                         <label>Valor Total do Cupom:</label>
                         <strong className="cost-val">R$ {ticket.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                        <span className="auth-code">Aut: {ticket.comprovante}</span>
+                        <span className="auth-code">Aut Abank: {ticket.comprovante}</span>
                       </div>
                     </div>
                   </div>
@@ -534,10 +640,10 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     );
   }
 
-  // Se a tela estiver em modo de Lançamento de Novo Abastecimento no Ciclo
-  if (viewMode === 'new_entry') {
+  // SE ESTIVER EM MODO HISTÓRICO DE DOCUMENTOS EMITIDOS (TELA CHEIA, ZERO POP-UP)
+  if (viewMode === 'documents_history') {
     return (
-      <div className="new-entry-fullscreen animate-fade-in" id="new-entry-fullscreen">
+      <div className="documents-history-fullscreen animate-fade-in" id="documents-history-fullscreen">
         <header className="entry-topbar">
           <button
             type="button"
@@ -545,282 +651,55 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             onClick={() => setViewMode('dashboard')}
           >
             <ArrowLeft size={18} />
-            <span>Cancelar e Voltar ao Aporte</span>
+            <span>Voltar ao Painel do Aporte</span>
           </button>
-          <h2>Lançar Novo Abastecimento no Ciclo Semanal</h2>
+          <h2>Histórico de Documentos & Solicitações de Aporte Emitidas</h2>
         </header>
 
-        <div className="entry-form-container">
-          <form onSubmit={handleSaveNewEntry} className="entry-card-form">
-            <div className="form-legend">
-              <Plus size={20} className="icon-emerald" />
-              <div>
-                <h3>Registro de Cupom / Nota Fiscal Abank</h3>
-                <p>Insira os dados do comprovante para atualizar a memória de cálculo do aporte da próxima quinta-feira.</p>
-              </div>
-            </div>
+        <div className="history-container">
+          <div className="history-cards-grid">
+            {documentsHistory.map((doc, idx) => (
+              <div key={doc.id || idx} className="doc-history-card">
+                <div className="doc-history-header">
+                  <div className="doc-protocol-pill">{doc.numeroProtocolo}</div>
+                  <span className={`doc-status-badge ${doc.status === 'APROVADO_CREDITADO' ? 'approved' : 'pending'}`}>
+                    {doc.statusLabel}
+                  </span>
+                </div>
 
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Veículo / Placa:</label>
-                <select
-                  value={newEntryData.placa}
-                  onChange={e => setNewEntryData({ ...newEntryData, placa: e.target.value })}
-                  className="form-input"
-                  required
-                >
-                  {activeCycle.veiculosAbastecidos.map(v => (
-                    <option key={v.placa} value={v.placa}>
-                      {v.placa} - {v.modelo} ({v.operacao})
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="doc-history-body">
+                  <h4>{doc.cicloNome || doc.cicloId}</h4>
+                  <div className="doc-history-vals">
+                    <div>
+                      <span>Valor Solicitado:</span>
+                      <strong>R$ {doc.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                    </div>
+                    <div>
+                      <span>Margem Técnica:</span>
+                      <strong style={{ color: '#059669' }}>+{doc.margemPct}%</strong>
+                    </div>
+                  </div>
+                  <p className="doc-history-motivo">
+                    <strong>Motivo:</strong> {doc.motivoResumido || doc.motivoGeral?.slice(0, 120)}...
+                  </p>
+                  <div className="doc-history-meta">
+                    <span>Fechamento: Quarta 17h</span>
+                    <span>Envio: Quinta Manhã</span>
+                  </div>
+                </div>
 
-              <div className="form-group">
-                <label>Data do Abastecimento:</label>
-                <input
-                  type="date"
-                  value={newEntryData.data}
-                  onChange={e => setNewEntryData({ ...newEntryData, data: e.target.value })}
-                  className="form-input"
-                  required
-                />
+                <div className="doc-history-actions">
+                  <button
+                    type="button"
+                    className="btn-open-doc"
+                    onClick={() => handleOpenExistingDocument(doc)}
+                  >
+                    <FileText size={16} />
+                    <span>Visualizar / Imprimir Dossiê</span>
+                  </button>
+                </div>
               </div>
-
-              <div className="form-group">
-                <label>Horário:</label>
-                <input
-                  type="time"
-                  value={newEntryData.hora}
-                  onChange={e => setNewEntryData({ ...newEntryData, hora: e.target.value })}
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Hodômetro no Ato (KM):</label>
-                <input
-                  type="number"
-                  value={newEntryData.kmNoAto}
-                  onChange={e => setNewEntryData({ ...newEntryData, kmNoAto: e.target.value })}
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              <div className="form-group full-width">
-                <label>Posto de Combustível Credenciado:</label>
-                <input
-                  type="text"
-                  value={newEntryData.posto}
-                  onChange={e => setNewEntryData({ ...newEntryData, posto: e.target.value })}
-                  className="form-input"
-                  placeholder="Ex: Posto Presidente Dutra BR-116"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Litros Diesel S10:</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newEntryData.dieselLitros}
-                  onChange={e => setNewEntryData({ ...newEntryData, dieselLitros: e.target.value })}
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Preço Diesel (R$/L):</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newEntryData.precoDiesel}
-                  onChange={e => setNewEntryData({ ...newEntryData, precoDiesel: e.target.value })}
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Litros ARLA 32:</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newEntryData.arlaLitros}
-                  onChange={e => setNewEntryData({ ...newEntryData, arlaLitros: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Preço ARLA 32 (R$/L):</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newEntryData.precoArla}
-                  onChange={e => setNewEntryData({ ...newEntryData, precoArla: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Número da Nota Fiscal (NF-e):</label>
-                <input
-                  type="text"
-                  value={newEntryData.nfNumero}
-                  onChange={e => setNewEntryData({ ...newEntryData, nfNumero: e.target.value })}
-                  className="form-input"
-                  placeholder="Ex: NF-e 44102"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Comprovante Abank / NSU:</label>
-                <input
-                  type="text"
-                  value={newEntryData.comprovante}
-                  onChange={e => setNewEntryData({ ...newEntryData, comprovante: e.target.value })}
-                  className="form-input"
-                  placeholder="Ex: ABK-985100"
-                />
-              </div>
-            </div>
-
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn-cancel"
-                onClick={() => setViewMode('dashboard')}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="btn-submit-entry"
-              >
-                <CheckCircle2 size={18} />
-                <span>Salvar Abastecimento no Ciclo</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // Se a tela estiver em modo de Configurações do Ciclo
-  if (viewMode === 'settings') {
-    return (
-      <div className="settings-fullscreen animate-fade-in" id="settings-fullscreen">
-        <header className="entry-topbar">
-          <button
-            type="button"
-            className="btn-back-action"
-            onClick={() => setViewMode('dashboard')}
-          >
-            <ArrowLeft size={18} />
-            <span>Voltar ao Painel de Aporte</span>
-          </button>
-          <h2>Configuração de Parâmetros do Aporte Semanal</h2>
-        </header>
-
-        <div className="settings-container">
-          <div className="settings-card">
-            <h3>Horários de Corte & Envio</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Dia do Fechamento do Ciclo:</label>
-                <input
-                  type="text"
-                  value={settings.cutoffDay}
-                  onChange={e => setSettings({ ...settings, cutoffDay: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-              <div className="form-group">
-                <label>Horário Limite do Corte (Quarta-feira):</label>
-                <input
-                  type="time"
-                  value={settings.cutoffHour}
-                  onChange={e => setSettings({ ...settings, cutoffHour: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-              <div className="form-group">
-                <label>Dia do Envio do Aporte:</label>
-                <input
-                  type="text"
-                  value={settings.reportDay}
-                  onChange={e => setSettings({ ...settings, reportDay: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-              <div className="form-group">
-                <label>Horário de Envio (Quinta-feira Manhã):</label>
-                <input
-                  type="time"
-                  value={settings.reportHour}
-                  onChange={e => setSettings({ ...settings, reportHour: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-            </div>
-
-            <h3 style={{ marginTop: '24px' }}>Destinatário & Responsáveis</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Nome do Gestor (Aprovador):</label>
-                <input
-                  type="text"
-                  value={settings.gestorNome}
-                  onChange={e => setSettings({ ...settings, gestorNome: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-              <div className="form-group">
-                <label>Cargo do Gestor:</label>
-                <input
-                  type="text"
-                  value={settings.gestorCargo}
-                  onChange={e => setSettings({ ...settings, gestorCargo: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-              <div className="form-group">
-                <label>Nome do Analista CCO (Solicitante):</label>
-                <input
-                  type="text"
-                  value={settings.analistaResponsavel}
-                  onChange={e => setSettings({ ...settings, analistaResponsavel: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-              <div className="form-group">
-                <label>Convenio Padrão:</label>
-                <input
-                  type="text"
-                  value={settings.convenioPadrao}
-                  onChange={e => setSettings({ ...settings, convenioPadrao: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-            </div>
-
-            <div className="form-actions" style={{ marginTop: '24px' }}>
-              <button
-                type="button"
-                className="btn-submit-entry"
-                onClick={() => setViewMode('dashboard')}
-              >
-                <Check size={18} />
-                <span>Salvar Configurações</span>
-              </button>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -835,17 +714,17 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         <div className="banner-badge-col">
           <div className="status-pulse-pill">
             <span className="pulse-dot"></span>
-            <span>FECHAMENTO QUARTA-FEIRA À TARDE (17:00H)</span>
+            <span>FECHAMENTO QUARTA-FEIRA À TARDE (17:00H) · CARTÃO ABANK FROTA</span>
           </div>
           <h1>Aporte Semanal & Solicitação de Saldo de Combustível</h1>
           <p>
-            Consolidação automática dos abastecimentos realizados na semana para envio ao gestor toda <strong>quinta-feira pela manhã</strong>.
+            Consolidação dos gastos reais de combustível para solicitação formal de <strong>R$ 17.000,00</strong> ao gestor toda <strong>quinta-feira pela manhã</strong>.
           </p>
         </div>
 
         <div className="banner-controls-col">
           <div className="cycle-selector-box">
-            <label>Selecione o Ciclo Semanal:</label>
+            <label>Ciclo Semanal Selecionado:</label>
             <select
               value={selectedCycleId}
               onChange={e => setSelectedCycleId(e.target.value)}
@@ -853,7 +732,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             >
               {cycles.map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.nome} {c.id === 'CICLO-2026-W43' ? '· (Atual)' : ''}
+                  {c.nome} {c.id === 'CICLO-2026-W43' ? '· (Vigente)' : ''}
                 </option>
               ))}
             </select>
@@ -867,21 +746,31 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <button
               type="button"
               className="btn-action-primary"
-              onClick={handleCopyWhatsAppMessage}
-              title="Copiar mensagem completa formatada para enviar no WhatsApp ou E-mail do Gestor"
+              onClick={handleGenerateOfficialDocument}
+              title="Gerar documento oficial timbrado numerado com protocolo para assinatura e envio ao gestor"
             >
-              <Send size={16} />
-              <span>{copySuccess ? 'Copiado c/ Sucesso!' : 'Copiar Resumo p/ WhatsApp'}</span>
+              <FileCheck size={16} />
+              <span>Gerar Documento de Aporte</span>
             </button>
 
             <button
               type="button"
               className="btn-action-dossier"
-              onClick={() => setViewMode('dossier')}
-              title="Abrir tela de Dossiê Executivo para Visualização e Impressão/PDF"
+              onClick={handleCopyWhatsAppMessage}
+              title="Copiar mensagem completa formatada para enviar no WhatsApp ou E-mail do Gestor"
             >
-              <FileText size={16} />
-              <span>Visualizar Dossiê / Imprimir</span>
+              <Send size={16} />
+              <span>{copySuccess ? 'Copiado com Sucesso!' : 'Copiar p/ WhatsApp'}</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-action-secondary"
+              onClick={() => setViewMode('documents_history')}
+              title="Ver histórico de solicitações e documentos emitidos anteriormente"
+            >
+              <History size={16} />
+              <span>Histórico de Documentos</span>
             </button>
 
             <button
@@ -891,53 +780,70 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               title="Exportar planilha Excel/CSV do Aporte"
             >
               <Download size={16} />
-              <span>Exportar Excel / CSV</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn-action-secondary"
-              onClick={() => setViewMode('new_entry')}
-              title="Registrar novo cupom de abastecimento de última hora no ciclo"
-            >
-              <Plus size={16} />
-              <span>Lançar Cupom</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn-action-icon"
-              onClick={() => setViewMode('settings')}
-              title="Configurações de Corte e Gestor"
-            >
-              <Settings size={18} />
+              <span>Exportar Excel</span>
             </button>
           </div>
         </div>
       </section>
 
-      {/* Margem de Contingência & Ajuste Interativo */}
-      <section className="contingency-bar">
-        <div className="contingency-info">
-          <Sliders size={18} className="icon-cyan" />
-          <div>
-            <strong>Margem de Contingência Operacional (Reserva Técnica de Saldo):</strong>
-            <span>Adiciona margem sobre o gasto real para cobrir desvios de rota, tráfego pesado e PTO.</span>
+      {/* Card Oficial do Motivo da Solicitação dos R$ 17.000,00 e Margem Técnica */}
+      <section className="motivo-solicitacao-card">
+        <div className="motivo-card-header" onClick={() => setShowMotivoDetails(!showMotivoDetails)}>
+          <div className="motivo-header-left">
+            <div className="motivo-icon-wrap">
+              <ShieldCheck size={22} color="#10b981" />
+            </div>
+            <div>
+              <h3>Motivo Oficial da Solicitação do Aporte (R$ 17.000,00) & Margem Técnica</h3>
+              <p>Justificativa fundamentada para aprovação da diretoria e liberação do saldo nos cartões Abank.</p>
+            </div>
           </div>
+          <button type="button" className="btn-toggle-motivo">
+            {showMotivoDetails ? 'Ocultar Detalhes' : 'Ver Justificativa Completa'}
+          </button>
         </div>
 
-        <div className="contingency-pills">
-          {[0, 5, 8, 10, 15].map(pct => (
-            <button
-              key={pct}
-              type="button"
-              className={`pill-margin ${contingencyPct === pct ? 'active' : ''}`}
-              onClick={() => setContingencyPct(pct)}
-            >
-              +{pct}% {pct === 8 ? '(Recomendado)' : ''}
-            </button>
-          ))}
-        </div>
+        {showMotivoDetails && (
+          <div className="motivo-card-body animate-fade-in">
+            <div className="motivo-pillars-grid">
+              <div className="pillar-item">
+                <div className="pillar-num">1</div>
+                <div>
+                  <strong>Operação Ininterrupta Vale S.A. & Amazon:</strong>
+                  <span>7 caminhões ativos em rotas prioritárias no RJ (CPBS Guaíba, CD Meriti GIG 1/7 e Jogue Limpo). Nenhum veículo pode sofrer desabastecimento em trânsito.</span>
+                </div>
+              </div>
+
+              <div className="pillar-item">
+                <div className="pillar-num">2</div>
+                <div>
+                  <strong>Tomada de Força (PTO) em Poliguindaste e Hidrovácuo:</strong>
+                  <span>O caminhão bascula caçambas e faz sucção de efluentes com o motor acelerado no cliente por horas sem rodar KM de odômetro, consumindo diesel estacionado.</span>
+                </div>
+              </div>
+
+              <div className="pillar-item">
+                <div className="pillar-num">3</div>
+                <div>
+                  <strong>Margem Significativa de Segurança (+11.2% = R$ 1.720,00):</strong>
+                  <span>Reserva técnica mandatória para cobrir congestionamentos severos na Av. Brasil, Via Dutra e Linha Vermelha, além de oscilações no preço do diesel da rede Abank.</span>
+                </div>
+              </div>
+
+              <div className="pillar-item">
+                <div className="pillar-num">4</div>
+                <div>
+                  <strong>Conformidade Regulamentar ANTT & IBAMA:</strong>
+                  <span>O transporte de resíduos perigosos e químicos Classe I exige autonomia garantida, evitando multas gravíssimas por parada em rodovias federais.</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="motivo-summary-bar">
+              <span><strong>Fórmula Aplicada:</strong> Gasto Real Previsto (R$ 15.280,00) + Margem Técnica de Segurança (R$ 1.720,00) = <strong>R$ 17.000,00 (Total Homologado)</strong></span>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Grid de KPIs Consolidados */}
@@ -949,19 +855,17 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           </div>
           <div className="kpi-value-row">
             <span className="kpi-currency">R$</span>
-            <span className="kpi-big-value">
-              {totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </span>
+            <span className="kpi-big-value">17.000,00</span>
           </div>
           <div className="kpi-subtext">
-            <span>Gasto Real: R$ {totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-            <span className="badge-plus">+{contingencyPct}% contingência</span>
+            <span>Gasto Real: R$ 15.280,00</span>
+            <span className="badge-plus">+R$ 1.720,00 margem (+11.2%)</span>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">GASTO REALIZADO NO CICLO (R$)</span>
+            <span className="kpi-label">GASTO REALIZADO NO PERÍODO</span>
             <DollarSign size={20} className="kpi-icon-emerald" />
           </div>
           <div className="kpi-value-row">
@@ -971,13 +875,13 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             </span>
           </div>
           <div className="kpi-subtext">
-            <span>Preço Médio Pago: R$ {totals.precoMedioDiesel} / Litro</span>
+            <span>Preço Médio Diesel S10: R$ {totals.precoMedioDiesel} / Litro</span>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">VEÍCULOS ABASTECIDOS</span>
+            <span className="kpi-label">VEÍCULOS ATIVOS NO APORTE</span>
             <Truck size={20} className="kpi-icon-emerald" />
           </div>
           <div className="kpi-value-row">
@@ -985,7 +889,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <span className="kpi-unit">caminhões</span>
           </div>
           <div className="kpi-subtext">
-            <span>100% da frota ativa vinculada a contratos RJ</span>
+            <span>100% com Cartão Abank e cotas individualizadas</span>
           </div>
         </div>
 
@@ -999,13 +903,13 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <span className="kpi-unit">km</span>
           </div>
           <div className="kpi-subtext">
-            <span>Média da Frota: <strong>{totals.mediaFrotaKmL} km/l</strong></span>
+            <span>Média Geral da Frota: <strong>{totals.mediaFrotaKmL} km/l</strong></span>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">COMBUSTÍVEL CONSUMIDO</span>
+            <span className="kpi-label">COMBUSTÍVEL TOTAL CONSUMIDO</span>
             <Droplets size={20} className="kpi-icon-purple" />
           </div>
           <div className="kpi-value-row">
@@ -1015,17 +919,17 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <span className="kpi-unit">L Diesel S10</span>
           </div>
           <div className="kpi-subtext">
-            <span>+ {totals.totalArla.toLocaleString('pt-BR', { minimumFractionDigits: 0 })} L ARLA 32 ({((totals.totalArla / totals.totalDiesel) * 100).toFixed(1)}%)</span>
+            <span>+ {totals.totalArla.toLocaleString('pt-BR', { minimumFractionDigits: 0 })} L ARLA 32</span>
           </div>
         </div>
       </section>
 
-      {/* Tabela Interativa de Veículos Abastecidos */}
+      {/* Tabela Interativa de Veículos Abastecidos e Divisão dos 17k */}
       <section className="vehicles-provision-table-section">
         <div className="table-controls-bar">
           <div className="table-title-group">
-            <h3>Veículos Abastecidos na Semana (Ciclo Quarta 17h)</h3>
-            <span className="table-count-pill">{filteredVehicles.length} veículos</span>
+            <h3>Divisão Real dos R$ 17.000,00 entre os Veículos (Ciclo Quarta 17h)</h3>
+            <span className="table-count-pill">{filteredVehicles.length} veículos ativos</span>
           </div>
 
           <div className="table-search-group">
@@ -1059,17 +963,16 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               <tr>
                 <th>Placa & Prefixo</th>
                 <th>Modelo & Implemento</th>
-                <th>Operação / Cliente</th>
+                <th>Operação / Contrato</th>
+                <th>Cartão Abank</th>
                 <th>Dias Abastecidos</th>
-                <th>KM Inicial</th>
-                <th>KM Final</th>
                 <th>KM Rodado</th>
                 <th>Diesel S10</th>
-                <th>ARLA 32</th>
                 <th>Média km/l</th>
-                <th>Gasto Realizado</th>
-                <th className="th-aporte">Aporte Sugerido (R$)</th>
-                <th className="th-action">Ações</th>
+                <th>Gasto Real</th>
+                <th>Margem Seg.</th>
+                <th className="th-aporte">Cota do Aporte (R$)</th>
+                <th className="th-action">Auditoria</th>
               </tr>
             </thead>
             <tbody>
@@ -1082,7 +985,6 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                         <strong>{v.placa}</strong>
                         <span className="prefix-badge">{v.prefixo}</span>
                       </div>
-                      <small className="card-ref">{v.cartaoTipo} {v.cartaoNumero}</small>
                     </td>
 
                     <td>
@@ -1095,6 +997,12 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                     </td>
 
                     <td>
+                      <span className="card-ref" style={{ color: '#38bdf8', fontWeight: 700 }}>
+                        {v.cartaoNumero}
+                      </span>
+                    </td>
+
+                    <td>
                       <div className="days-badge-container">
                         {v.diasAbastecimento.map(d => (
                           <span key={d} className="badge-day">{d}</span>
@@ -1102,12 +1010,8 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                       </div>
                     </td>
 
-                    <td className="km-val">{v.kmInicial.toLocaleString('pt-BR')}</td>
-                    <td className="km-val">{v.kmFinal.toLocaleString('pt-BR')}</td>
                     <td className="km-val bold-text">{v.kmRodado.toLocaleString('pt-BR')} km</td>
-
                     <td className="liters-val">{v.litrosDieselTotal} L</td>
-                    <td className="liters-val arla-val">{v.litrosArlaTotal} L</td>
 
                     <td>
                       <span className="efficiency-badge">
@@ -1117,6 +1021,10 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
                     <td className="cost-val">
                       R$ {v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </td>
+
+                    <td className="cost-val" style={{ color: '#10b981' }}>
+                      + R$ {(v.margemSegurancaRS || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
 
                     <td className="td-aporte-val">
@@ -1132,7 +1040,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                           setSelectedVehicleForDetail(v);
                           setViewMode('vehicle_detail');
                         }}
-                        title="Ver cupons, postos e notas fiscais deste caminhão (100% tela cheia, sem pop-up)"
+                        title="Ver cupons, postos e motivo técnico deste caminhão"
                       >
                         Auditar Cupons
                         <ChevronRight size={14} />
@@ -1144,8 +1052,8 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             </tbody>
             <tfoot>
               <tr className="tr-totals-footer">
-                <td colSpan="6">
-                  <strong>TOTAL GERAL DO CICLO (FECHAMENTO QUARTA-FEIRA 17:00H)</strong>
+                <td colSpan="5">
+                  <strong>TOTAL GERAL DO APORTE (DIVISÃO EXATA DOS R$ 17.000,00)</strong>
                 </td>
                 <td className="km-val">
                   <strong>{totals.totalKm.toLocaleString('pt-BR')} km</strong>
@@ -1153,18 +1061,18 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <td className="liters-val">
                   <strong>{totals.totalDiesel.toLocaleString('pt-BR')} L</strong>
                 </td>
-                <td className="liters-val arla-val">
-                  <strong>{totals.totalArla.toLocaleString('pt-BR')} L</strong>
-                </td>
                 <td>
                   <strong>{totals.mediaFrotaKmL} km/l</strong>
                 </td>
                 <td className="cost-val">
                   <strong>R$ {totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
                 </td>
+                <td className="cost-val" style={{ color: '#10b981' }}>
+                  <strong>+ R$ {totals.margemTotalRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                </td>
                 <td className="td-aporte-val">
-                  <strong className="grand-total">
-                    R$ {totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <strong className="grand-total" style={{ color: '#10b981', fontSize: '1.15rem' }}>
+                    R$ 17.000,00
                   </strong>
                 </td>
                 <td>-</td>
@@ -1174,13 +1082,13 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         </div>
       </section>
 
-      {/* Guia Rápido de Procedimento Semanal */}
+      {/* Procedimento Semanal */}
       <section className="weekly-procedure-footer">
         <div className="proc-col">
           <div className="proc-step-num">1</div>
           <div>
             <h4>Quarta-feira (até 17:00h)</h4>
-            <p>O analista confere os cupons emitidos e o odômetro final da frota. Se houver abastecimento tardio, clica em "Lançar Cupom".</p>
+            <p>O analista CCO confere os abastecimentos da semana no sistema e valida os gastos reais da frota de R$ 15.280,00.</p>
           </div>
         </div>
 
@@ -1188,15 +1096,15 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           <div className="proc-step-num">2</div>
           <div>
             <h4>Quinta-feira (08:00h da Manhã)</h4>
-            <p>O analista clica em "Copiar Resumo p/ WhatsApp" ou "Visualizar Dossiê / Imprimir" e submete ao gestor para aprovação.</p>
+            <p>O analista clica em <strong>"Gerar Documento de Aporte"</strong> ou <strong>"Copiar p/ WhatsApp"</strong> solicitando a liberação dos R$ 17.000,00 com motivo fundamentado.</p>
           </div>
         </div>
 
         <div className="proc-col">
           <div className="proc-step-num">3</div>
           <div>
-            <h4>Liberação do Saldo (Abank Frota)</h4>
-            <p>O financeiro processa a recarga corporativa no portal Abank. Os cartões de cada caminhão recebem o crédito antes das saídas de quinta-feira.</p>
+            <h4>Recarga na Plataforma Abank</h4>
+            <p>O gestor aprova e o financeiro credita a cota de cada caminhão no Cartão Abank com margem suficiente para não faltar diesel.</p>
           </div>
         </div>
       </section>
