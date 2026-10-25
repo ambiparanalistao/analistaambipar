@@ -136,7 +136,7 @@ export default function App() {
   const [currentModule, setCurrentModule] = useState(getInitialModule);
   const maintenanceAccess = useMaintenanceAccess(session?.user);
   useEffect(()=>{
-    if(!currentModule.startsWith('maintenance_')&&currentModule!=='auditoria_vencimentos')return;
+    if(!currentModule.startsWith('maintenance_')&&currentModule!=='auditoria_vencimentos'&&currentModule!=='manutencao_preventiva')return;
     const compact=()=>{if(window.matchMedia('(max-width:760px)').matches)setIsSidebarCollapsed(true);};
     compact();window.addEventListener('resize',compact);return()=>window.removeEventListener('resize',compact);
   },[currentModule]);
@@ -353,7 +353,7 @@ export default function App() {
           />
 
           {/* Área Principal de Conteúdo */}
-          <div className={`main-stage-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${currentModule.startsWith('maintenance_') ? 'maintenance-stage' : currentModule==='auditoria_vencimentos'?'compliance-stage':''}`}>
+          <div className={`main-stage-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${currentModule.startsWith('maintenance_') ? 'maintenance-stage' : currentModule==='auditoria_vencimentos'?'compliance-stage':currentModule==='manutencao_preventiva'?'preventive-stage':''}`}>
             {/* Top Bar da Dashboard */}
             <header className="stage-topbar" id="stage-topbar">
               <div className="topbar-breadcrumb">
@@ -400,7 +400,7 @@ export default function App() {
             <main className="stage-content-body" id="stage-content-body">
               <ErrorBoundary>
                 {currentModule === 'auditoria_vencimentos' && <ComplianceAuditModule key={maintenanceAccess.companyId} access={maintenanceAccess} />}
-                {currentModule === 'manutencao_preventiva' && <PreventiveMaintenanceModule user={session.user} onNavigateFleet={() => handleSelectModule('frotas')} />}
+                {currentModule === 'manutencao_preventiva' && <PreventiveMaintenanceModule key={maintenanceAccess.companyId} access={maintenanceAccess} user={session.user} onNavigateFleet={() => handleSelectModule('frotas')} />}
                 {currentModule === 'escala' && <EscalaModule key={maintenanceAccess.companyId} companyId={maintenanceAccess.companyId} user={session.user} onNavigateRotas={() => handleSelectModule('rotas')} />}
                 {currentModule === 'rotas' && <RotasModule user={session.user} onNavigateEscala={() => handleSelectModule('escala')} />}
                 {currentModule.startsWith('maintenance_') && <MaintenanceModule access={maintenanceAccess} page={currentModule} />}
