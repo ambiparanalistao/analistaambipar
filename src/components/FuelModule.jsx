@@ -79,7 +79,7 @@ export const PAYMENT_METHODS = [
   { value: 'Cartão Frota - Sem Parar / Veloe Go', label: 'Cartão Frota - Sem Parar / Veloe Go', sublabel: 'Abastecimento automatizado' },
   { value: 'Cartão Frota - Repom', label: 'Cartão Frota - Repom Frete', sublabel: 'Gestão de rota e pedágio' },
   { value: 'Faturado Convênio Corporativo', label: 'Faturado Convênio Corporativo (Base / Rede)', sublabel: 'Fechamento quinzenal/mensal direto' },
-  { value: 'Cartão Corporativo Débito/Crédito', label: 'Cartão Corporativo CCO (Bandeira)', sublabel: 'Despesas extraordinárias de trânsito' },
+  { value: 'Cartão Corporativo Débito/Crédito', label: 'Cartão Corporativo Central de Gestão (Bandeira)', sublabel: 'Despesas extraordinárias de trânsito' },
   { value: 'Dinheiro / Reembolso Fundo Fixo', label: 'Dinheiro / Reembolso Fundo Fixo', sublabel: 'Ressarcimento mediante NF/Cupom fiscal' }
 ];
 
@@ -147,7 +147,7 @@ export const getConsumptionEfficiency = (kmPerL, fuelType) => {
     return { label: 'Excelente (Eco-Drive)', status: 'excelente', color: '#10b981' };
   }
   if (val >= 2.1) {
-    return { label: 'Na Meta CCO', status: 'normal', color: '#06b6d4' };
+    return { label: 'Na Meta Central de Gestão', status: 'normal', color: '#06b6d4' };
   }
   if (val >= 1.75) {
     return { label: 'Atenção / Abaixo da Meta', status: 'alerta', color: '#f59e0b' };
@@ -202,7 +202,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
   const [showDispatchOrderModal, setShowDispatchOrderModal] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  // Auditoria Preditiva Forense CCO
+  // Auditoria Preditiva Forense Central de Gestão
   const auditAlerts = useMemo(() => {
     return runPredictiveAudit(records, availablePlates);
   }, [records, availablePlates]);
@@ -256,7 +256,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
     observacoes: ''
   });
 
-  // Estado do Simulador de Autonomia CCO
+  // Estado do Simulador de Autonomia Central de Gestão
   const [simulatorData, setSimulatorData] = useState({
     origem: 'Base Ambipar Paulínia / SP',
     destino: 'Polo Petroquímico de Camaçari / BA',
@@ -472,7 +472,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
         created_at: new Date().toISOString()
       };
       setRecords([newRec, ...records]);
-      setFeedback({ type: 'success', text: `Abastecimento da placa ${payload.placa} lançado no CCO!` });
+      setFeedback({ type: 'success', text: `Abastecimento da placa ${payload.placa} lançado na Central de Gestão!` });
       triggerGoogleSheetWebhook('UPSERT', newRec);
     }
 
@@ -525,7 +525,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
   const driverAnalytics = useMemo(() => {
     const map = {};
     records.forEach(r => {
-      const d = r.motorista?.trim() || 'Escala CCO';
+      const d = r.motorista?.trim() || 'Escala Operacional';
       if (!map[d]) {
         map[d] = {
           nome: d,
@@ -755,7 +755,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
   };
 
   // =========================================================================
-  // SIMULADOR DE AUTONOMIA CCO CÁLCULOS
+  // SIMULADOR DE AUTONOMIA Central de Gestão CÁLCULOS
   // =========================================================================
   const simCalculations = useMemo(() => {
     const distTrecho = Number(simulatorData.distanciaKm) || 0;
@@ -840,7 +840,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
       tipo: 'start',
       km: 0,
       titulo: 'Origem: ' + (simulatorData.origem.split('/')[0] || 'Base'),
-      subtitulo: 'Saída Tanque 100% Cheio na Base CCO',
+      subtitulo: 'Saída Tanque 100% Cheio na Base Central de Gestão',
       dieselNoTanque: capTanque + ' L',
       status: 'Saída Autorizada'
     });
@@ -922,7 +922,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
   const handleCopySimulationSummary = async () => {
     const money = value => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const summary = [
-      'RESUMO CCO — SIMULAÇÃO DE AUTONOMIA',
+      'RESUMO DA SOLICITAÇÃO — SIMULAÇÃO DE AUTONOMIA',
       'Estimativa de planejamento; não constitui autorização de abastecimento.',
       'Origem: ' + (simulatorData.origem || 'Não informada'),
       'Destino: ' + (simulatorData.destino || 'Não informado'),
@@ -956,7 +956,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
           <div className="fuel-header-text">
             <h2>
               Controle de Combustível & ARLA 32
-              <span className="fuel-header-tag">Auditoria & Analytics CCO</span>
+              <span className="fuel-header-tag">Auditoria & Analytics Central de Gestão</span>
             </h2>
             <p>
               Dashboard executiva de consumo por veículos, auditoria de motoristas que mais consomem, relatórios analíticos de rendimento (km/l), simulação preditiva de rotas e conformidade fiscal.
@@ -994,7 +994,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
             type="button"
             className="fuel-btn fuel-btn-secondary"
             onClick={() => window.print()}
-            title="Imprimir relatório CCO"
+            title="Imprimir relatório Central de Gestão"
           >
             <Printer size={15} />
             <span>Imprimir</span>
@@ -1073,7 +1073,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
           id="btn-tab-simulador-autonomia-full"
         >
           <Compass size={17} />
-          <span>Simulador de Autonomia & Rota CCO</span>
+          <span>Simulador de Autonomia & Rota Central de Gestão</span>
         </button>
 
         <button
@@ -1085,7 +1085,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
         >
           <ShieldAlert size={17} color={auditCriticalCount > 0 ? '#f43f5e' : '#06b6d4'} />
           <span>
-            Auditoria Preditiva CCO
+            Auditoria Preditiva Central de Gestão
             {auditAlerts.length > 0 && (
               <span style={{
                 marginLeft: '6px',
@@ -1133,7 +1133,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
       {/* VIEW 1: DASHBOARD COMPLETA DE CONSUMO, CARROS & MOTORISTAS */}
       {viewMode === 'dashboard' ? (
         <div className="fuel-analytics-dashboard animate-fade-in" id="fuel-analytics-dashboard-workspace">
-          {/* BANNER DE AUDITORIA PREDITIVA CCO */}
+          {/* BANNER DE AUDITORIA PREDITIVA Central de Gestão */}
           {auditAlerts.length > 0 && (
             <div 
               style={{
@@ -1168,7 +1168,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                     <strong style={{ color: '#ffffff', fontSize: '0.96rem' }}>
-                      Auditoria Forense CCO: {auditAlerts.length} Anomalias Requerem Atenção
+                      Auditoria Forense Central de Gestão: {auditAlerts.length} Anomalias Requerem Atenção
                     </strong>
                     <span style={{ fontSize: '0.72rem', background: '#f43f5e', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
                       {auditCriticalCount} Críticas
@@ -1205,7 +1205,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                 <AlertTriangle size={24} />
               </div>
               <div style={{ flex: 1 }}>
-                <span className="dash-insight-tag">Atenção CCO • Maior Consumo</span>
+                <span className="dash-insight-tag">Atenção Central de Gestão • Maior Consumo</span>
                 <div className="dash-insight-title">
                   {driverHighlights.highestConsumer 
                     ? driverHighlights.highestConsumer.nome 
@@ -1321,7 +1321,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                                 {isBest && <span style={{ marginLeft: '6px', fontSize: '0.68rem', background: '#10b981', color: '#ffffff', padding: '1px 5px', borderRadius: '4px' }}>Top Eficiência</span>}
                               </div>
                               <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
-                                Veículos: {driver.veiculosList.join(', ') || 'Frota CCO'} • {driver.viagensCount} abastecimento(s)
+                                Veículos: {driver.veiculosList.join(', ') || 'Frota'} • {driver.viagensCount} abastecimento(s)
                               </span>
                             </div>
                           </div>
@@ -1537,7 +1537,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
           />
         </ErrorBoundary>
       ) : viewMode === 'simulator' ? (
-        /* VIEW 2: SIMULADOR DE AUTONOMIA & CONSUMO DE ROTA CCO */
+        /* VIEW 2: SIMULADOR DE AUTONOMIA & CONSUMO DE ROTA Central de Gestão */
         <div className="fuel-simulator-full-area animate-fade-in" id="fuel-simulator-full-workspace">
           {/* Hero Banner do Simulador */}
           <div className="simulator-hero-card">
@@ -1547,7 +1547,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
               </div>
               <div className="simulator-hero-text">
                 <h3>
-                  <span>Simulador Analítico de Autonomia, Consumo de Rota & Paradas CCO</span>
+                  <span>Simulador Analítico de Autonomia, Consumo de Rota & Paradas Central de Gestão</span>
                 </h3>
                 <p>
                   Planejamento preditivo de viagem para despacho de carretas tanques e veículos pesados: calcule volume exato de diesel, injeção de ARLA 32, paradas seguras na rodovia e estratégia de redução de custo com abastecimento na base interna.
@@ -1563,7 +1563,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                 title="Copiar dados para enviar ao motorista via WhatsApp"
               >
                 <Copy size={15} />
-                <span>Copiar Resumo CCO</span>
+                <span>Copiar Resumo da Solicitação</span>
               </button>
               <button
                 type="button"
@@ -2001,7 +2001,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                 </div>
 
                 <div className="sim-dre-row">
-                  <span style={{ color: '#94a3b8' }}>Diesel Abastecido na Base CCO:</span>
+                  <span style={{ color: '#94a3b8' }}>Diesel Abastecido na Base Central de Gestão:</span>
                   <strong style={{ color: '#ffffff' }}>R$ {Number(simCalculations.custoDieselBase).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
                 </div>
 
@@ -2044,13 +2044,13 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                       <th>Preço Médio Diesel</th>
                       <th>Custo Previsto</th>
                       <th>CPK</th>
-                      <th>Diferencial CCO</th>
+                      <th>Diferencial Central de Gestão</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="highlight-strategy">
                       <td>
-                        <strong style={{ color: '#10b981' }}>Estratégia CCO Recomendada (Base + Rodovia)</strong>
+                        <strong style={{ color: '#10b981' }}>Estratégia Central de Gestão Recomendada (Base + Rodovia)</strong>
                         <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Sai 100% abastecido na Base e reabastece apenas o necessário na rodovia</div>
                       </td>
                       <td>Ponderado</td>
@@ -2334,7 +2334,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                 <label>Nome do Posto / Estabelecimento</label>
                 <input
                   type="text"
-                  placeholder="Ex: Posto Graal Paulínia / Rede Ipiranga / Base CCO"
+                  placeholder="Ex: Posto Graal Paulínia / Rede Ipiranga / Base Central de Gestão"
                   value={formData.posto_nome}
                   onChange={e => setFormData({ ...formData, posto_nome: e.target.value })}
                 />
@@ -2384,7 +2384,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
           </div>
         </form>
       ) : viewMode === 'auditoria' ? (
-        /* VIEW 5: AUDITORIA PREDITIVA & ANOMALIAS CCO */
+        /* VIEW 5: AUDITORIA PREDITIVA & ANOMALIAS Central de Gestão */
         <ErrorBoundary>
           <FuelAuditWorkspace
             records={records}
@@ -2539,7 +2539,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
               <h3 className="fuel-empty-title">
                 {searchTerm || fuelFilter !== 'Todos' || plateFilter !== 'Todas'
                   ? 'Nenhum abastecimento encontrado para os filtros selecionados'
-                  : 'Módulo de Combustível CCO Pronto para Lançamentos'}
+                  : 'Módulo de Combustível Central de Gestão Pronto para Lançamentos'}
               </h3>
 
               <p className="fuel-empty-desc">
@@ -2609,7 +2609,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
 
                         <td>
                           <span style={{ fontWeight: 500 }}>
-                            {rec.motorista ? rec.motorista.split(' ')[0] : 'Escala CCO'}
+                            {rec.motorista ? rec.motorista.split(' ')[0] : 'Escala Operacional'}
                           </span>
                         </td>
 
@@ -2768,7 +2768,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                       </div>
 
                       <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem' }}>
-                        <span>Condutor: <strong style={{ color: '#ffffff' }}>{rec.motorista || 'Escala CCO'}</strong></span>
+                        <span>Condutor: <strong style={{ color: '#ffffff' }}>{rec.motorista || 'Escala Operacional'}</strong></span>
                         <span>Hodômetro: <strong style={{ color: '#ffffff' }}>{rec.hodometro_atual} km</strong></span>
                       </div>
                     </div>
@@ -2889,7 +2889,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
 
                   <div>
                     <span style={{ color: '#94a3b8' }}>Condutor MOPP:</span>
-                    <div style={{ color: '#ffffff', fontWeight: 600 }}>{selectedTicket.motorista || 'Escala CCO'}</div>
+                    <div style={{ color: '#ffffff', fontWeight: 600 }}>{selectedTicket.motorista || 'Escala Operacional'}</div>
                   </div>
 
                   <div>
@@ -2914,7 +2914,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                 onClick={() => window.print()}
               >
                 <Printer size={15} />
-                <span>Imprimir Cupom CCO</span>
+                <span>Imprimir Cupom Central de Gestão</span>
               </button>
               <button
                 type="button"
@@ -2959,7 +2959,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
             <div className="fuel-modal-header">
               <h4>
                 <ShieldCheck size={18} color="#10b981" />
-                <span>Ordem de Abastecimento & Despacho CCO</span>
+                <span>Ordem de Abastecimento & Despacho Central de Gestão</span>
               </h4>
               <button
                 type="button"
@@ -2974,7 +2974,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
               <div style={{ border: '2px dashed rgba(16, 185, 129, 0.4)', borderRadius: '12px', padding: '1.5rem', background: 'rgba(0,0,0,0.35)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
                   <div>
-                    <h5 style={{ margin: 0, color: '#ffffff', fontSize: '1.15rem' }}>AMBIPAR LOGISTICS • CCO</h5>
+                    <h5 style={{ margin: 0, color: '#ffffff', fontSize: '1.15rem' }}>AMBIPAR LOGISTICS • Central de Gestão</h5>
                     <span style={{ fontSize: '0.72rem', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Autorização Operacional de Abastecimento</span>
                   </div>
                   <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#94a3b8' }}>
@@ -3028,7 +3028,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8' }}>
                   <div>
-                    <div style={{ borderTop: '1px solid #64748b', paddingTop: '4px' }}>Analista CCO Responsável</div>
+                    <div style={{ borderTop: '1px solid #64748b', paddingTop: '4px' }}>Analista de Transporte Responsável</div>
                   </div>
                   <div>
                     <div style={{ borderTop: '1px solid #64748b', paddingTop: '4px' }}>Assinatura do Condutor MOPP</div>

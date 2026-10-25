@@ -141,7 +141,7 @@ export default function OcorrenciasModule({companyId}) {
               </div>
 
               <div className="incident-notes-box">
-                <p><strong>Parecer Operacional do CCO:</strong> {item.notes}</p>
+                <p><strong>Parecer Operacional da Central de Gestão:</strong> {item.notes}</p>
               </div>
             </div>
           ))}

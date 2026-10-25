@@ -69,7 +69,7 @@ export const ANOMALY_SEVERITY = {
   }
 };
 
-// Tipos de Anomalias CCO
+// Tipos de Anomalias Central de Gestão
 export const ANOMALY_TYPES = {
   CONSUMO_EXCESSIVO: {
     key: 'CONSUMO_EXCESSIVO',
@@ -189,8 +189,8 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
         recordId: rec.id,
         type: 'CONSUMO_EXCESSIVO',
         severity: isSevero ? 'CRITICAL' : 'HIGH',
-        title: `Rendimento Crítico de ${kmPorLitro.toFixed(2)} km/l (${desvioPct.toFixed(0)}% pior que a meta CCO)`,
-        diagnostico: `O veículo atingiu apenas ${kmPorLitro.toFixed(2)} km/l na rota rodoviária (meta CCO: ${EXPECTED_KM_L_DEFAULT.toFixed(2)} km/l). Consumo excessivo de diesel resultou no desperdício de ${litrosDesperdicados.toFixed(1)} litros adicionais.`,
+        title: `Rendimento Crítico de ${kmPorLitro.toFixed(2)} km/l (${desvioPct.toFixed(0)}% pior que a meta Central de Gestão)`,
+        diagnostico: `O veículo atingiu apenas ${kmPorLitro.toFixed(2)} km/l na rota rodoviária (meta Central de Gestão: ${EXPECTED_KM_L_DEFAULT.toFixed(2)} km/l). Consumo excessivo de diesel resultou no desperdício de ${litrosDesperdicados.toFixed(1)} litros adicionais.`,
         placa,
         modelo: rec.modelo_veiculo || vehicleInfo?.modelo || 'Cavalo Mecânico',
         motorista,
@@ -333,7 +333,7 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
           diagnostico: `O veículo ${stat.placa} consumiu ${stat.dieselLitros.toFixed(0)} L de Diesel S10 e apenas ${stat.arlaLitros.toFixed(0)} L de ARLA 32 (${propArla.toFixed(1)}% de taxa de reposição). Motores Euro 5 e Euro 6 exigem entre 3% e 5% de ARLA 32. Risco iminente de cristalização, falha na bomba dosadora SCR ou corte de 40% do torque do motor pela central eletrônica (modo de segurança ambiental Proconve P7/P8).`,
           placa: stat.placa,
           modelo: stat.modelo,
-          motorista: stat.motorista || 'Escala CCO',
+          motorista: stat.motorista || 'Escala Operacional',
           data: 'Últimos Abastecimentos',
           posto: 'Rede Convênio Ticket Log',
           valorTotal: stat.dieselLitros * 5.95,
@@ -352,7 +352,7 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
           diagnostico: `O veículo ${stat.placa} registrou consumo desproporcional de ARLA 32 (${stat.arlaLitros.toFixed(0)} L para ${stat.dieselLitros.toFixed(0)} L de Diesel). Possível vazamento na linha de injeção ou falha no bico dosador do catalisador.`,
           placa: stat.placa,
           modelo: stat.modelo,
-          motorista: stat.motorista || 'Escala CCO',
+          motorista: stat.motorista || 'Escala Operacional',
           data: 'Últimos Abastecimentos',
           posto: 'Rede Convênio',
           valorTotal: stat.arlaLitros * 3.80,
@@ -384,7 +384,7 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
             diagnostico: `O veículo ${stat.placa} está operando a ${mediaKmL.toFixed(2)} km/l, enquanto a meta técnica homologada para esta categoria nas rotas do RJ é de ${metaCategoria.toFixed(1)} km/l. Recomendada vistoria técnica: conferência de bicos injetores, filtro de ar, calibragem de pneus e avaliação do estilo de condução do motorista.`,
             placa: stat.placa,
             modelo: stat.modelo,
-            motorista: stat.motorista || 'Escala CCO',
+            motorista: stat.motorista || 'Escala Operacional',
             data: 'Período Consolidado',
             posto: 'Rede de Abastecimento',
             valorTotal: stat.dieselLitros * 5.95,
@@ -503,13 +503,13 @@ export default function FuelAuditWorkspace({
   // Ação: Notificar Motorista (WhatsApp)
   const handleNotifyDriver = (anomaly) => {
     const text = encodeURIComponent(
-      `🚨 *AMBIPAR LOGISTICS - ALERTA DE CONDUÇÃO CCO*\n\n` +
+      `🚨 *AMBIPAR LOGISTICS - ALERTA DE CONDUÇÃO Central de Gestão*\n\n` +
       `Olá, *${anomaly.motorista}*!\n` +
       `Identificamos uma inconsistência no abastecimento do veículo *${anomaly.placa}* em *${anomaly.data}*:\n\n` +
       `📌 *Ocorrência:* ${anomaly.title}\n` +
       `📍 *Posto:* ${anomaly.posto}\n` +
       `📊 *Detalhe:* ${anomaly.diagnostico}\n\n` +
-      `Por favor, entre em contato com o CCO ou envie a justificativa operacional para regularização no sistema. Obrigado!`
+      `Por favor, entre em contato com o Central de Gestão ou envie a justificativa operacional para regularização no sistema. Obrigado!`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
     setNotificationSentMap(prev => ({ ...prev, [anomaly.id]: true }));
@@ -523,7 +523,7 @@ export default function FuelAuditWorkspace({
       ...prev,
       [selectedAnomalyForModal.id]: {
         text: justificationText.trim(),
-        user: 'Carlos Eduardo (Analista CCO)',
+        user: 'Carlos Eduardo (Analista de Transporte)',
         date: new Date().toLocaleDateString('pt-BR')
       }
     }));
@@ -566,7 +566,7 @@ export default function FuelAuditWorkspace({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#ffffff' }}>
-                Auditoria Preditiva & Inteligência Forense CCO
+                Auditoria Preditiva & Inteligência Forense Central de Gestão
               </h3>
               <span style={{
                 fontSize: '0.72rem',
@@ -595,7 +595,7 @@ export default function FuelAuditWorkspace({
             style={{ fontSize: '0.82rem', padding: '0.55rem 1rem' }}
           >
             <Printer size={15} />
-            <span>Imprimir Laudo CCO</span>
+            <span>Imprimir Lauda Central de Gestão</span>
           </button>
         </div>
       </div>
@@ -610,7 +610,7 @@ export default function FuelAuditWorkspace({
         {/* KPI 1: Score de Conformidade */}
         <div className="fuel-kpi-card" style={{ borderLeft: `4px solid ${stats.score >= 85 ? '#10b981' : stats.score >= 70 ? '#eab308' : '#f43f5e'}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>Score de Saúde CCO</span>
+            <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>Score de Saúde Central de Gestão</span>
             <ShieldAlert size={18} color={stats.score >= 85 ? '#10b981' : stats.score >= 70 ? '#eab308' : '#f43f5e'} />
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -982,7 +982,7 @@ export default function FuelAuditWorkspace({
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                 <ShieldAlert size={20} color="#10b981" />
                 <h4 style={{ margin: 0, color: '#ffffff', fontSize: '1.1rem' }}>
-                  Parecer Técnico CCO & Justificativa Operacional
+                  Parecer Técnico Central de Gestão & Justificativa Operacional
                 </h4>
               </div>
               <button
@@ -1037,7 +1037,7 @@ export default function FuelAuditWorkspace({
               {/* Botões de Justificativas Rápidas */}
               <div style={{ marginTop: '0.75rem' }}>
                 <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
-                  Modelos de Justificativa Rápida CCO:
+                  Modelos de Justificativa Rápida Central de Gestão:
                 </span>
                 <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
                   {[

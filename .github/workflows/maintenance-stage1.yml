@@ -213,7 +213,7 @@ jobs:
         run: node --test tests/maintenance-worker.test.js tests/driver-portal.test.js tests/driver-report-dispatch.test.js tests/driver-reports.test.js tests/driver-toxicology.test.js tests/evolution.test.js tests/partner-approval.test.js tests/order-dispatch.test.js
       - name: Partner form validation
         if: ${{ !cancelled() }}
-        run: node --test tests/preventive-request.test.js tests/compliance.test.js tests/finance.test.js tests/quote-filters.test.js tests/driver-validity-request.test.js tests/registry-matching.test.js tests/partner-validation.test.js tests/orders-validation.test.js tests/occurrence-validation.test.js tests/communication.test.js tests/plans.test.js tests/analytics.test.js tests/registration.test.js
+        run: node --test tests/central-branding.test.js tests/preventive-progress.test.js tests/preventive-request.test.js tests/compliance.test.js tests/finance.test.js tests/quote-filters.test.js tests/driver-validity-request.test.js tests/registry-matching.test.js tests/partner-validation.test.js tests/orders-validation.test.js tests/occurrence-validation.test.js tests/communication.test.js tests/plans.test.js tests/analytics.test.js tests/registration.test.js
       - name: Install isolated browser tools
         if: ${{ !cancelled() }}
         run: |

@@ -54,7 +54,7 @@ async function boot(page, { km = 123456, role = "admin_geral" } = {}) {
     km_atual: km,
   };
   const calls = [];
-  let order = null;
+  let order = null;const savedPlans=[];
   await page.route(
     "https://maintenance-fixture.supabase.co/**",
     async (route) => {
@@ -76,8 +76,8 @@ async function boot(page, { km = 123456, role = "admin_geral" } = {}) {
         data = [{ id: company, nome: "Empresa de teste" }];
       else if (table === "veiculos") {
         if (request.method() !== "GET")
-          calls.push({ table, method: request.method() });
-        data = [vehicle];
+          {calls.push({ table, method: request.method() });Object.assign(vehicle,request.postDataJSON());}
+        data = request.method()==='PATCH'?vehicle:[vehicle];
       } else if (table === "maintenance_partners")
         data = [
           {
@@ -95,7 +95,7 @@ async function boot(page, { km = 123456, role = "admin_geral" } = {}) {
       else if (table === "maintenance_plan_command") {
         const b = request.postDataJSON();
         calls.push(b);
-        data = { rows: [] };
+        if(b.command==='save'){const plan={id:'plan-'+savedPlans.length,...b.body};savedPlans.push(plan);data=plan;}else{data={rows:savedPlans.map((p,n)=>{const next=Number(p.ultima_execucao_km)+Number(p.intervalo_km),left=next-Number(vehicle.km_atual);return{id:'plan-vehicle-'+n,plan_id:p.id,vehicle_id:vehicleId,nome:p.nome,km_atual:vehicle.km_atual,ultima_execucao_km:Number(p.ultima_execucao_km),ultima_execucao_data:p.ultima_execucao_data,proxima_km:next,proxima_data:null,estado:left<=0?'vencida':left<=500?'breve':'dia'};})};}
       } else if (table === "maintenance_vehicle_command")
         data = { preferences: {} };
       else if (table === "maintenance_order_command") {
@@ -154,10 +154,10 @@ test("preventiva gera solicitação persistida com serviços, adicionais e urgê
     path: "test-results/preventive-sdo-desktop.png",
     fullPage: true,
   });
-  await module.getByRole("link", { name: "Gerar SDO preventiva" }).click();
+  await module.getByRole("link", { name: "Gerar S.D.O preventiva" }).click();
   await expect(
     page.getByRole("heading", {
-      name: "Nova SDO — Solicitação de Orçamento Preventivo",
+      name: "Nova S.D.O — Solicitação de Orçamento Preventivo",
     }),
   ).toBeVisible();
   await expect(page.getByLabel("KM atual *")).toHaveValue("123456");
@@ -178,7 +178,7 @@ test("preventiva gera solicitação persistida com serviços, adicionais e urgê
   );
   await expect(page.getByLabel("Grau de urgência")).toHaveValue("critica");
   await page.getByLabel("Oficina", { exact: true }).selectOption(partnerId);
-  await page.getByRole("button", { name: "Gerar SDO", exact: true }).click();
+  await page.getByRole("button", { name: "Gerar S.D.O", exact: true }).click();
   await expect.poll(() => f.getOrder()?.prioridade).toBe("critica");
   expect(f.getOrder().descricao_problema).toContain(
     "Verificar vazamento no radiador.",
@@ -225,12 +225,15 @@ test("KM desconhecido exige informação real e permite modo claro em celular", 
     path: "test-results/preventive-sdo-mobile.png",
     fullPage: true,
   });
-  await page.getByRole("link", { name: "Gerar SDO preventiva" }).click();
+  await page.getByRole("link", { name: "Gerar S.D.O preventiva" }).click();
   await expect(page.getByLabel("KM atual *")).toHaveValue("");
-  await page.getByRole("button", { name: "Gerar SDO", exact: true }).click();
+  await page.getByRole("button", { name: "Gerar S.D.O", exact: true }).click();
   await expect(
     page
       .getByText(/Informe KM|Informe o KM|Informe um KM|KM atual deve/)
       .first(),
   ).toBeVisible();
 });
+
+test('KM e referência persistem e recalculam barras, próximo KM e alerta',async({page})=>{const f=await boot(page,{km:140000});await page.goto('/manutencao-preventiva');await page.getByRole('button',{name:'Definir referência · Troca de Óleo de Motor & Filtros',exact:true}).click();const setup=page.getByRole('dialog',{name:'Configurar próxima preventiva'});await expect(setup.getByLabel('Intervalo em KM',{exact:true})).toHaveValue('15000');await setup.getByLabel('KM de referência',{exact:true}).fill('130000');await setup.getByLabel('Data de referência',{exact:true}).fill('2026-01-01');await setup.getByRole('button',{name:'Salvar referência',exact:true}).click();await expect(setup).toHaveCount(0);const progress=page.getByRole('progressbar',{name:'Troca de Óleo de Motor & Filtros — ABC1D23',exact:true});await expect(progress).toHaveAttribute('aria-valuenow','67');await expect(page.getByText('Próxima: 145.000 km',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Atualizar KM',exact:true}).click();const kmDialog=page.getByRole('dialog',{name:'Atualizar odômetro · ABC1D23'});await kmDialog.getByLabel('KM atual do veículo',{exact:true}).fill('144600');await kmDialog.getByRole('button',{name:'Salvar KM',exact:true}).click();await expect(kmDialog).toHaveCount(0);await expect(progress).toHaveAttribute('aria-valuenow','97');await expect(page.getByText('400 km restantes',{exact:true})).toBeVisible();await expect(page.locator('.pm-progress-item.breve')).toContainText('Vence em breve');expect(f.vehicle.km_atual).toBe(144600);await page.reload();await expect(progress).toHaveAttribute('aria-valuenow','97');await page.screenshot({path:'test-results/preventive-progress-desktop.png',fullPage:true});await page.getByRole('button',{name:'Atualizar KM',exact:true}).click();await page.getByRole('dialog').getByLabel('KM atual do veículo',{exact:true}).fill('145100');await page.getByRole('dialog').getByRole('button',{name:'Salvar KM',exact:true}).click();await expect(progress).toHaveAttribute('aria-valuenow','100');await expect(page.locator('.pm-progress-item.vencida')).toContainText('Vencida');await expect(page.getByText('100 km em atraso',{exact:true})).toBeVisible();});
+test('início de acompanhamento exige confirmação e não registra execução',async({page})=>{const f=await boot(page,{km:200000});await page.goto('/manutencao-preventiva');await page.getByRole('button',{name:'Definir referência · Engraxamento & Lubrificação de Articulações',exact:true}).click();const dialog=page.getByRole('dialog');await expect(dialog.getByLabel('KM de referência',{exact:true})).toHaveValue('');await dialog.getByRole('button',{name:'Salvar referência',exact:true}).click();await expect(dialog.getByRole('alert')).toBeVisible();await dialog.getByLabel('Iniciar acompanhamento no KM atual, sem registrar revisão executada').check();await dialog.getByRole('button',{name:'Salvar referência',exact:true}).click();await expect(page.getByRole('progressbar',{name:'Engraxamento & Lubrificação de Articulações — ABC1D23'})).toHaveAttribute('aria-valuenow','0');await expect(page.getByText('Próxima: 205.000 km',{exact:true})).toBeVisible();expect(f.vehicle.km_atual).toBe(200000);expect(f.calls.filter(c=>c.command==='create_order'||c.command==='create')).toEqual([]);});
