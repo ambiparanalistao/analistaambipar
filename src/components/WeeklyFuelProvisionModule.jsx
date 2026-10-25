@@ -225,6 +225,9 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Ativado por padrão (true), com toggle para alternar entre "Somente Abastecidos" e "Toda a Frota (21)"
   const [onlyFueledVehicles, setOnlyFueledVehicles] = useState(true);
 
+  // Margem de contingência operacional ajustável (padrão 11.8%)
+  const [contingencyPct, setContingencyPct] = useState(activeCycle?.margemSegurancaPct || 11.8);
+
   // Formatação amigável de datas
   const formatDateFriendly = (dateStr) => {
     if (!dateStr || dateStr === 'ALL') return 'Semana Completa (18 a 24/10/2026)';
@@ -281,9 +284,6 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   const countFueledInActivePeriod = useMemo(() => {
     return processedFleet.filter(v => v.hasSupplies).length;
   }, [processedFleet]);
-
-  // Margem de contingência operacional ajustável (padrão 11.8%)
-  const [contingencyPct, setContingencyPct] = useState(activeCycle?.margemSegurancaPct || 11.8);
 
   // Modo de visualização de tela cheia (SEM NENHUM POP-UP!)
   const [viewMode, setViewMode] = useState('dashboard');

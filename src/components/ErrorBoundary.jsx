@@ -15,6 +15,12 @@ export default class ErrorBoundary extends React.Component {
     console.error('ErrorBoundary capturou uma falha na renderização:', error, errorInfo);
   }
 
+  componentDidUpdate(prevProps) {
+    if (this.state.hasError && (prevProps.children !== this.props.children || prevProps.resetKey !== this.props.resetKey)) {
+      this.setState({ hasError: false, error: null, errorInfo: null });
+    }
+  }
+
   handleReload = () => {
     window.location.reload();
   };

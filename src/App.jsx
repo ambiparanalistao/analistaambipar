@@ -398,7 +398,7 @@ export default function App() {
 
             {/* Módulo Ativo Selecionado */}
             <main className="stage-content-body" id="stage-content-body">
-              <ErrorBoundary>
+              <ErrorBoundary key={currentModule} resetKey={currentModule}>
                 {currentModule === 'auditoria_vencimentos' && <ComplianceAuditModule key={maintenanceAccess.companyId} access={maintenanceAccess} />}
                 {currentModule === 'manutencao_preventiva' && <PreventiveMaintenanceModule key={maintenanceAccess.companyId} access={maintenanceAccess} user={session.user} onNavigateFleet={() => handleSelectModule('frotas')} />}
                 {currentModule === 'escala' && <EscalaModule key={maintenanceAccess.companyId} companyId={maintenanceAccess.companyId} user={session.user} onNavigateRotas={() => handleSelectModule('rotas')} />}
