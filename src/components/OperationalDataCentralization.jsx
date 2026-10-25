@@ -181,7 +181,10 @@ export default function OperationalDataCentralization({ companyId, user, canWrit
             <button type="button" disabled={!!reviewBusy} onClick={() => reviewRow(row, 'rejeitado')}>Rejeitar</button>
           </div>}
         </div>
-        <details style={{ marginTop: 10 }}><summary>Conferir conteúdo copiado</summary><pre style={{ maxHeight: 260, overflow: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(row.payload?.value ?? row.payload, null, 2)}</pre></details>
+        {row.review_note && <p style={{ marginTop: 10, color: 'var(--text-muted)' }}>{row.review_note}</p>}
+        {row.review_status === 'rejeitado'
+          ? <p role="note" style={{ marginTop: 10, color: 'var(--text-muted)' }}>Conteúdo preservado em quarentena e oculto neste painel.</p>
+          : <details style={{ marginTop: 10 }}><summary>Conferir conteúdo copiado</summary><pre style={{ maxHeight: 260, overflow: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(row.payload?.value ?? row.payload, null, 2)}</pre></details>}
       </article>)}
       {reviewRows.length === 200 && <p>Mostrando os 200 registros mais recentes; revise em lotes menores.</p>}
     </div>}
