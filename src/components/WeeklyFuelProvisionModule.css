@@ -1503,6 +1503,292 @@
 }
 
 /* ==========================================================================
+   CARD OFICIAL: MOTIVO DA SOLICITAÇÃO & MARGEM TÉCNICA
+   ========================================================================== */
+.motivo-solicitacao-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.motivo-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  cursor: pointer;
+  background: rgba(16, 185, 129, 0.08);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.15);
+  transition: background 0.2s ease;
+}
+
+.motivo-card-header:hover {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.motivo-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.motivo-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.motivo-header-left h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 3px 0;
+}
+
+.motivo-header-left p {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.btn-toggle-motivo {
+  background: rgba(30, 41, 59, 0.8);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.motivo-card-body {
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.motivo-pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.pillar-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.pillar-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pillar-item strong {
+  display: block;
+  font-size: 0.82rem;
+  color: #e2e8f0;
+  margin-bottom: 2px;
+}
+
+.pillar-item span {
+  display: block;
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.motivo-summary-bar {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.82rem;
+  color: #34d399;
+  text-align: center;
+}
+
+/* ==========================================================================
+   HISTÓRICO DE DOCUMENTOS DE APORTE
+   ========================================================================== */
+.history-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  padding: 20px 0;
+}
+
+.doc-history-card {
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.doc-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.doc-protocol-pill {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #38bdf8;
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+
+.doc-status-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.doc-status-badge.approved {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.doc-status-badge.pending {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.doc-history-body h4 {
+  font-size: 1rem;
+  color: #ffffff;
+  margin: 0 0 10px 0;
+}
+
+.doc-history-vals {
+  display: flex;
+  justify-content: space-between;
+  background: rgba(30, 41, 59, 0.6);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.doc-history-vals span {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.doc-history-vals strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #ffffff;
+  font-family: monospace;
+}
+
+.doc-history-motivo {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.doc-history-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: #64748b;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 8px;
+}
+
+.doc-history-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-open-doc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Dossiê Motivo Box */
+.doc-motivo-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #10b981;
+  padding: 16px 20px;
+  border-radius: 6px;
+  margin-bottom: 24px;
+}
+
+.doc-motivo-box h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 10px 0;
+}
+
+.motivo-content p {
+  font-size: 0.84rem;
+  color: #334155;
+  margin: 0 0 10px 0;
+  line-height: 1.45;
+}
+
+.motivo-bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bullet-row {
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.4;
+  padding-left: 10px;
+  border-left: 2px solid #cbd5e1;
+}
+
+/* ==========================================================================
    PRINT MEDIA STYLES (@media print)
    ========================================================================== */
 @media print {
