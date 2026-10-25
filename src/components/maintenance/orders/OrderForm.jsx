@@ -43,7 +43,7 @@ export default function OrderForm({
   sourceLocked = false,
   vehicleLocked = false,
   title = "Nova solicitação de orçamento",
-  submitLabel = "Abrir S.OR",
+  submitLabel = "Abrir S.D.O",
   descriptionLabel = "Descrição do problema *",
   priorityLabel = "Prioridade",
   onSave,
@@ -224,7 +224,7 @@ export default function OrderForm({
       </div>
       {error && <p role="alert" className="mp-error">{error}</p>}
       <fieldset disabled={busy} className="os-fieldset">
-        <legend>{submitLabel === 'Gerar SDO' ? 'Abertura da SDO' : 'Abertura da S.OR'}</legend>
+        <legend>{submitLabel === 'Gerar SDO' ? 'Abertura da SDO' : 'Abertura da S.D.O'}</legend>
         <p className="mp-muted">
           O número será gerado automaticamente ao salvar. Marque abaixo as oficinas que devem receber esta solicitação de orçamento via WhatsApp. Cada oficina receberá a planilha Excel e o link do portal para informar prazos, garantia e NCM das peças antes de sua aprovação final.
         </p>
@@ -266,7 +266,7 @@ export default function OrderForm({
 
           <label className="mp-field">
             Tipo
-            <select aria-label="Tipo da S.OR" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
+            <select aria-label="Tipo da S.D.O" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
               {Object.entries(ORDER_TYPES).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
               ))}
@@ -384,7 +384,7 @@ export default function OrderForm({
                           type="button"
                           className="os-make-ref-btn"
                           onClick={e => setReferenceWorkshop(p.id, e)}
-                          title="Tornar esta oficina a referência principal da S.OR"
+                          title="Tornar esta oficina a referência principal da S.D.O"
                         >
                           Tornar ref.
                         </button>
@@ -427,7 +427,7 @@ export default function OrderForm({
             Último odômetro salvo: {vehicle.km_atual == null ? 'Não informado' : Number(vehicle.km_atual).toLocaleString('pt-BR') + ' km'}.
           </p>
         )}
-        {!options.vehicles.length && <p role="status">Cadastre e salve um veículo na Gestão de Frotas para abrir a S.OR.</p>}
+        {!options.vehicles.length && <p role="status">Cadastre e salve um veículo na Gestão de Frotas para abrir a S.D.O.</p>}
         {!activePartners.length && <p role="status">Cadastre uma oficina ativa em Oficinas Parceiras.</p>}
 
         <label className="mp-field">

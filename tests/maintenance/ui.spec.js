@@ -44,7 +44,7 @@ test('cadastro valida obrigatórios e salva endereço manual',async({page})=>{
  await boot(page);await page.goto('/manutencao/oficinas?acao=nova');const module=page.locator('.mp-module');
  await module.getByRole('button',{name:'Salvar parceiro'}).click();await expect(module.getByText('Informe a razão social.')).toBeVisible();
  for(const [name,value]of Object.entries({razao_social:'Nova Oficina Ltda',nome_fantasia:'Nova Oficina',cnpj_cpf:'11222333000181',telefone:'11987654321',cep:'01001000',logradouro:'Praça da Sé',numero:'20',bairro:'Sé',cidade:'São Paulo',estado:'SP'}))await module.locator('[name="'+name+'"]').fill(value);
- await module.getByRole('button',{name:'Salvar parceiro'}).click();await expect(module.getByRole('heading',{name:'Nova Oficina',exact:true})).toBeVisible();await expect(module.getByRole('button',{name:'Nova S.OR',exact:true})).toBeEnabled();
+ await module.getByRole('button',{name:'Salvar parceiro'}).click();await expect(module.getByRole('heading',{name:'Nova Oficina',exact:true})).toBeVisible();await expect(module.getByRole('button',{name:'Nova S.D.O',exact:true})).toBeEnabled();
 });
 test('supervisor somente leitura e bloqueio de URL de edição',async({page})=>{
  await boot(page,'supervisor');await page.goto('/manutencao/oficinas');const module=page.locator('.mp-module');await expect(module.getByText('Horizonte',{exact:true})).toBeVisible();await expect(module.getByRole('button',{name:'Novo parceiro'})).toHaveCount(0);
@@ -56,7 +56,7 @@ test('motorista sem acesso ao menu ou dados',async({page})=>{
 test('bloqueio exige motivo, gera cadastro e permite anexo',async({page})=>{
  const fixture=await boot(page);await page.goto('/manutencao/oficinas?oficina='+id+'&acao=editar');const module=page.locator('.mp-module');
  await module.locator('[name=status]').selectOption('bloqueado');await module.getByRole('button',{name:'Salvar parceiro'}).click();await expect(module.getByText('Explique o motivo do bloqueio.')).toBeVisible();await module.locator('[name=motivo_bloqueio]').fill('Contrato suspenso');await module.getByRole('button',{name:'Salvar parceiro'}).click();
- await expect(module.getByRole('button',{name:'Nova S.OR',exact:true})).toBeVisible();expect(fixture.getPartner().status).toBe('bloqueado');
+ await expect(module.getByRole('button',{name:'Nova S.D.O',exact:true})).toBeVisible();expect(fixture.getPartner().status).toBe('bloqueado');
  await module.getByLabel('Adicionar anexo',{exact:true}).setInputFiles({name:'contrato.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 fixture')});await module.getByRole('button',{name:'Enviar anexo',exact:true}).click();await expect(module.getByText(/contrato.pdf · Contrato/)).toBeVisible();
 });
 

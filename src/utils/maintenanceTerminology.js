@@ -1,2 +1,2 @@
 // Display naming only. Existing numbers, URLs, identifiers and saved history stay intact.
-export function maintenanceLabel(value){return String(value??'').replace(/Ordens de Serviço/g,'Solicitações de Orçamento').replace(/ordens de serviço/g,'solicitações de orçamento').replace(/Ordem de Serviço/g,'Solicitação de Orçamento').replace(/ordem de serviço/g,'solicitação de orçamento').replace(/\bOS\b(?!-)/g,'S.OR');}
+export function maintenanceLabel(value){return String(value??'').replace(/Ordens de Serviço/g,'Solicitações de Orçamento').replace(/ordens de serviço/g,'solicitações de orçamento').replace(/Ordem de Serviço/g,'Solicitação de Orçamento').replace(/ordem de serviço/g,'solicitação de orçamento').replace(/\bOS\b(?!-)/g,'S.D.O');}
