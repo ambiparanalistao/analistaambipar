@@ -1738,7 +1738,7 @@ export function printAporteDossierCleanWindow(doc, isGlobalAporte = false, withT
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="3"><strong>TOTAL CONSOLIDADO (15 AMBIPAR + 6 VALE)</strong></td>
+          <td colspan="3"><strong>TOTAL CONSOLIDADO (${veiculos.length} VEÍCULOS NO PERÍODO)</strong></td>
           <td class="right-cell"><strong>${Number(doc.totalKm || 12040).toLocaleString('pt-BR')} km</strong></td>
           <td class="right-cell"><strong>${Number(doc.totalDiesel || 2548).toLocaleString('pt-BR')} L</strong></td>
           <td class="right-cell"><strong>R$ ${Number(doc.valorGastoReal || 15309.89).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></td>

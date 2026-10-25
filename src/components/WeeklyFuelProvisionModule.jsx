@@ -40,7 +40,11 @@ import {
   Calculator,
   Lock,
   Unlock,
-  ExternalLink
+  ExternalLink,
+  CalendarDays,
+  CalendarCheck,
+  RotateCcw,
+  CalendarRange
 } from 'lucide-react';
 import {
   DEFAULT_CYCLE_SETTINGS,
@@ -210,6 +214,74 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     return cycles.find(c => c.id === selectedCycleId) || cycles[0];
   }, [cycles, selectedCycleId]);
 
+  // NOVO: FILTRO AMIGÁVEL POR DIA / PERÍODO
+  // 'ALL' = Semana Completa (ex: 18/10 a 24/10)
+  // 'YYYY-MM-DD' = Filtro de dia específico (ex: '2026-10-19', '2026-10-20', '2026-10-21')
+  const [selectedDayFilter, setSelectedDayFilter] = useState('ALL');
+  const [customDateInput, setCustomDateInput] = useState('2026-10-21');
+
+  // REGRA DE OURO SOLICITADA PELO USUÁRIO:
+  // "O ideal era aparecer no aporte somente os veículos que foram abastecidos naquele período"
+  // Ativado por padrão (true), com toggle para alternar entre "Somente Abastecidos" e "Toda a Frota (21)"
+  const [onlyFueledVehicles, setOnlyFueledVehicles] = useState(true);
+
+  // Formatação amigável de datas
+  const formatDateFriendly = (dateStr) => {
+    if (!dateStr || dateStr === 'ALL') return 'Semana Completa (18 a 24/10/2026)';
+    const [ano, mes, dia] = dateStr.split('-');
+    const d = new Date(Number(ano), Number(mes) - 1, Number(dia));
+    const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const nomeDia = diasSemana[d.getDay()] || '';
+    return `${nomeDia}, ${dia}/${mes}/${ano}`;
+  };
+
+  // Processamento dinâmico da frota com base no período e data de abastecimento
+  const processedFleet = useMemo(() => {
+    if (!activeCycle?.veiculosAbastecidos) return [];
+
+    return activeCycle.veiculosAbastecidos.map(v => {
+      const isVale = !v.recebeAporteAmbipar;
+      const allSupplies = v.abastecimentosDetalhe || [];
+
+      // Filtra abastecimentos pela data se um dia específico foi selecionado
+      let suppliesInPeriod = allSupplies;
+      if (selectedDayFilter !== 'ALL') {
+        suppliesInPeriod = allSupplies.filter(s => s.data === selectedDayFilter);
+      }
+
+      const hasSupplies = suppliesInPeriod.length > 0;
+      const periodGasto = suppliesInPeriod.reduce((acc, s) => acc + (Number(s.valorTotal) || 0), 0);
+      const periodDiesel = suppliesInPeriod.reduce((acc, s) => acc + (Number(s.dieselLitros) || 0), 0);
+      const periodArla = suppliesInPeriod.reduce((acc, s) => acc + (Number(s.arlaLitros) || 0), 0);
+
+      // Tags amigáveis dos dias de abastecimento dentro do filtro
+      const periodDias = suppliesInPeriod.map(s => {
+        const parts = s.data.split('-');
+        const diaNum = parts[2];
+        const mesNum = parts[1];
+        return `${s.diaSemana.slice(0, 3)} (${diaNum}/${mesNum})`;
+      });
+
+      return {
+        ...v,
+        suppliesInPeriod,
+        hasSupplies,
+        periodSuppliesCount: suppliesInPeriod.length,
+        periodGasto: selectedDayFilter === 'ALL' ? v.valorTotalGasto : periodGasto,
+        periodDiesel: selectedDayFilter === 'ALL' ? v.litrosDieselTotal : periodDiesel,
+        periodArla: selectedDayFilter === 'ALL' ? v.litrosArlaTotal : periodArla,
+        periodKm: selectedDayFilter === 'ALL' ? v.kmRodado : (hasSupplies ? Math.round(v.kmRodado / (allSupplies.length || 1)) : 0),
+        periodMargin: selectedDayFilter === 'ALL' ? (v.margemSegurancaRS || 0) : Number((periodGasto * (contingencyPct / 100)).toFixed(2)),
+        periodDias: periodDias.length > 0 ? periodDias : v.diasAbastecimento
+      };
+    });
+  }, [activeCycle, selectedDayFilter, contingencyPct]);
+
+  // Contagem de veículos com abastecimento no período ativo
+  const countFueledInActivePeriod = useMemo(() => {
+    return processedFleet.filter(v => v.hasSupplies).length;
+  }, [processedFleet]);
+
   // Margem de contingência operacional ajustável (padrão 11.8%)
   const [contingencyPct, setContingencyPct] = useState(activeCycle?.margemSegurancaPct || 11.8);
 
@@ -256,10 +328,17 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     );
   }, [activeCycle, contingencyPct, customVehicleQuotas, isGlobalAporte, targetTotalAporte]);
 
-  // Lista de veículos filtrados
+  // Lista de veículos filtrados considerando:
+  // 1. Somente veículos abastecidos no período (quando ativado, padrão)
+  // 2. Filtro textual
+  // 3. Filtro por operação
   const filteredVehicles = useMemo(() => {
-    if (!activeCycle?.veiculosAbastecidos) return [];
-    return activeCycle.veiculosAbastecidos.filter(v => {
+    return processedFleet.filter(v => {
+      // Se a opção "Somente Abastecidos no Período" estiver ativa, oculta quem não abasteceu
+      if (onlyFueledVehicles && !v.hasSupplies) {
+        return false;
+      }
+
       const matchSearch =
         v.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -274,7 +353,26 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         (operationFilter === 'Amazon Meriti GIG 1/7' && (v.isSporadicGIG || v.operacao.includes('Amazon')));
       return matchSearch && matchOp;
     });
-  }, [activeCycle, searchTerm, operationFilter]);
+  }, [processedFleet, onlyFueledVehicles, searchTerm, operationFilter]);
+
+  // Totais dinâmicos do período/dia selecionado
+  const currentPeriodTotals = useMemo(() => {
+    const displayed = filteredVehicles;
+    const totalGasto = displayed.reduce((acc, v) => acc + (Number(v.periodGasto) || 0), 0);
+    const totalKm = displayed.reduce((acc, v) => acc + (Number(v.periodKm) || 0), 0);
+    const totalDiesel = displayed.reduce((acc, v) => acc + (Number(v.periodDiesel) || 0), 0);
+    const totalArla = displayed.reduce((acc, v) => acc + (Number(v.periodArla) || 0), 0);
+    const totalMargem = displayed.reduce((acc, v) => acc + (Number(v.periodMargin) || 0), 0);
+
+    return {
+      totalVeiculosVisiveis: displayed.length,
+      totalGasto,
+      totalKm,
+      totalDiesel,
+      totalArla,
+      totalMargem
+    };
+  }, [filteredVehicles]);
 
   // Operações para filtro rápido
   const availableOperations = [
@@ -389,8 +487,8 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
       statusLabel: 'Emitido · Aguardando Liberação Abank pelo Gestor',
       motivoGeral: isGlobalAporte
         ? `Aporte Global Unificado de R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} na Conta Master Abank sem divisão rígida por veículo. Veículos da Vale mantidos em R$ 0,00.`
-        : `Aporte Semanal com Divisão de Cotas individuais nos 5 cartões Abank da frota ativa. Veículos da Vale mantidos em R$ 0,00.`,
-      veiculos: activeCycle.veiculosAbastecidos
+        : `Aporte Semanal com Divisão de Cotas individuais nos cartões Abank da frota ativa. Veículos da Vale mantidos em R$ 0,00.`,
+      veiculos: filteredVehicles
     };
 
     setDocumentsHistory(prev => [newDoc, ...prev]);
@@ -433,7 +531,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
       isGlobalAporte: isGlobalAporte,
       customQuotas: customVehicleQuotas,
       motivoGeral: activeCycle.motivoGeralSolicitacao,
-      veiculos: activeCycle.veiculosAbastecidos
+      veiculos: filteredVehicles
     };
 
     const isWithMotives = docToDisplay.withTechnicalMotives !== undefined 
@@ -935,23 +1033,110 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         </div>
 
         <div className="banner-controls-col">
-          <div className="cycle-selector-box">
-            <label>Ciclo Semanal Selecionado:</label>
-            <select
-              value={selectedCycleId}
-              onChange={e => setSelectedCycleId(e.target.value)}
-              className="cycle-select"
-            >
-              {cycles.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.nome} {c.id === 'CICLO-2026-W43' ? '· (Vigente)' : ''}
-                </option>
-              ))}
-            </select>
-            <span className="cycle-status-text">
-              <CheckCircle2 size={13} className="icon-emerald" />
-              <span>{activeCycle.statusLabel}</span>
-            </span>
+          {/* NOVO: NAVEGADOR INTELIGENTE DE PERÍODO & FILTRO POR DIA */}
+          <div className="period-navigator-card">
+            <div className="period-header-row">
+              <div className="cycle-main-selector">
+                <label className="period-nav-label">
+                  <Calendar size={14} className="text-emerald" />
+                  PERÍODO DO APORTE:
+                </label>
+                <select
+                  value={selectedCycleId}
+                  onChange={e => {
+                    setSelectedCycleId(e.target.value);
+                    setSelectedDayFilter('ALL');
+                  }}
+                  className="cycle-nav-select"
+                >
+                  {cycles.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.id === 'CICLO-2026-W43' ? 'Semana Atual · 18 a 24/Out/2026 (Fechamento Quarta)' : 'Semana Anterior · 11 a 17/Out/2026'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="period-routine-tag">
+                <Clock size={13} className="text-cyan" />
+                <span>Fechamento Quarta 17:00h ➔ Solicitação Quinta 08:00h</span>
+              </div>
+            </div>
+
+            {/* ABAS DE SELEÇÃO RÁPIDA DE DIAS DE ABASTECIMENTO */}
+            <div className="day-filter-tabs">
+              <button
+                type="button"
+                className={`day-tab-btn ${selectedDayFilter === 'ALL' ? 'active' : ''}`}
+                onClick={() => setSelectedDayFilter('ALL')}
+                title="Visualizar a semana completa com os 15 veículos que abasteceram"
+              >
+                <CalendarDays size={14} />
+                <span>Semana Completa</span>
+                <span className="day-count-badge">15 veíc.</span>
+              </button>
+
+              <button
+                type="button"
+                className={`day-tab-btn ${selectedDayFilter === '2026-10-19' ? 'active' : ''}`}
+                onClick={() => setSelectedDayFilter('2026-10-19')}
+                title="Filtrar somente os abastecimentos realizados na Segunda-feira (19/10)"
+              >
+                <span>Segunda (19/10)</span>
+                <span className="day-count-badge">7 abastec.</span>
+              </button>
+
+              <button
+                type="button"
+                className={`day-tab-btn ${selectedDayFilter === '2026-10-20' ? 'active' : ''}`}
+                onClick={() => setSelectedDayFilter('2026-10-20')}
+                title="Filtrar somente os abastecimentos realizados na Terça-feira (20/10)"
+              >
+                <span>Terça (20/10)</span>
+                <span className="day-count-badge">7 abastec.</span>
+              </button>
+
+              <button
+                type="button"
+                className={`day-tab-btn ${selectedDayFilter === '2026-10-21' ? 'active' : ''}`}
+                onClick={() => setSelectedDayFilter('2026-10-21')}
+                title="Filtrar somente os abastecimentos realizados na Quarta-feira (21/10 - Dia do Fechamento)"
+              >
+                <span>Quarta (21/10)</span>
+                <span className="day-count-badge badge-closing">5 abastec.</span>
+              </button>
+
+              {/* Seletor Customizado de Data no Calendário */}
+              <div className="custom-date-picker-box">
+                <label htmlFor="custom-date-filter" title="Escolha qualquer dia no calendário">
+                  <Calendar size={13} />
+                  <span>Outro Dia:</span>
+                </label>
+                <input
+                  id="custom-date-filter"
+                  type="date"
+                  className="custom-date-input"
+                  value={selectedDayFilter !== 'ALL' ? selectedDayFilter : customDateInput}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setCustomDateInput(val);
+                    setSelectedDayFilter(val);
+                  }}
+                  min="2026-10-01"
+                  max="2026-10-31"
+                />
+                {selectedDayFilter !== 'ALL' && (
+                  <button
+                    type="button"
+                    className="btn-clear-day-filter"
+                    onClick={() => setSelectedDayFilter('ALL')}
+                    title="Limpar filtro e voltar para a semana completa"
+                  >
+                    ✕ Limpar
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="quick-action-buttons">
@@ -982,7 +1167,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 convenio: settings.convenioPadrao,
                 isGlobalAporte: isGlobalAporte,
                 withTechnicalMotives: withTechnicalMotives,
-                veiculos: activeCycle.veiculosAbastecidos
+                veiculos: filteredVehicles
               })}
               title="Abre o documento oficial em janela limpa independente, formatado em folha A4 oficial para salvar em PDF sem bugs visuais"
             >
@@ -1022,6 +1207,35 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           </div>
         </div>
       </section>
+
+      {/* Banner Informativo quando um Dia Específico está Selecionado */}
+      {selectedDayFilter !== 'ALL' && (
+        <section className="active-day-filter-banner animate-fade-in">
+          <div className="active-day-banner-content">
+            <div className="active-day-icon-circle">
+              <CalendarCheck size={20} className="text-emerald" />
+            </div>
+            <div>
+              <div className="active-day-title">
+                <strong>FILTRANDO POR DIA ESPECÍFICO: {formatDateFriendly(selectedDayFilter).toUpperCase()}</strong>
+                <span className="active-day-chip">{filteredVehicles.length} veículos abastecidos</span>
+              </div>
+              <p className="active-day-desc">
+                Exibindo somente os caminhões com abastecimentos registrados nesta data. Gasto real do dia: <strong>R$ {currentPeriodTotals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> ({currentPeriodTotals.totalDiesel} Litros Diesel S10).
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn-reset-to-full-week"
+            onClick={() => setSelectedDayFilter('ALL')}
+            title="Voltar a exibir o período completo da semana"
+          >
+            <RotateCcw size={15} />
+            <span>Ver Semana Completa</span>
+          </button>
+        </section>
+      )}
 
       {/* Barra Dupla de Configuração Operacional do Aporte */}
       <section className="report-mode-toggle-bar">
@@ -1396,10 +1610,40 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 ? 'Matriz de Consumo da Frota (Referência para o Aporte Global Master Abank)' 
                 : 'Divisão de Cotas por Veículo / Cartão Abank (Edição Manual e Automática)'}
             </h3>
-            <span className="table-count-pill">{filteredVehicles.length} de 21 veículos na matriz</span>
+            <div className="table-badges-row">
+              <span className="table-count-pill">
+                <strong>{filteredVehicles.length}</strong> {filteredVehicles.length === 1 ? 'veículo exibido' : 'veículos exibidos'} {onlyFueledVehicles ? '(somente abastecidos no período)' : '(frota completa da base)'}
+              </span>
+              {selectedDayFilter !== 'ALL' && (
+                <span className="table-day-active-pill">
+                  {formatDateFriendly(selectedDayFilter)}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="table-search-group">
+            {/* SEGMENTED TOGGLE: SOMENTE ABASTECIDOS NO PERÍODO vs TODA A FROTA (21) */}
+            <div className="fueled-toggle-segmented" title="Regra do aporte: alterne para ver somente os veículos abastecidos no período ou toda a frota">
+              <button
+                type="button"
+                className={`btn-seg-toggle ${onlyFueledVehicles ? 'active' : ''}`}
+                onClick={() => setOnlyFueledVehicles(true)}
+              >
+                <Fuel size={14} />
+                <span>Somente Abastecidos ({countFueledInActivePeriod})</span>
+              </button>
+
+              <button
+                type="button"
+                className={`btn-seg-toggle ${!onlyFueledVehicles ? 'active' : ''}`}
+                onClick={() => setOnlyFueledVehicles(false)}
+              >
+                <Truck size={14} />
+                <span>Toda a Frota (21)</span>
+              </button>
+            </div>
+
             <div className="search-input-box">
               <Search size={16} />
               <input
@@ -1432,7 +1676,8 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <th>Modelo & Implemento</th>
                 <th>Operação / Regime</th>
                 <th>Cartão Abank</th>
-                <th>KM Rodado</th>
+                <th>Dias Abastecimento</th>
+                <th>KM no Período</th>
                 <th>Diesel S10</th>
                 <th>Gasto Real</th>
                 <th>Margem Seg.</th>
@@ -1484,20 +1729,41 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                       )}
                     </td>
 
-                    <td className="km-val bold-text">{v.kmRodado.toLocaleString('pt-BR')} km</td>
+                    {/* Coluna de Dias / Abastecimentos no Período */}
+                    <td>
+                      {!isVale ? (
+                        <div className="dias-badge-container">
+                          {v.periodDias && v.periodDias.length > 0 ? (
+                            v.periodDias.map((dia, idx) => (
+                              <span key={idx} className="day-chip-tag">
+                                {dia}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="day-chip-tag-none">Sem abastec.</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="badge-vale-no-card">Interno Vale S.A.</span>
+                      )}
+                    </td>
+
+                    <td className="km-val bold-text">
+                      {Number(v.periodKm || 0).toLocaleString('pt-BR')} km
+                    </td>
                     <td className="liters-val">
-                      {!isVale ? `${v.litrosDieselTotal} L` : '-'}
+                      {!isVale ? `${Number(v.periodDiesel || 0).toLocaleString('pt-BR')} L` : '-'}
                     </td>
 
                     <td className="cost-val">
                       {!isVale 
-                        ? `R$ ${v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+                        ? `R$ ${Number(v.periodGasto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
                         : 'R$ 0,00'}
                     </td>
 
                     <td className="cost-val" style={{ color: !isVale ? '#10b981' : '#64748b' }}>
                       {!isVale 
-                        ? `+ R$ ${(v.margemSegurancaRS || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+                        ? `+ R$ ${Number(v.periodMargin || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
                         : '-'}
                     </td>
 
@@ -1551,24 +1817,24 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             </tbody>
             <tfoot>
               <tr className="tr-totals-footer">
-                <td colSpan="4">
+                <td colSpan="5">
                   <strong>
                     {isGlobalAporte 
-                      ? `TOTAL DO APORTE GLOBAL MASTER: R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (5 VEÍCULOS AMBIPAR + 2 VEÍCULOS VALE R$ 0,00)`
-                      : `TOTAL DO APORTE: R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (5 CARTOES ABANK + 2 VEÍCULOS VALE R$ 0,00)`}
+                      ? `TOTAL CONSOLIDADO NO PERÍODO (${currentPeriodTotals.totalVeiculosVisiveis} VEÍCULOS EXIBIDOS):`
+                      : `TOTAL CONSOLIDADO NO PERÍODO (${currentPeriodTotals.totalVeiculosVisiveis} VEÍCULOS EXIBIDOS):`}
                   </strong>
                 </td>
                 <td className="km-val">
-                  <strong>{totals.totalKm.toLocaleString('pt-BR')} km</strong>
+                  <strong>{currentPeriodTotals.totalKm.toLocaleString('pt-BR')} km</strong>
                 </td>
                 <td className="liters-val">
-                  <strong>{totals.totalDiesel.toLocaleString('pt-BR')} L</strong>
+                  <strong>{currentPeriodTotals.totalDiesel.toLocaleString('pt-BR')} L</strong>
                 </td>
                 <td className="cost-val">
-                  <strong>R$ {totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                  <strong>R$ {currentPeriodTotals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
                 </td>
                 <td className="cost-val" style={{ color: '#10b981' }}>
-                  <strong>+ R$ {totals.margemTotalRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                  <strong>+ R$ {currentPeriodTotals.totalMargem.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
                 </td>
                 <td className="td-aporte-val">
                   <strong className="grand-total" style={{ color: '#10b981', fontSize: '1.2rem' }}>
