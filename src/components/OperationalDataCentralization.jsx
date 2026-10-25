@@ -72,7 +72,7 @@ export default function OperationalDataCentralization({ companyId, user, canWrit
       supabase.from('operational_data_import_rows')
       .select('id,entity,source_key,payload,review_status,review_note,created_at')
       .eq('company_id', companyId).eq('entity', 'local_storage')
-      .in('review_status', ['pendente', 'aprovado', 'rejeitado'])
+      .in('review_status', ['pendente', 'aprovado', 'rejeitado', 'importado'])
       .order('created_at', { ascending: false }).limit(200),
       supabase.from('operational_data_import_rows')
         .select('id,source_key,payload,review_note,created_at')
