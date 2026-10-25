@@ -154,10 +154,10 @@ test("preventiva gera solicitação persistida com serviços, adicionais e urgê
     path: "test-results/preventive-sdo-desktop.png",
     fullPage: true,
   });
-  await module.getByRole("link", { name: "Gerar SDO preventiva" }).click();
+  await module.getByRole("link", { name: "Gerar S.D.O preventiva" }).click();
   await expect(
     page.getByRole("heading", {
-      name: "Nova SDO — Solicitação de Orçamento Preventivo",
+      name: "Nova S.D.O — Solicitação de Orçamento Preventivo",
     }),
   ).toBeVisible();
   await expect(page.getByLabel("KM atual *")).toHaveValue("123456");
@@ -178,7 +178,7 @@ test("preventiva gera solicitação persistida com serviços, adicionais e urgê
   );
   await expect(page.getByLabel("Grau de urgência")).toHaveValue("critica");
   await page.getByLabel("Oficina", { exact: true }).selectOption(partnerId);
-  await page.getByRole("button", { name: "Gerar SDO", exact: true }).click();
+  await page.getByRole("button", { name: "Gerar S.D.O", exact: true }).click();
   await expect.poll(() => f.getOrder()?.prioridade).toBe("critica");
   expect(f.getOrder().descricao_problema).toContain(
     "Verificar vazamento no radiador.",
@@ -225,9 +225,9 @@ test("KM desconhecido exige informação real e permite modo claro em celular", 
     path: "test-results/preventive-sdo-mobile.png",
     fullPage: true,
   });
-  await page.getByRole("link", { name: "Gerar SDO preventiva" }).click();
+  await page.getByRole("link", { name: "Gerar S.D.O preventiva" }).click();
   await expect(page.getByLabel("KM atual *")).toHaveValue("");
-  await page.getByRole("button", { name: "Gerar SDO", exact: true }).click();
+  await page.getByRole("button", { name: "Gerar S.D.O", exact: true }).click();
   await expect(
     page
       .getByText(/Informe KM|Informe o KM|Informe um KM|KM atual deve/)
