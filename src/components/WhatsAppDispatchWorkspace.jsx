@@ -41,7 +41,7 @@ export const WHATSAPP_TEMPLATES = [
     badge: '🚨 Prioritário',
     title: '🚛 Ordem de Carregamento & Escala Imediata',
     description: 'Convocação urgente para apresentação na base operacional e início de rota',
-    template: '🚛 *TORRE DE OPERAÇÕES CCO AMBIPAR* 🚨\n\n👋 Olá, *{MOTORISTA}*!\n\n📋 *ESCALA OPERACIONAL LIBERADA COM SUCESSO:*\n• 🚚 *Conjunto:* {MARCA_MODELO}\n• 🇧🇷 *Placa:* *{PLACA}*\n• 🏷️ *Prefixo:* *{PREFIXO}*\n• ☣️ *Carga Homologada:* {TIPO_CARGA}\n\n📍 *Instrução Operacional:* Favor se apresentar imediatamente na base operacional para o checklist 360º de saída e liberação da documentação de viagem (*DACTE / MDF-e*).\n\n⏰ *Registro CCO:* {HORA_ATUAL} • Boa viagem e dirija com segurança! 🟢'
+    template: '🚛 *TORRE DE OPERAÇÕES Central de Gestão AMBIPAR* 🚨\n\n👋 Olá, *{MOTORISTA}*!\n\n📋 *ESCALA OPERACIONAL LIBERADA COM SUCESSO:*\n• 🚚 *Conjunto:* {MARCA_MODELO}\n• 🇧🇷 *Placa:* *{PLACA}*\n• 🏷️ *Prefixo:* *{PREFIXO}*\n• ☣️ *Carga Homologada:* {TIPO_CARGA}\n\n📍 *Instrução Operacional:* Favor se apresentar imediatamente na base operacional para o checklist 360º de saída e liberação da documentação de viagem (*DACTE / MDF-e*).\n\n⏰ *Registro Central de Gestão:* {HORA_ATUAL} • Boa viagem e dirija com segurança! 🟢'
   },
   {
     id: 'revisao',
@@ -69,11 +69,11 @@ export const WHATSAPP_TEMPLATES = [
   },
   {
     id: 'posicao',
-    category: 'Torre de Controle CCO',
+    category: 'Torre de Controle Central de Gestão',
     badge: '🛰️ Monitoramento',
     title: '📡 Solicitação de Posição & Status de Viagem',
     description: 'Confirmação de rota, trânsito e cumprimento do descanso da Lei 13.103',
-    template: '📡 *TORRE DE CONTROLE 24H CCO AMBIPAR* 🛰️\n\n👋 Olá, *{MOTORISTA}*!\n\n🗺️ *SOLICITAÇÃO DE POSIÇÃO OPERACIONAL:*\n• 🚚 *Conjunto:* *{PLACA}* (Prefixo *{PREFIXO}*)\n• 🚦 *Status CCO:* *{STATUS_CCO}*\n\n🧭 Favor confirmar via retorno deste canal o seu posicionamento atual, condições climáticas/pista e cumprimento das paradas de descanso obrigatórias da *Lei 13.103*.\n\n🕒 *Horário do Chamado:* {HORA_ATUAL} • Torre CCO em Prontidão 🟢'
+    template: '📡 *TORRE DE CONTROLE 24H Central de Gestão AMBIPAR* 🛰️\n\n👋 Olá, *{MOTORISTA}*!\n\n🗺️ *SOLICITAÇÃO DE POSIÇÃO OPERACIONAL:*\n• 🚚 *Conjunto:* *{PLACA}* (Prefixo *{PREFIXO}*)\n• 🚦 *Status Operacional:* *{STATUS_CCO}*\n\n🧭 Favor confirmar via retorno deste canal o seu posicionamento atual, condições climáticas/pista e cumprimento das paradas de descanso obrigatórias da *Lei 13.103*.\n\n🕒 *Horário do Chamado:* {HORA_ATUAL} • Torre Central de Gestão em Prontidão 🟢'
   },
   {
     id: 'combustivel',
@@ -94,8 +94,8 @@ export const SMART_TRIGGERS = [
   { id: 'revisao', label: 'Próxima Revisão', tag: '{PROXIMA_REVISAO}', getValue: (v) => v.proxima_revisao_km ? `${Number(v.proxima_revisao_km).toLocaleString('pt-BR')} km` : '—' },
   { id: 'carga', label: 'Carga', tag: '{TIPO_CARGA}', getValue: (v) => v.tipo_carga || 'Não informado' },
   { id: 'combustivel', label: 'Combustível', tag: '{COMBUSTIVEL}', getValue: (v) => v.combustivel || 'Não informado' },
-  { id: 'status', label: 'Status CCO', tag: '{STATUS_CCO}', getValue: (v) => v.status || 'Disponível' },
-  { id: 'hora', label: 'Hora CCO', tag: '{HORA_ATUAL}', getValue: () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }
+  { id: 'status', label: 'Status Operacional', tag: '{STATUS_CCO}', getValue: (v) => v.status || 'Disponível' },
+  { id: 'hora', label: 'Hora Central de Gestão', tag: '{HORA_ATUAL}', getValue: () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }
 ];
 
 export function resolveTemplateText(templateText, vehicle) {
@@ -220,13 +220,13 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
     let blockText = '';
 
     if (type === 'odometro') {
-      blockText = `\n\n📊 *Telemetria CCO:* Odômetro registrado: *${vehicle.km_atual ? Number(vehicle.km_atual).toLocaleString('pt-BR') : '—'} km* | Próxima revisão: *${vehicle.proxima_revisao_km ? Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR') : '—'} km* ⚙️`;
+      blockText = `\n\n📊 *Telemetria Central de Gestão:* Odômetro registrado: *${vehicle.km_atual ? Number(vehicle.km_atual).toLocaleString('pt-BR') : '—'} km* | Próxima revisão: *${vehicle.proxima_revisao_km ? Number(vehicle.proxima_revisao_km).toLocaleString('pt-BR') : '—'} km* ⚙️`;
     } else if (type === 'vistorias') {
       const crlv = getCountdown(vehicle.validade_crlv);
       const cipp = getCountdown(vehicle.validade_cipp);
       blockText = `\n\n🛡️ *Vistorias Regulamentares:* CRLV ${crlv.text} | CIPP ${cipp.text} 📜`;
     } else if (type === 'assinatura') {
-      blockText = `\n\n🏢 *Torre de Operações CCO Ambipar* • ${now} 🟢`;
+      blockText = `\n\n🏢 *Torre de Operações Central de Gestão Ambipar* • ${now} 🟢`;
     }
 
     if (messageText.includes(blockText.trim())) {
@@ -288,7 +288,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
         driver: vehicle.motorista_vinculado || 'Condutor',
         phone: targetPhone,
         preview: messageText.slice(0, 65) + '...',
-        status: 'Tentativa Registrada CCO'
+        status: 'Tentativa Registrada Central de Gestão'
       };
       setDispatchHistory(prev => [simulatedLog, ...prev]);
 
@@ -345,7 +345,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
           </button>
 
           <div className="dispatch-title-meta">
-            <h2>Central de Despacho & Mensageria WhatsApp CCO</h2>
+            <h2>Central de Despacho & Mensageria WhatsApp Central de Gestão</h2>
             <div className="dispatch-badges-row">
               <span className="cco-status-pill online">
                 <span className="beacon-dot"></span>
@@ -458,7 +458,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
             </div>
           </div>
 
-          {/* Status CCO Badge */}
+          {/* Status Operacional Badge */}
           <div className="spacious-status-box">
             <span className="cco-status-chip">
               <span className="beacon-dot"></span>
@@ -583,9 +583,9 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
                   type="button"
                   className="btn-modular-block"
                   onClick={() => toggleModularBlock('assinatura')}
-                  title="Incluir assinatura oficial CCO com hora"
+                  title="Incluir assinatura oficial Central de Gestão com hora"
                 >
-                  <span>🏢 Assinatura CCO com Horário 🟢</span>
+                  <span>🏢 Assinatura Central de Gestão com Horário 🟢</span>
                 </button>
               </div>
             </div>
@@ -728,7 +728,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
                 </div>
                 <div className="chat-header-meta">
                   <strong>{vehicle.motorista_vinculado || 'Não informado'}</strong>
-                  <span className="chat-status">online • Torre de Operações CCO</span>
+                  <span className="chat-status">online • Torre de Operações Central de Gestão</span>
                 </div>
               </div>
 
@@ -747,7 +747,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
 
               {/* Barra de Entrada do WhatsApp */}
               <div className="phone-chat-input-bar">
-                <span className="chat-input-placeholder">Mensagem CCO...</span>
+                <span className="chat-input-placeholder">Mensagem Central de Gestão...</span>
                 <div 
                   className="chat-mic-btn" 
                   onClick={handleSendViaEvolutionApi} 
@@ -761,7 +761,7 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
 
             {/* Auditoria de Disparos da Sessão */}
             <div className="dispatch-audit-trail-box">
-              <span className="audit-trail-title">Auditoria de Disparos CCO:</span>
+              <span className="audit-trail-title">Auditoria de Disparos Central de Gestão:</span>
               <p className="audit-preview" style={{ color: '#94a3b8' }}>
                 Disparos realizados diretamente pelo Gateway de WhatsApp Corporativo (sem abrir Web ou App).
               </p>

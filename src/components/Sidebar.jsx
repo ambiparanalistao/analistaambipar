@@ -67,7 +67,7 @@ export default function Sidebar({
         },
         {
           id: 'escala',
-          label: 'Escala Operacional CCO',
+          label: 'Escala Operacional',
           icon: CalendarDays
         },
         {
@@ -123,7 +123,7 @@ export default function Sidebar({
         },
         {
           id: 'simulador_autonomia',
-          label: 'Simulador de Autonomia CCO',
+          label: 'Simulador de Autonomia',
           icon: Compass
         },
         {
@@ -159,7 +159,7 @@ export default function Sidebar({
           {!isCollapsed && (
             <div className="brand-meta">
               <span className="brand-title-main">AMBIPAR</span>
-              <span className="brand-subtitle-main">Logistics & CCO</span>
+              <span className="brand-subtitle-main">Central de Gestão de Frota e Logística</span>
             </div>
           )}
         </div>
@@ -184,7 +184,7 @@ export default function Sidebar({
         {!isCollapsed && (
           <div className="user-details-compact">
             <span className="user-name-label" title={userName}>{userName}</span>
-            <span className="user-role-tag">Analista de Logística / CCO</span>
+            <span className="user-role-tag">Analista de Transporte</span>
           </div>
         )}
       </div>

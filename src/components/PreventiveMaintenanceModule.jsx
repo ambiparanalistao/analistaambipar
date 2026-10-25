@@ -1,3 +1,6 @@
+import CenteredDialog from './CenteredDialog';
+import PreventiveProgress from './maintenance/plans/PreventiveProgress';
+import {OdometerEditor,PreventiveReferenceEditor} from './maintenance/plans/PreventiveEditors';
 import React, { useEffect, useState } from "react";
 import {
   Wrench,
@@ -35,6 +38,7 @@ export default function PreventiveMaintenanceModule({
   const [search, setSearch] = useState(""),
     [history, setHistory] = useState({ loading: true, rows: [], error: "" }),
     [revision, setRevision] = useState(0);
+  const [editor,setEditor]=useState(null),[modalBusy,setModalBusy]=useState(false),[notice,setNotice]=useState('');
   const canCreate = access?.orderPermissions?.create;
   useEffect(() => {
     let active = true;
@@ -106,6 +110,7 @@ export default function PreventiveMaintenanceModule({
           </button>
         </div>
       </header>
+      {notice&&<p className="pm-note" role="status">{notice}</p>}
       <div className="pm-stats">
         <article>
           <Truck />
@@ -194,25 +199,7 @@ export default function PreventiveMaintenanceModule({
                   </strong>
                   <small>Odômetro salvo no cadastro</small>
                 </div>
-                {alerts.length ? (
-                  <ul>
-                    {alerts.map((a) => (
-                      <li key={a.id}>
-                        {a.nome} ·{" "}
-                        {a.estado === "vencida"
-                          ? "Vencida"
-                          : a.estado === "breve"
-                            ? "Vence em breve"
-                            : "Em dia"}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="pm-muted">
-                    Sem plano periódico cadastrado. A SDO será preenchida com o
-                    roteiro preventivo.
-                  </p>
-                )}
+                <PreventiveProgress vehicle={v} rows={alerts} loading={plans.loading} error={plans.error} canConfigure={access.canWrite} onConfigure={rule=>setEditor({kind:'reference',vehicle:v,rule})}/>
                 <div className="pm-actions">
                   {canCreate &&
                     (v.status === "Em Viagem" ? (
@@ -223,8 +210,9 @@ export default function PreventiveMaintenanceModule({
                         <ArrowUpRight size={16} />
                       </a>
                     ))}
+                  {access.canWrite&&<button onClick={()=>setEditor({kind:'km',vehicle:v})}>Atualizar KM</button>}
                   <button onClick={onNavigateFleet}>
-                    Ver cadastro / atualizar KM
+                    Ver cadastro do veículo
                   </button>
                 </div>
               </article>
@@ -291,6 +279,7 @@ export default function PreventiveMaintenanceModule({
           </div>
         )}
       </section>
+      {editor&&<CenteredDialog title={editor.kind==='km'?'Atualizar odômetro · '+editor.vehicle.placa:'Configurar próxima preventiva'} className="pm-page" theme={theme} themeAttribute="data-pm-theme" busy={modalBusy} onClose={()=>setEditor(null)}>{editor.kind==='km'?<OdometerEditor vehicle={editor.vehicle} company={company} onBusy={setModalBusy} onSaved={message=>{setEditor(null);setNotice(message);refresh();}} onCancel={()=>setEditor(null)}/>:<PreventiveReferenceEditor vehicle={editor.vehicle} rule={editor.rule} company={company} onBusy={setModalBusy} onSaved={message=>{setEditor(null);setNotice(message);refresh();}} onCancel={()=>setEditor(null)}/>}</CenteredDialog>}
     </section>
   );
 }
