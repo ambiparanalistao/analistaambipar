@@ -541,7 +541,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: 04981726354"
+                  placeholder="Informe os 11 dígitos da CNH"
                   value={formData.cnh}
                   onChange={(e) => setFormData({ ...formData, cnh: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                   style={{ fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.06em' }}
