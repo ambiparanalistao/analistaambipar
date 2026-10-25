@@ -45,12 +45,15 @@ function readLocalEntries() {
   });
 }
 
-export default function OperationalDataCentralization({ companyId, user }) {
+export default function OperationalDataCentralization({ companyId, user, canWrite = false }) {
   const [entries, setEntries] = useState(readLocalEntries);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [reviewRows, setReviewRows] = useState([]);
+  const [pendingDrivers, setPendingDrivers] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [driverAssignments, setDriverAssignments] = useState({});
   const [reviewLoading, setReviewLoading] = useState(true);
   const [reviewBusy, setReviewBusy] = useState('');
   const rescanLocalData = () => {
@@ -60,23 +63,30 @@ export default function OperationalDataCentralization({ companyId, user }) {
   };
 
   const loadReviewRows = useCallback(async () => {
-    if (!supabase || !companyId) { setReviewRows([]); setReviewLoading(false); return; }
+    if (!canWrite || !supabase || !companyId) { setReviewRows([]); setPendingDrivers([]); setDrivers([]); setReviewLoading(false); return; }
     setReviewRows([]);
     setReviewLoading(true);
-    const { data, error: loadError } = await supabase.from('operational_data_import_rows')
+    const [{ data, error: loadError }, { data: pending, error: pendingError }, { data: driverData, error: driversError }] = await Promise.all([
+      supabase.from('operational_data_import_rows')
       .select('id,entity,source_key,payload,review_status,review_note,created_at')
       .eq('company_id', companyId).eq('entity', 'local_storage')
       .in('review_status', ['pendente', 'aprovado', 'rejeitado'])
-      .order('created_at', { ascending: false }).limit(200);
-    if (loadError) setError(loadError.message || 'Não foi possível carregar a revisão.');
-    else setReviewRows(data || []);
+      .order('created_at', { ascending: false }).limit(200),
+      supabase.from('operational_data_import_rows')
+        .select('id,source_key,payload,review_note,created_at')
+        .eq('company_id', companyId).eq('entity', 'driver').eq('review_status', 'pendente')
+        .order('created_at', { ascending: true }),
+      supabase.from('motoristas').select('id,nome,cpf').eq('company_id', companyId).order('nome'),
+    ]);
+    if (loadError || pendingError || driversError) setError((loadError || pendingError || driversError).message || 'Não foi possível carregar a revisão.');
+    else { setReviewRows(data || []); setPendingDrivers(pending || []); setDrivers(driverData || []); }
     setReviewLoading(false);
-  }, [companyId]);
+  }, [canWrite, companyId]);
 
   useEffect(() => { loadReviewRows(); }, [loadReviewRows]);
 
   async function reviewRow(row, status) {
-    if (!supabase || !companyId || reviewBusy) return;
+    if (!canWrite || !supabase || !companyId || reviewBusy) return;
     setReviewBusy(row.id); setError(''); setMessage('');
     const review_note = status === 'rejeitado' ? 'Rejeitado na revisão pelo responsável da empresa.' : 'Aprovado na revisão pelo responsável da empresa.';
     const { error: saveError } = await supabase.from('operational_data_import_rows')
@@ -84,6 +94,24 @@ export default function OperationalDataCentralization({ companyId, user }) {
       .eq('id', row.id).eq('company_id', companyId).eq('review_status', 'pendente');
     if (saveError) setError(saveError.message || 'Não foi possível salvar a revisão deste registro.');
     else { setMessage(`Registro marcado como ${status === 'aprovado' ? 'aprovado' : 'rejeitado'} para revisão.`); await loadReviewRows(); }
+    setReviewBusy('');
+  }
+
+  async function assignPendingDriver(row) {
+    const targetId = driverAssignments[row.id];
+    if (!canWrite || !targetId || !supabase || !companyId || reviewBusy) return;
+    setReviewBusy(row.id); setError(''); setMessage('');
+    const target = drivers.find(driver => driver.id === targetId);
+    if (!target) { setError('Selecione um motorista cadastrado nesta empresa.'); setReviewBusy(''); return; }
+    const { error: saveError } = await supabase.from('operational_data_import_rows').update({
+      target_id: targetId,
+      review_status: 'importado',
+      review_note: `Associado manualmente ao cadastro ${target.nome}; identidade confirmada pelo responsável da empresa.`,
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+    }).eq('id', row.id).eq('company_id', companyId).eq('entity', 'driver').eq('review_status', 'pendente');
+    if (saveError) setError(saveError.message || 'Não foi possível associar este registro.');
+    else { setMessage('Registro associado ao motorista selecionado.'); setDriverAssignments(current => { const next = { ...current }; delete next[row.id]; return next; }); await loadReviewRows(); }
     setReviewBusy('');
   }
 
@@ -125,6 +153,7 @@ export default function OperationalDataCentralization({ companyId, user }) {
   }
 
   const recordCount = entries.reduce((sum, entry) => sum + (Array.isArray(entry.value) ? entry.value.length : 1), 0);
+  if (!canWrite) return <section className="module-view"><h1>Centralização de dados</h1><p role="alert">A revisão de dados importados está disponível somente para Admin Geral, Admin da Empresa e Analista de Transporte.</p></section>;
   return <section className="module-view animate-fade-in" style={{ maxWidth: 1050, margin: '0 auto' }}>
     <header style={{ marginBottom: 24 }}><p style={{ color: 'var(--text-muted)' }}>CENTRALIZAÇÃO SEGURA</p><h1>Dados locais deste navegador</h1>
       <p>Faça uma cópia de segurança e envie os registros locais para revisão da empresa no Supabase. Esta etapa não apaga nem altera o navegador.</p></header>
@@ -156,5 +185,21 @@ export default function OperationalDataCentralization({ companyId, user }) {
       </article>)}
       {reviewRows.length === 200 && <p>Mostrando os 200 registros mais recentes; revise em lotes menores.</p>}
     </div>}
+    <h2 style={{ marginTop: 30 }}>Motoristas que precisam de conferência</h2>
+    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>A associação é manual. Confira a identidade e selecione um cadastro existente; registros sem correspondência devem ser completados primeiro em Motoristas, com os dados reais.</p>
+    {reviewLoading ? <p role="status">Carregando motoristas pendentes…</p> : pendingDrivers.length === 0 ? <p>Nenhum motorista aguardando vínculo.</p> : <div style={{ display: 'grid', gap: 12 }}>
+      {pendingDrivers.map(row => <article key={row.id} className="dashboard-card" style={{ padding: 16 }}>
+        <strong>{row.payload?.nome || 'Motorista sem nome na origem'}</strong>
+        <p style={{ color: 'var(--text-muted)' }}>CPF na origem: {row.payload?.cpf ? `•••.•••.•••-${String(row.payload.cpf).replace(/\D/g, '').slice(-2) || '??'}` : 'não informado'} · Confira os dados antes de associar.</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <select aria-label={`Associar ${row.payload?.nome || 'motorista'} a um cadastro existente`} value={driverAssignments[row.id] || ''} onChange={event => setDriverAssignments(current => ({ ...current, [row.id]: event.target.value }))}>
+            <option value="">Selecione o motorista correspondente</option>
+            {drivers.map(driver => <option key={driver.id} value={driver.id}>{driver.nome}{driver.cpf ? ` · CPF •••-${String(driver.cpf).replace(/\D/g, '').slice(-2)}` : ''}</option>)}
+          </select>
+          <button type="button" className="btn-primary" disabled={!driverAssignments[row.id] || !!reviewBusy} onClick={() => assignPendingDriver(row)}>{reviewBusy === row.id ? 'Salvando…' : 'Confirmar associação'}</button>
+        </div>
+      </article>)}
+    </div>}
   </section>;
 }
+

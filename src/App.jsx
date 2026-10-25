@@ -446,7 +446,7 @@ export default function App() {
                 {currentModule === 'ocorrencias' && <OcorrenciasModule companyId={maintenanceAccess.companyId} key={maintenanceAccess.companyId}/>}
                 {currentModule === 'esg' && <EsgModule />}
                 {currentModule === 'automacao' && <AutomationModule user={session.user} />}
-                {currentModule === 'centralizacao_dados' && <OperationalDataCentralization companyId={maintenanceAccess.companyId} user={session.user} />}
+                {currentModule === 'centralizacao_dados' && <OperationalDataCentralization companyId={maintenanceAccess.companyId} user={session.user} canWrite={maintenanceAccess.canWrite} />}
               </ErrorBoundary>
             </main>
           </div>
@@ -461,3 +461,4 @@ export default function App() {
     </div>
   );
 }
+
