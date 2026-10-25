@@ -72,11 +72,13 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Estado de ciclos salvo localmente (Versão 4 - Vale Zero, GIG Esporádico, 17k Abank)
   const [cycles, setCycles] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_weekly_fuel_cycles_v4');
+      const saved = localStorage.getItem('ambipar_weekly_fuel_cycles_v6');
       if (saved) return JSON.parse(saved);
       localStorage.removeItem('ambipar_weekly_fuel_cycles_v1');
       localStorage.removeItem('ambipar_weekly_fuel_cycles_v2');
       localStorage.removeItem('ambipar_weekly_fuel_cycles_v3');
+      localStorage.removeItem('ambipar_weekly_fuel_cycles_v4');
+      localStorage.removeItem('ambipar_weekly_fuel_cycles_v5');
       return INITIAL_WEEKLY_CYCLES;
     } catch {
       return INITIAL_WEEKLY_CYCLES;
@@ -86,7 +88,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Histórico de Documentos Gerados
   const [documentsHistory, setDocumentsHistory] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_aporte_documents_history_v3');
+      const saved = localStorage.getItem('ambipar_aporte_documents_history_v6');
       if (saved) return JSON.parse(saved);
       return INITIAL_APORTE_DOCUMENTS_HISTORY;
     } catch {
@@ -97,7 +99,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Configurações do ciclo
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_fuel_cycle_settings_v4');
+      const saved = localStorage.getItem('ambipar_fuel_cycle_settings_v6');
       if (saved) return JSON.parse(saved);
       return DEFAULT_CYCLE_SETTINGS;
     } catch {
@@ -108,7 +110,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // OPÇÃO 1: Modalidade de Aporte (Com Divisão por Veículo OU Aporte Global Sem Divisão)
   const [isGlobalAporte, setIsGlobalAporte] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_fuel_is_global_v2');
+      const saved = localStorage.getItem('ambipar_fuel_is_global_v6');
       return saved !== null ? JSON.parse(saved) : false;
     } catch {
       return false;
@@ -121,7 +123,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // VALOR TOTAL ALVO DO APORTE (R$ 17.000,00 padrão, editável)
   const [targetTotalAporte, setTargetTotalAporte] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_fuel_target_total_v2');
+      const saved = localStorage.getItem('ambipar_fuel_target_total_v6');
       return saved ? Number(saved) : 17000.00;
     } catch {
       return 17000.00;
@@ -131,7 +133,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // COTAS CUSTOMIZADAS POR VEÍCULO (Edição Manual ou Ajuste Automático)
   const [customVehicleQuotas, setCustomVehicleQuotas] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_fuel_custom_quotas_v3');
+      const saved = localStorage.getItem('ambipar_fuel_custom_quotas_v6');
       if (saved) return JSON.parse(saved);
       const initial = {};
       AUDITED_REAL_FLEET_PROVISION.forEach(v => {
@@ -156,7 +158,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Persistência no LocalStorage
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_weekly_fuel_cycles_v4', JSON.stringify(cycles));
+      localStorage.setItem('ambipar_weekly_fuel_cycles_v6', JSON.stringify(cycles));
     } catch (e) {
       console.warn('Erro ao salvar ciclos:', e);
     }
@@ -164,7 +166,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_aporte_documents_history_v3', JSON.stringify(documentsHistory));
+      localStorage.setItem('ambipar_aporte_documents_history_v6', JSON.stringify(documentsHistory));
     } catch (e) {
       console.warn('Erro ao salvar documentos:', e);
     }
@@ -172,7 +174,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_fuel_cycle_settings_v4', JSON.stringify(settings));
+      localStorage.setItem('ambipar_fuel_cycle_settings_v6', JSON.stringify(settings));
     } catch (e) {
       console.warn('Erro ao salvar configurações do ciclo:', e);
     }
@@ -180,7 +182,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_fuel_is_global_v2', JSON.stringify(isGlobalAporte));
+      localStorage.setItem('ambipar_fuel_is_global_v6', JSON.stringify(isGlobalAporte));
     } catch (e) {
       console.warn('Erro ao salvar modalidade de aporte:', e);
     }
@@ -188,7 +190,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_fuel_target_total_v2', String(targetTotalAporte));
+      localStorage.setItem('ambipar_fuel_target_total_v6', String(targetTotalAporte));
     } catch (e) {
       console.warn('Erro ao salvar valor alvo do aporte:', e);
     }
@@ -196,7 +198,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_fuel_custom_quotas_v3', JSON.stringify(customVehicleQuotas));
+      localStorage.setItem('ambipar_fuel_custom_quotas_v6', JSON.stringify(customVehicleQuotas));
     } catch (e) {
       console.warn('Erro ao salvar cotas customizadas:', e);
     }
@@ -218,7 +220,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   // Filtros e busca
   const [searchTerm, setSearchTerm] = useState('');
-  const [operationFilter, setOperationFilter] = useState('Todas');
+  const [operationFilter, setOperationFilter] = useState('Todas as Operações (21)');
   const [copySuccess, setCopySuccess] = useState(false);
   const [showMotivoDetails, setShowMotivoDetails] = useState(true);
 
@@ -264,16 +266,23 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         v.prefixo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.operacao.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchOp = operationFilter === 'Todas' || 
-        (operationFilter === 'Vale' && v.isValeOperation) ||
-        (operationFilter === 'Ambipar Abank' && v.recebeAporteAmbipar) ||
-        (operationFilter === 'Amazon Meriti' && v.isSporadicGIG);
+      const matchOp =
+        operationFilter === 'Todas as Operações (21)' ||
+        operationFilter === 'Todas' ||
+        (operationFilter === 'Ambipar Abank (15)' && v.recebeAporteAmbipar) ||
+        (operationFilter === 'Contrato Vale S.A. (6)' && v.isValeOperation) ||
+        (operationFilter === 'Amazon Meriti GIG 1/7' && (v.isSporadicGIG || v.operacao.includes('Amazon')));
       return matchSearch && matchOp;
     });
   }, [activeCycle, searchTerm, operationFilter]);
 
   // Operações para filtro rápido
-  const availableOperations = ['Todas', 'Ambipar Abank', 'Vale', 'Amazon Meriti'];
+  const availableOperations = [
+    'Todas as Operações (21)',
+    'Ambipar Abank (15)',
+    'Contrato Vale S.A. (6)',
+    'Amazon Meriti GIG 1/7'
+  ];
 
   // AÇÕES DO ASSISTENTE AUTOMÁTICO DE DISTRIBUIÇÃO
   const handleApplyHistorical = () => {
@@ -921,7 +930,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           <h1>Aporte Semanal & Solicitação de Saldo de Combustível</h1>
           <p>
             Consolidação dos gastos reais para solicitação de <strong>R$ {targetTotalAporte.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> no Cartão Abank toda <strong>quinta-feira pela manhã</strong>.
-            Veículos da Vale constam com cota <strong>R$ 0,00</strong> (abastecimento direto pelo cliente).
+            Matriz completa com os <strong>21 veículos da base</strong> (15 veículos Ambipar + 6 veículos dedicados à Vale S.A. com cota R$ 0,00).
           </p>
         </div>
 
@@ -1312,14 +1321,14 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             </span>
           </div>
           <div className="kpi-subtext">
-            <span>{isGlobalAporte ? 'Conta Master Unificada' : '5 Cartões Abank Ativos'}</span>
+            <span>{isGlobalAporte ? 'Conta Master Unificada' : '15 Cartões Abank Ativos'}</span>
             <span className="badge-plus">+R$ {totals.margemTotalRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} margem</span>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">VEÍCULOS NA VALE (COTA R$ 0,00)</span>
+            <span className="kpi-label">VEÍCULOS NA VALE S.A. (R$ 0,00)</span>
             <Building size={20} className="kpi-icon-yellow" />
           </div>
           <div className="kpi-value-row">
@@ -1387,7 +1396,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 ? 'Matriz de Consumo da Frota (Referência para o Aporte Global Master Abank)' 
                 : 'Divisão de Cotas por Veículo / Cartão Abank (Edição Manual e Automática)'}
             </h3>
-            <span className="table-count-pill">{filteredVehicles.length} veículos na matriz</span>
+            <span className="table-count-pill">{filteredVehicles.length} de 21 veículos na matriz</span>
           </div>
 
           <div className="table-search-group">
