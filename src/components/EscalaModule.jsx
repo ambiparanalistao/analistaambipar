@@ -36,9 +36,10 @@ import {
   AUDITED_RJ_CLIENTS, 
   INITIAL_SCHEDULE_DATA 
 } from '../data/auditedClientsRoutesData';
-import { AUDITED_VEHICLES, AUDITED_DRIVERS } from '../data/auditedAmbiparData';
+import useFleetDirectory from '../hooks/useFleetDirectory';
 
-export default function EscalaModule({ user, onNavigateRotas }) {
+export default function EscalaModule({ user, onNavigateRotas,companyId }) {
+  const directory=useFleetDirectory(companyId);const AUDITED_VEHICLES=directory.vehicles,AUDITED_DRIVERS=directory.drivers;
   // Controle de Visualização em Tela Inteira: 'list' (Quadro Geral), 'form' (Montar Escala Tela Cheia), 'romaneio' (Ficha de Despacho Tela Cheia)
   const [viewMode, setViewMode] = useState('list');
   const [selectedRomaneio, setSelectedRomaneio] = useState(null);

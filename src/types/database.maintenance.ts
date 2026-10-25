@@ -588,3 +588,6 @@ export interface MaintenanceRows {
  maintenance_operations_audit:{id:string;company_id:string;entity_id:string;action:string;details:Json;actor_id:string;created_at:string};
 }
 export interface MaintenanceInserts {maintenance_report_orders:never;maintenance_partner_quotes:never;maintenance_delivery_jobs:never;maintenance_assets:never;maintenance_asset_events:never;maintenance_checklists:never;maintenance_warranty_claims:never;maintenance_operations_audit:never;}
+
+export interface MaintenanceRows {compliance_licenses:{id:string;company_id:string;source_key:string|null;orgao:string;documento:string;numero:string;titular:string;emissao:string|null;vencimento:string|null;indeterminada:boolean;observacoes:string;version:number;created_by:string;updated_by:string;created_at:string;updated_at:string};compliance_change_log:{id:string;company_id:string;entity_id:string;entity:string;action:string;before_data:Json|null;after_data:Json|null;actor_id:string;created_at:string};}
+export interface MaintenanceInserts {compliance_licenses:never;compliance_change_log:never;}
