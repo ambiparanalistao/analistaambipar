@@ -325,8 +325,9 @@ export default function LogisticsDashboard({ user, onNavigateModule }) {
           <div className="kpi-formula-tag">
             <code>276 abastecimentos • 26.540 Litros</code>
           </div>
-          <div className="kpi-footer-status positive" style={{ cursor: 'pointer' }} onClick={() => onNavigateModule && onNavigateModule('combustivel')}>
-            <span>Auditar consumo e KM/L →</span>
+          <div className="kpi-footer-status positive" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ cursor: 'pointer' }} onClick={() => onNavigateModule && onNavigateModule('combustivel')}>Auditar consumo →</span>
+            <span style={{ cursor: 'pointer', color: '#10b981', fontWeight: 700 }} onClick={() => onNavigateModule && onNavigateModule('aporte_combustivel')}>Aporte Semanal (Quinta) →</span>
           </div>
         </div>
 
