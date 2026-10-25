@@ -73,16 +73,19 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     }
   });
 
-  // Estado de ciclos salvo localmente (Versão 4 - Vale Zero, GIG Esporádico, 17k Abank)
+  // Estado de ciclos salvo localmente (Versão 8 - Quinta a Quarta Fechamento Quarta 17h)
   const [cycles, setCycles] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_weekly_fuel_cycles_v6');
+      const saved = localStorage.getItem('ambipar_weekly_fuel_cycles_v8');
       if (saved) return JSON.parse(saved);
-      localStorage.removeItem('ambipar_weekly_fuel_cycles_v1');
-      localStorage.removeItem('ambipar_weekly_fuel_cycles_v2');
-      localStorage.removeItem('ambipar_weekly_fuel_cycles_v3');
-      localStorage.removeItem('ambipar_weekly_fuel_cycles_v4');
-      localStorage.removeItem('ambipar_weekly_fuel_cycles_v5');
+      ['v1','v2','v3','v4','v5','v6','v7'].forEach(v => {
+        localStorage.removeItem(`ambipar_weekly_fuel_cycles_${v}`);
+        localStorage.removeItem(`ambipar_aporte_documents_history_${v}`);
+        localStorage.removeItem(`ambipar_fuel_cycle_settings_${v}`);
+        localStorage.removeItem(`ambipar_fuel_is_global_${v}`);
+        localStorage.removeItem(`ambipar_fuel_target_total_${v}`);
+        localStorage.removeItem(`ambipar_fuel_custom_quotas_${v}`);
+      });
       return INITIAL_WEEKLY_CYCLES;
     } catch {
       return INITIAL_WEEKLY_CYCLES;
@@ -92,7 +95,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Histórico de Documentos Gerados
   const [documentsHistory, setDocumentsHistory] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_aporte_documents_history_v6');
+      const saved = localStorage.getItem('ambipar_aporte_documents_history_v8');
       if (saved) return JSON.parse(saved);
       return INITIAL_APORTE_DOCUMENTS_HISTORY;
     } catch {
@@ -103,7 +106,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Configurações do ciclo
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_fuel_cycle_settings_v6');
+      const saved = localStorage.getItem('ambipar_fuel_cycle_settings_v8');
       if (saved) return JSON.parse(saved);
       return DEFAULT_CYCLE_SETTINGS;
     } catch {
@@ -114,7 +117,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // OPÇÃO 1: Modalidade de Aporte (Com Divisão por Veículo OU Aporte Global Sem Divisão)
   const [isGlobalAporte, setIsGlobalAporte] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_fuel_is_global_v6');
+      const saved = localStorage.getItem('ambipar_fuel_is_global_v8');
       return saved !== null ? JSON.parse(saved) : false;
     } catch {
       return false;
@@ -127,7 +130,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // VALOR TOTAL ALVO DO APORTE (R$ 17.000,00 padrão, editável)
   const [targetTotalAporte, setTargetTotalAporte] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_fuel_target_total_v6');
+      const saved = localStorage.getItem('ambipar_fuel_target_total_v8');
       return saved ? Number(saved) : 17000.00;
     } catch {
       return 17000.00;
@@ -137,7 +140,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // COTAS CUSTOMIZADAS POR VEÍCULO (Edição Manual ou Ajuste Automático)
   const [customVehicleQuotas, setCustomVehicleQuotas] = useState(() => {
     try {
-      const saved = localStorage.getItem('ambipar_fuel_custom_quotas_v6');
+      const saved = localStorage.getItem('ambipar_fuel_custom_quotas_v8');
       if (saved) return JSON.parse(saved);
       const initial = {};
       AUDITED_REAL_FLEET_PROVISION.forEach(v => {
@@ -162,7 +165,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Persistência no LocalStorage
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_weekly_fuel_cycles_v6', JSON.stringify(cycles));
+      localStorage.setItem('ambipar_weekly_fuel_cycles_v8', JSON.stringify(cycles));
     } catch (e) {
       console.warn('Erro ao salvar ciclos:', e);
     }
@@ -170,7 +173,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_aporte_documents_history_v6', JSON.stringify(documentsHistory));
+      localStorage.setItem('ambipar_aporte_documents_history_v8', JSON.stringify(documentsHistory));
     } catch (e) {
       console.warn('Erro ao salvar documentos:', e);
     }
@@ -178,7 +181,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_fuel_cycle_settings_v6', JSON.stringify(settings));
+      localStorage.setItem('ambipar_fuel_cycle_settings_v8', JSON.stringify(settings));
     } catch (e) {
       console.warn('Erro ao salvar configurações do ciclo:', e);
     }
@@ -186,7 +189,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_fuel_is_global_v6', JSON.stringify(isGlobalAporte));
+      localStorage.setItem('ambipar_fuel_is_global_v8', JSON.stringify(isGlobalAporte));
     } catch (e) {
       console.warn('Erro ao salvar modalidade de aporte:', e);
     }
@@ -194,7 +197,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_fuel_target_total_v6', String(targetTotalAporte));
+      localStorage.setItem('ambipar_fuel_target_total_v8', String(targetTotalAporte));
     } catch (e) {
       console.warn('Erro ao salvar valor alvo do aporte:', e);
     }
@@ -202,7 +205,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ambipar_fuel_custom_quotas_v6', JSON.stringify(customVehicleQuotas));
+      localStorage.setItem('ambipar_fuel_custom_quotas_v8', JSON.stringify(customVehicleQuotas));
     } catch (e) {
       console.warn('Erro ao salvar cotas customizadas:', e);
     }
@@ -215,8 +218,9 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   }, [cycles, selectedCycleId]);
 
   // NOVO: FILTRO AMIGÁVEL POR DIA / PERÍODO
-  // 'ALL' = Semana Completa (ex: 18/10 a 24/10)
-  // 'YYYY-MM-DD' = Filtro de dia específico (ex: '2026-10-19', '2026-10-20', '2026-10-21')
+  // Ciclo Operacional CCO: Quinta a Quarta (Quinta 15/10 a Quarta 21/10)
+  // 'ALL' = Semana Completa de Quinta a Quarta
+  // 'YYYY-MM-DD' = Filtro de dia específico
   const [selectedDayFilter, setSelectedDayFilter] = useState('ALL');
   const [customDateInput, setCustomDateInput] = useState('2026-10-21');
 
@@ -230,13 +234,42 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   // Formatação amigável de datas
   const formatDateFriendly = (dateStr) => {
-    if (!dateStr || dateStr === 'ALL') return 'Semana Completa (18 a 24/10/2026)';
+    if (!dateStr || dateStr === 'ALL') return 'Semana Completa (15 a 21/10/2026 · Qui a Qua)';
     const [ano, mes, dia] = dateStr.split('-');
     const d = new Date(Number(ano), Number(mes) - 1, Number(dia));
     const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
     const nomeDia = diasSemana[d.getDay()] || '';
     return `${nomeDia}, ${dia}/${mes}/${ano}`;
   };
+
+  // Os 7 dias do ciclo operacional CCO: Quinta a Quarta
+  const cycleDays = useMemo(() => {
+    return [
+      { date: '2026-10-15', label: 'Quinta (15/10)', dia: 'Quinta-feira' },
+      { date: '2026-10-16', label: 'Sexta (16/10)', dia: 'Sexta-feira' },
+      { date: '2026-10-17', label: 'Sábado (17/10)', dia: 'Sábado' },
+      { date: '2026-10-18', label: 'Domingo (18/10)', dia: 'Domingo' },
+      { date: '2026-10-19', label: 'Segunda (19/10)', dia: 'Segunda-feira' },
+      { date: '2026-10-20', label: 'Terça (20/10)', dia: 'Terça-feira' },
+      { date: '2026-10-21', label: 'Quarta (21/10)', dia: 'Quarta-feira', isClosing: true }
+    ];
+  }, []);
+
+  // Contagem de abastecimentos por dia no ciclo ativo
+  const dayCounts = useMemo(() => {
+    const counts = {};
+    if (activeCycle?.veiculosAbastecidos) {
+      activeCycle.veiculosAbastecidos.forEach(v => {
+        (v.abastecimentosDetalhe || []).forEach(s => {
+          counts[s.data] = (counts[s.data] || 0) + 1;
+        });
+      });
+    }
+    return counts;
+  }, [activeCycle]);
+
+  // Alerta de abastecimento após o corte da quarta-feira 17h
+  const isAfterCutoff = selectedDayFilter !== 'ALL' && selectedDayFilter >= '2026-10-22';
 
   // Processamento dinâmico da frota com base no período e data de abastecimento
   const processedFleet = useMemo(() => {
@@ -1051,7 +1084,9 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 >
                   {cycles.map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.id === 'CICLO-2026-W43' ? 'Semana Atual · 18 a 24/Out/2026 (Fechamento Quarta)' : 'Semana Anterior · 11 a 17/Out/2026'}
+                      {c.nome || (c.id === 'CICLO-2026-W43' 
+                        ? 'Semana Atual · 15 a 21/Out/2026 (Quinta a Quarta · Fechamento Quarta)' 
+                        : 'Semana Anterior · 08 a 14/Out/2026 (Quinta a Quarta)')}
                     </option>
                   ))}
                 </select>
@@ -1059,52 +1094,40 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
               <div className="period-routine-tag">
                 <Clock size={13} className="text-cyan" />
-                <span>Fechamento Quarta 17:00h ➔ Solicitação Quinta 08:00h</span>
+                <span>Ciclo: Quinta a Quarta · Fechamento Quarta 17:00h ➔ Solicitação Quinta 08:00h</span>
               </div>
             </div>
 
-            {/* ABAS DE SELEÇÃO RÁPIDA DE DIAS DE ABASTECIMENTO */}
+            {/* ABAS DE SELEÇÃO RÁPIDA DOS 7 DIAS DO CICLO (QUINTA A QUARTA) */}
             <div className="day-filter-tabs">
               <button
                 type="button"
                 className={`day-tab-btn ${selectedDayFilter === 'ALL' ? 'active' : ''}`}
                 onClick={() => setSelectedDayFilter('ALL')}
-                title="Visualizar a semana completa com os 15 veículos que abasteceram"
+                title="Visualizar a semana completa de Quinta a Quarta com todos os veículos abastecidos"
               >
                 <CalendarDays size={14} />
                 <span>Semana Completa</span>
                 <span className="day-count-badge">15 veíc.</span>
               </button>
 
-              <button
-                type="button"
-                className={`day-tab-btn ${selectedDayFilter === '2026-10-19' ? 'active' : ''}`}
-                onClick={() => setSelectedDayFilter('2026-10-19')}
-                title="Filtrar somente os abastecimentos realizados na Segunda-feira (19/10)"
-              >
-                <span>Segunda (19/10)</span>
-                <span className="day-count-badge">7 abastec.</span>
-              </button>
-
-              <button
-                type="button"
-                className={`day-tab-btn ${selectedDayFilter === '2026-10-20' ? 'active' : ''}`}
-                onClick={() => setSelectedDayFilter('2026-10-20')}
-                title="Filtrar somente os abastecimentos realizados na Terça-feira (20/10)"
-              >
-                <span>Terça (20/10)</span>
-                <span className="day-count-badge">7 abastec.</span>
-              </button>
-
-              <button
-                type="button"
-                className={`day-tab-btn ${selectedDayFilter === '2026-10-21' ? 'active' : ''}`}
-                onClick={() => setSelectedDayFilter('2026-10-21')}
-                title="Filtrar somente os abastecimentos realizados na Quarta-feira (21/10 - Dia do Fechamento)"
-              >
-                <span>Quarta (21/10)</span>
-                <span className="day-count-badge badge-closing">5 abastec.</span>
-              </button>
+              {cycleDays.map(cd => {
+                const count = dayCounts[cd.date] || 0;
+                return (
+                  <button
+                    key={cd.date}
+                    type="button"
+                    className={`day-tab-btn ${selectedDayFilter === cd.date ? 'active' : ''}`}
+                    onClick={() => setSelectedDayFilter(cd.date)}
+                    title={`Filtrar abastecimentos de ${cd.label}${cd.isClosing ? ' (Fechamento do ciclo até 17h00)' : ''}`}
+                  >
+                    <span>{cd.label}</span>
+                    <span className={`day-count-badge ${cd.isClosing ? 'badge-closing' : ''}`}>
+                      {count} abastec.
+                    </span>
+                  </button>
+                );
+              })}
 
               {/* Seletor Customizado de Data no Calendário */}
               <div className="custom-date-picker-box">
@@ -1130,7 +1153,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                     type="button"
                     className="btn-clear-day-filter"
                     onClick={() => setSelectedDayFilter('ALL')}
-                    title="Limpar filtro e voltar para a semana completa"
+                    title="Limpar filtro e voltar para o ciclo completo (Qui a Qua)"
                   >
                     ✕ Limpar
                   </button>
@@ -1208,8 +1231,31 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         </div>
       </section>
 
-      {/* Banner Informativo quando um Dia Específico está Selecionado */}
-      {selectedDayFilter !== 'ALL' && (
+      {/* Alerta de Abastecimento Após o Fechamento de Quarta */}
+      {isAfterCutoff && (
+        <section className="cutoff-notice-banner animate-fade-in" role="alert">
+          <AlertCircle size={22} color="#fbbf24" style={{ flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <strong>Abastecimento de Quinta-feira ({formatDateFriendly(selectedDayFilter)}) em Diante:</strong>
+            <p>
+              Conforme a regra do CCO, o fechamento dos abastecimentos para o aporte de quinta-feira encerra na <strong>quarta-feira às 17h00</strong>. 
+              Abastecimentos a partir de quinta-feira <strong>já pertencem ao próximo ciclo semanal</strong>. O aporte atual contempla exclusivamente o período de <strong>Quinta (15/10) a Quarta (21/10)</strong>.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-reset-to-full-week"
+            onClick={() => setSelectedDayFilter('ALL')}
+            title="Voltar para o ciclo semanal atual (Qui a Qua)"
+          >
+            <RotateCcw size={15} />
+            <span>Ver Ciclo Atual</span>
+          </button>
+        </section>
+      )}
+
+      {/* Banner Informativo quando um Dia Específico do Ciclo está Selecionado */}
+      {selectedDayFilter !== 'ALL' && !isAfterCutoff && (
         <section className="active-day-filter-banner animate-fade-in">
           <div className="active-day-banner-content">
             <div className="active-day-icon-circle">
@@ -1218,7 +1264,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <div>
               <div className="active-day-title">
                 <strong>FILTRANDO POR DIA ESPECÍFICO: {formatDateFriendly(selectedDayFilter).toUpperCase()}</strong>
-                <span className="active-day-chip">{filteredVehicles.length} veículos abastecidos</span>
+                <span className="active-day-chip">{filteredVehicles.length} {filteredVehicles.length === 1 ? 'veículo abastecido' : 'veículos abastecidos'}</span>
               </div>
               <p className="active-day-desc">
                 Exibindo somente os caminhões com abastecimentos registrados nesta data. Gasto real do dia: <strong>R$ {currentPeriodTotals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> ({currentPeriodTotals.totalDiesel} Litros Diesel S10).
@@ -1229,10 +1275,10 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             type="button"
             className="btn-reset-to-full-week"
             onClick={() => setSelectedDayFilter('ALL')}
-            title="Voltar a exibir o período completo da semana"
+            title="Voltar a exibir o período completo da semana (Quinta a Quarta)"
           >
             <RotateCcw size={15} />
-            <span>Ver Semana Completa</span>
+            <span>Ver Semana Completa (Qui a Qua)</span>
           </button>
         </section>
       )}
