@@ -158,11 +158,11 @@ export async function sendEvolutionMessage({ phone, text, overrideSettings = nul
         const jsonErr = JSON.parse(errorText);
         parsed = jsonErr?.response?.message || jsonErr?.message || errorText;
       } catch {}
-      throw new Error(`Servidor Evolution API retornou status ${response.status}: ${parsed}`);
+      throw new Error(`Servidor WhatsApp retornou status ${response.status}: ${parsed}`);
     }
   } catch (err) {
     if (err.name === 'AbortError') {
-      throw new Error(`Tempo limite esgotado ao conectar no servidor Evolution API (${baseUrl}).`);
+      throw new Error(`Tempo limite esgotado ao conectar no servidor WhatsApp (${baseUrl}).`);
     }
     throw err;
   }
