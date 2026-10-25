@@ -7,6 +7,7 @@ import {
   Truck,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   FileText,
   Printer,
   Copy,
@@ -35,16 +36,25 @@ import {
   HelpCircle,
   FileCheck,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Calculator,
+  Lock,
+  Unlock,
+  ExternalLink
 } from 'lucide-react';
 import {
   DEFAULT_CYCLE_SETTINGS,
   AUDITED_REAL_FLEET_PROVISION,
   INITIAL_WEEKLY_CYCLES,
   INITIAL_APORTE_DOCUMENTS_HISTORY,
+  HISTORICAL_ACTIVE_FLEET_WEIGHTS,
   calculateCycleTotals,
   generateManagerWhatsAppMessage,
-  exportCycleToCSV
+  exportCycleToCSV,
+  distributeByHistoricalWeight,
+  distributeEqually,
+  distributeByKm,
+  printAporteDossierCleanWindow
 } from '../data/weeklyFuelProvisionData';
 import './WeeklyFuelProvisionModule.css';
 
@@ -64,7 +74,6 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     try {
       const saved = localStorage.getItem('ambipar_weekly_fuel_cycles_v4');
       if (saved) return JSON.parse(saved);
-      // Limpa chaves legadas se existirem
       localStorage.removeItem('ambipar_weekly_fuel_cycles_v1');
       localStorage.removeItem('ambipar_weekly_fuel_cycles_v2');
       localStorage.removeItem('ambipar_weekly_fuel_cycles_v3');
@@ -96,10 +105,55 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     }
   });
 
-  // Opção solicitada pelo usuário: Gerar relatório COM motivo técnico OU SEM motivo técnico
+  // OPÇÃO 1: Modalidade de Aporte (Com Divisão por Veículo OU Aporte Global Sem Divisão)
+  const [isGlobalAporte, setIsGlobalAporte] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ambipar_fuel_is_global_v2');
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  // OPÇÃO 2: Formato de Emissão (COM Motivo Técnico Detalhado OU SEM Motivo Técnico)
   const [withTechnicalMotives, setWithTechnicalMotives] = useState(true);
 
-  // Salva no localStorage quando alterado
+  // VALOR TOTAL ALVO DO APORTE (R$ 17.000,00 padrão, editável)
+  const [targetTotalAporte, setTargetTotalAporte] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ambipar_fuel_target_total_v2');
+      return saved ? Number(saved) : 17000.00;
+    } catch {
+      return 17000.00;
+    }
+  });
+
+  // COTAS CUSTOMIZADAS POR VEÍCULO (Edição Manual ou Ajuste Automático)
+  const [customVehicleQuotas, setCustomVehicleQuotas] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ambipar_fuel_custom_quotas_v3');
+      if (saved) return JSON.parse(saved);
+      const initial = {};
+      AUDITED_REAL_FLEET_PROVISION.forEach(v => {
+        initial[v.placa] = v.recebeAporteAmbipar ? v.solicitacaoAporteSugerido : 0;
+      });
+      return initial;
+    } catch {
+      const initial = {};
+      AUDITED_REAL_FLEET_PROVISION.forEach(v => {
+        initial[v.placa] = v.recebeAporteAmbipar ? v.solicitacaoAporteSugerido : 0;
+      });
+      return initial;
+    }
+  });
+
+  // Modo de distribuição ativo ('historical' | 'equal' | 'km' | 'manual')
+  const [distributionMode, setDistributionMode] = useState('historical');
+
+  // Trava de segurança para veículos da Vale (evita edição acidental)
+  const [allowValeOverride, setAllowValeOverride] = useState(false);
+
+  // Persistência no LocalStorage
   useEffect(() => {
     try {
       localStorage.setItem('ambipar_weekly_fuel_cycles_v4', JSON.stringify(cycles));
@@ -124,6 +178,30 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     }
   }, [settings]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('ambipar_fuel_is_global_v2', JSON.stringify(isGlobalAporte));
+    } catch (e) {
+      console.warn('Erro ao salvar modalidade de aporte:', e);
+    }
+  }, [isGlobalAporte]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ambipar_fuel_target_total_v2', String(targetTotalAporte));
+    } catch (e) {
+      console.warn('Erro ao salvar valor alvo do aporte:', e);
+    }
+  }, [targetTotalAporte]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ambipar_fuel_custom_quotas_v3', JSON.stringify(customVehicleQuotas));
+    } catch (e) {
+      console.warn('Erro ao salvar cotas customizadas:', e);
+    }
+  }, [customVehicleQuotas]);
+
   // Ciclo Ativo
   const [selectedCycleId, setSelectedCycleId] = useState(cycles[0]?.id || 'CICLO-2026-W43');
   const activeCycle = useMemo(() => {
@@ -134,7 +212,6 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   const [contingencyPct, setContingencyPct] = useState(activeCycle?.margemSegurancaPct || 11.8);
 
   // Modo de visualização de tela cheia (SEM NENHUM POP-UP!)
-  // viewMode: 'dashboard' | 'dossier' | 'vehicle_detail' | 'documents_history' | 'new_entry' | 'settings'
   const [viewMode, setViewMode] = useState('dashboard');
   const [selectedVehicleForDetail, setSelectedVehicleForDetail] = useState(null);
   const [activeDossierDocument, setActiveDossierDocument] = useState(null);
@@ -145,10 +222,37 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   const [copySuccess, setCopySuccess] = useState(false);
   const [showMotivoDetails, setShowMotivoDetails] = useState(true);
 
-  // Totais consolidados do ciclo ativo
+  // Soma das cotas atribuídas aos veículos ativos
+  const allocatedQuotasSum = useMemo(() => {
+    if (!activeCycle?.veiculosAbastecidos) return 0;
+    return activeCycle.veiculosAbastecidos.reduce((acc, v) => {
+      if (v.recebeAporteAmbipar) {
+        const q = customVehicleQuotas[v.placa] !== undefined 
+          ? Number(customVehicleQuotas[v.placa]) 
+          : Number(v.solicitacaoAporteSugerido);
+        return acc + (isNaN(q) ? 0 : q);
+      }
+      return acc;
+    }, 0);
+  }, [activeCycle, customVehicleQuotas]);
+
+  // Diferença entre o Total Alvo e a Soma das Cotas
+  const balanceDifference = useMemo(() => {
+    return Number((targetTotalAporte - allocatedQuotasSum).toFixed(2));
+  }, [targetTotalAporte, allocatedQuotasSum]);
+
+  const isBalanced = Math.abs(balanceDifference) < 0.01;
+
+  // Totais consolidados do ciclo ativo (reflete cotas customizadas e modalidade global)
   const totals = useMemo(() => {
-    return calculateCycleTotals(activeCycle, contingencyPct);
-  }, [activeCycle, contingencyPct]);
+    return calculateCycleTotals(
+      activeCycle,
+      contingencyPct,
+      customVehicleQuotas,
+      isGlobalAporte,
+      targetTotalAporte
+    );
+  }, [activeCycle, contingencyPct, customVehicleQuotas, isGlobalAporte, targetTotalAporte]);
 
   // Lista de veículos filtrados
   const filteredVehicles = useMemo(() => {
@@ -171,9 +275,67 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // Operações para filtro rápido
   const availableOperations = ['Todas', 'Ambipar Abank', 'Vale', 'Amazon Meriti'];
 
-  // Copiar resumo formatado para o WhatsApp (respeita a opção com/sem motivo técnico)
+  // AÇÕES DO ASSISTENTE AUTOMÁTICO DE DISTRIBUIÇÃO
+  const handleApplyHistorical = () => {
+    const quotas = distributeByHistoricalWeight(targetTotalAporte, activeCycle.veiculosAbastecidos);
+    setCustomVehicleQuotas(quotas);
+    setDistributionMode('historical');
+  };
+
+  const handleApplyEqual = () => {
+    const quotas = distributeEqually(targetTotalAporte, activeCycle.veiculosAbastecidos);
+    setCustomVehicleQuotas(quotas);
+    setDistributionMode('equal');
+  };
+
+  const handleApplyKm = () => {
+    const quotas = distributeByKm(targetTotalAporte, activeCycle.veiculosAbastecidos);
+    setCustomVehicleQuotas(quotas);
+    setDistributionMode('km');
+  };
+
+  const handleResetDefault = () => {
+    setTargetTotalAporte(17000.00);
+    const quotas = distributeByHistoricalWeight(17000.00, activeCycle.veiculosAbastecidos);
+    setCustomVehicleQuotas(quotas);
+    setDistributionMode('historical');
+  };
+
+  const handleVehicleQuotaChange = (placa, val) => {
+    const num = Math.max(0, Number(val) || 0);
+    setCustomVehicleQuotas(prev => ({
+      ...prev,
+      [placa]: num
+    }));
+    setDistributionMode('manual');
+  };
+
+  const handleAutoBalanceDifference = () => {
+    // Aloca a diferença pendente no cavalo mecânico rodoviário (EWX-0I82), maior consumidor
+    setCustomVehicleQuotas(prev => {
+      const currentEwx = prev['EWX-0I82'] !== undefined ? Number(prev['EWX-0I82']) : 6200;
+      const adjusted = Math.max(0, currentEwx + balanceDifference);
+      return {
+        ...prev,
+        'EWX-0I82': Number(adjusted.toFixed(2))
+      };
+    });
+  };
+
+  const handleSetTargetToAllocatedSum = () => {
+    setTargetTotalAporte(allocatedQuotasSum);
+  };
+
+  // Copiar resumo formatado para o WhatsApp
   const handleCopyWhatsAppMessage = () => {
-    const text = generateManagerWhatsAppMessage(activeCycle, settings, contingencyPct, withTechnicalMotives);
+    const text = generateManagerWhatsAppMessage(
+      activeCycle,
+      settings,
+      contingencyPct,
+      withTechnicalMotives,
+      isGlobalAporte,
+      customVehicleQuotas
+    );
     navigator.clipboard.writeText(text).then(() => {
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 3500);
@@ -184,7 +346,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
   // Exportar CSV
   const handleExportCSV = () => {
-    exportCycleToCSV(activeCycle, contingencyPct);
+    exportCycleToCSV(activeCycle, contingencyPct, isGlobalAporte, customVehicleQuotas);
   };
 
   // GERAR DOCUMENTO OFICIAL DE APORTE (Abre em tela cheia com protocolo oficial salvo)
@@ -212,9 +374,13 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
       veiculosComCota: totals.veiculosComCota,
       veiculosValeZero: totals.veiculosValeZero,
       withTechnicalMotives: withTechnicalMotives,
+      isGlobalAporte: isGlobalAporte,
+      customQuotas: customVehicleQuotas,
       status: 'PRONTO_ENVIO',
       statusLabel: 'Emitido · Aguardando Liberação Abank pelo Gestor',
-      motivoGeral: activeCycle.motivoGeralSolicitacao,
+      motivoGeral: isGlobalAporte
+        ? `Aporte Global Unificado de R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} na Conta Master Abank sem divisão rígida por veículo. Veículos da Vale mantidos em R$ 0,00.`
+        : `Aporte Semanal com Divisão de Cotas individuais nos 5 cartões Abank da frota ativa. Veículos da Vale mantidos em R$ 0,00.`,
       veiculos: activeCycle.veiculosAbastecidos
     };
 
@@ -227,6 +393,16 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   const handleOpenExistingDocument = (doc) => {
     setActiveDossierDocument(doc);
     setViewMode('dossier');
+  };
+
+  // Abertura de Janela Limpa Independente para PDF Perfeito (Zero bugs)
+  const handlePrintCleanStandalone = (docToPrint) => {
+    printAporteDossierCleanWindow(
+      docToPrint,
+      docToPrint.isGlobalAporte !== undefined ? docToPrint.isGlobalAporte : isGlobalAporte,
+      docToPrint.withTechnicalMotives !== undefined ? docToPrint.withTechnicalMotives : withTechnicalMotives,
+      docToPrint.customQuotas || customVehicleQuotas
+    );
   };
 
   // SE ESTIVER EM MODO DOSSIÊ TIMBRADO PARA IMPRESSÃO / PDF (TELA CHEIA, ZERO POP-UP)
@@ -245,6 +421,8 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
       valorMargemSeguranca: totals.margemTotalRS,
       margemPct: contingencyPct,
       withTechnicalMotives: withTechnicalMotives,
+      isGlobalAporte: isGlobalAporte,
+      customQuotas: customVehicleQuotas,
       motivoGeral: activeCycle.motivoGeralSolicitacao,
       veiculos: activeCycle.veiculosAbastecidos
     };
@@ -252,6 +430,12 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
     const isWithMotives = docToDisplay.withTechnicalMotives !== undefined 
       ? docToDisplay.withTechnicalMotives 
       : withTechnicalMotives;
+
+    const isDocGlobal = docToDisplay.isGlobalAporte !== undefined
+      ? docToDisplay.isGlobalAporte
+      : isGlobalAporte;
+
+    const quotasInDoc = docToDisplay.customQuotas || customVehicleQuotas;
 
     return (
       <div className="dossier-fullscreen-workspace animate-fade-in" id="dossier-fullscreen-workspace">
@@ -268,17 +452,30 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <div className="dossier-tag">
               Protocolo: <strong>{docToDisplay.numeroProtocolo}</strong>
             </div>
+            <div className={`dossier-mode-badge ${isDocGlobal ? 'badge-mode-global' : 'badge-mode-division'}`}>
+              {isDocGlobal ? '🏢 Aporte Global Master (Sem Divisão)' : '🚛 Aporte com Divisão por Veículo'}
+            </div>
             <div className="dossier-mode-badge">
-              {isWithMotives ? 'Dossiê Completo (com Motivo Técnico)' : 'Dossiê Simplificado (Apenas Valores/Cotas)'}
+              {isWithMotives ? 'Dossiê Técnico Completo' : 'Dossiê Simplificado'}
             </div>
           </div>
           <div className="dossier-topbar-right">
             <button
               type="button"
+              className="btn-print-clean-action"
+              onClick={() => handlePrintCleanStandalone(docToDisplay)}
+              title="Abre o documento em janela limpa independente, formatado em A4 oficial sem qualquer interferência de layout"
+            >
+              <ExternalLink size={17} />
+              <span>PDF Limpo A4 (Sem Bugs)</span>
+            </button>
+            <button
+              type="button"
               className="btn-print-action"
               onClick={() => window.print()}
+              title="Imprimir direto desta página"
             >
-              <Printer size={18} />
+              <Printer size={17} />
               <span>Imprimir / Salvar PDF</span>
             </button>
             <button
@@ -286,8 +483,8 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               className="btn-copy-action"
               onClick={handleCopyWhatsAppMessage}
             >
-              <Copy size={18} />
-              <span>{copySuccess ? 'Copiado!' : 'Copiar Texto p/ Gestor'}</span>
+              <Copy size={17} />
+              <span>{copySuccess ? 'Copiado!' : 'Copiar p/ Gestor'}</span>
             </button>
           </div>
         </header>
@@ -313,8 +510,8 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <div className="doc-title-banner">
               <h1>SOLICITAÇÃO OFICIAL DE APORTE SEMANAL · CARTÃO ABANK FROTA</h1>
               <p>
-                Demonstrativo de solicitação de saldo de <strong>R$ 17.000,00</strong> para os veículos da frota ativa atendidos pela Ambipar.
-                Veículos dedicados à Vale S.A. constam com cota <strong>R$ 0,00</strong> por receberem abastecimento fornecido diretamente pelo cliente.
+                Demonstrativo corporativo de solicitação de saldo de <strong>R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>.
+                Modalidade: <strong>{isDocGlobal ? 'Aporte Global Unificado (Saldo Centralizado Master Abank)' : 'Aporte com Divisão por Veículo (Cotas Nominais nos Cartões)'}</strong>.
               </p>
             </div>
 
@@ -337,42 +534,57 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               </div>
               <div className="doc-info-item">
                 <label>VALOR TOTAL DO APORTE:</label>
-                <strong style={{ color: '#166534', fontSize: '1.15rem' }}>
+                <strong style={{ color: '#166534', fontSize: '1.18rem' }}>
                   R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </strong>
-                <span>5 Veículos Abank | 2 Veículos Vale (R$ 0,00)</span>
+                <span>{isDocGlobal ? 'Conta Master Central Abank' : '5 Veículos Abank | 2 Vale (R$ 0,00)'}</span>
               </div>
             </div>
+
+            {/* Bloco Executivo de Aporte Global (Se modalidade global) */}
+            {isDocGlobal && (
+              <div className="doc-global-aporte-box">
+                <h3>MODALIDADE EXECUTIVA: APORTE GLOBAL UNIFICADO NA CONTA MASTER ABANK</h3>
+                <p>
+                  O saldo de <strong>R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> é solicitado como aporte único e centralizado na <strong>Conta Master Abank Frota Corporativa</strong>, sem divisões rígidas prévias de limites por cartão.
+                </p>
+                <div className="global-motivos-list">
+                  <div>• <strong>Flexibilidade Dinâmica:</strong> Permite à Torre de Controle CCO suprir as demandas diárias dos 5 caminhões ativos da frota Ambipar sem travas rígidas de teto individual por cartão, adaptando-se a itinerários que demandem mais quilometragem na semana.</div>
+                  <div>• <strong>Cobertura sob Demanda (Amazon CD Meriti - GIG 1 e GIG 7):</strong> Absorve saídas e viagens esporádicas imediatamente assim que solicitadas, sem necessidade de remanejamento burocrático de saldos entre cartões.</div>
+                  <div>• <strong>Isenção da Vale S.A. (Cota R$ 0,00):</strong> Os veículos <strong>RHU-6I87</strong> e <strong>GEB-8C37</strong> NÃO consomem este saldo global, pois são 100% abastecidos nos terminais do cliente Vale.</div>
+                </div>
+              </div>
+            )}
 
             {/* 1. Bloco de Motivo Técnico (Renderizado se a opção marcada for com motivo) */}
             {isWithMotives && (
               <div className="doc-motivo-box">
-                <h3>1. JUSTIFICATIVA TÉCNICA E OPERACIONAL DO VALOR SOLICITADO (R$ 17.000,00)</h3>
+                <h3>1. JUSTIFICATIVA TÉCNICA E OPERACIONAL DO VALOR SOLICITADO (R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</h3>
                 <div className="motivo-content">
                   <p>
-                    <strong>Fundamentação de Cálculo:</strong> O valor semanal de <strong>R$ 17.000,00</strong> é dimensionado com base no consumo histórico das transferências rodoviárias, coletas industriais e contingências da frota da Ambipar.
+                    <strong>Fundamentação de Cálculo:</strong> O valor semanal de <strong>R$ {docToDisplay.valorTotalSolicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> é dimensionado com base no consumo histórico das transferências rodoviárias, coletas industriais e contingências da frota da Ambipar.
                   </p>
                   <div className="motivo-bullets">
                     <div className="bullet-row">
                       <strong>• Veículos da Operação Vale S.A. (Cota R$ 0,00):</strong> Os veículos <strong>RHU-6I87</strong> (Poli Duplo TIG Guaíba) e <strong>GEB-8C37</strong> (Delivery Baú Niterói) <em>NÃO recebem abastecimento da nossa parte e não possuem Cartão Abank</em>. O abastecimento desses veículos é 100% fornecido internamente pela Vale em seus terminais/minas e, por isso, suas cotas estão devidamente zeradas no aporte financeiro da Ambipar.
                     </div>
                     <div className="bullet-row">
-                      <strong>• Amazon CD Meriti (GIG 1 / GIG 7 - Solicitação Esporádica):</strong> O atendimento aos CDs da Amazon GIG 1 e GIG 7 ocorre em caráter esporádico e sob demanda (não é rota fixa diária). A cota do veículo Roll-On FVV-0E16 (R$ 4.300,00) contempla saldo de prontidão no Cartão Abank para saídas imediatas quando a solicitação é emitida.
+                      <strong>• Amazon CD Meriti (GIG 1 / GIG 7 - Solicitação Esporádica):</strong> O atendimento aos CDs da Amazon GIG 1 e GIG 7 ocorre em caráter esporádico e sob demanda (não é rota fixa diária). A provisão alocada contempla saldo de prontidão no Cartão Abank para saídas imediatas quando a solicitação é emitida.
                     </div>
                     <div className="bullet-row">
                       <strong>• Consumo em Tomada de Força (PTO):</strong> Caminhão de Hidrovácuo (FMB-1H09) opera com motor a 1.400 RPM em sucção contínua e basculamento sem rodar odômetro.
                     </div>
                     <div className="bullet-row">
-                      <strong>• Margem Significativa de Segurança (+11.8% = R$ 1.866,02):</strong> Margem técnica indispensável para cobrir retenções de trânsito intenso na Rodovia Presidente Dutra, Avenida Brasil e Linha Vermelha, garantindo que nenhum caminhão de resíduos perigosos sofra pane seca em trânsito.
+                      <strong>• Margem Significativa de Segurança (+11.8% = R$ {docToDisplay.valorMargemSeguranca.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}):</strong> Margem técnica indispensável para cobrir retenções de trânsito intenso na Rodovia Presidente Dutra, Avenida Brasil e Linha Vermelha, garantindo que nenhum caminhão de resíduos perigosos sofra pane seca em trânsito.
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* 2. Tabela de Divisão dos R$ 17.000,00 por Veículo */}
+            {/* 2. Tabela de Matriz Operacional */}
             <div className="doc-table-section" style={{ marginTop: '20px' }}>
-              <h3>2. MATRIZ DE ALOCAÇÃO DOS R$ 17.000,00 POR VEÍCULO / CARTÃO ABANK</h3>
+              <h3>{isDocGlobal ? '2. MATRIZ DE REFERÊNCIA OPERACIONAL DA FROTA (CONSUMO HISTÓRICO E KM)' : '2. MATRIZ DE ALOCAÇÃO DE COTAS POR VEÍCULO / CARTÃO ABANK'}</h3>
               <table className="doc-table">
                 <thead>
                   <tr>
@@ -383,49 +595,60 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                     <th>Diesel (L)</th>
                     <th>Gasto Real (R$)</th>
                     <th>Margem (+11.8%)</th>
-                    <th className="highlight-col">Cota Aporte (R$)</th>
+                    <th className="highlight-col">{isDocGlobal ? 'Alocação do Saldo' : 'Cota Aporte (R$)'}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(docToDisplay.veiculos || activeCycle.veiculosAbastecidos).map(v => (
-                    <tr key={v.placa} className={!v.recebeAporteAmbipar ? 'tr-vale-zero' : ''}>
-                      <td className="bold-cell">
-                        <div>{v.placa}</div>
-                        <small className="sub-tag">{v.prefixo}</small>
-                      </td>
-                      <td>
-                        <div className="model-name">{v.modelo}</div>
-                        <div className="op-tag">
-                          {v.operacao}
-                          {v.isSporadicGIG && <span className="badge-esporadico"> · ESPORÁDICO</span>}
-                        </div>
-                      </td>
-                      <td className="center-cell bold-cell">
-                        {v.recebeAporteAmbipar ? (
-                          <span style={{ color: '#0284c7' }}>{v.cartaoNumero}</span>
-                        ) : (
-                          <span className="badge-vale-internal">Abastecimento Vale (Sem Cartão)</span>
-                        )}
-                      </td>
-                      <td className="right-cell bold-cell">{v.kmRodado.toLocaleString('pt-BR')} km</td>
-                      <td className="right-cell">{v.recebeAporteAmbipar ? `${v.litrosDieselTotal} L` : '-'}</td>
-                      <td className="right-cell">
-                        {v.recebeAporteAmbipar 
-                          ? `R$ ${v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
-                          : 'R$ 0,00'}
-                      </td>
-                      <td className="right-cell" style={{ color: v.recebeAporteAmbipar ? '#059669' : '#94a3b8' }}>
-                        {v.recebeAporteAmbipar 
-                          ? `+ R$ ${(v.margemSegurancaRS || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
-                          : '-'}
-                      </td>
-                      <td className="right-cell highlight-col bold-cell">
-                        {v.recebeAporteAmbipar 
-                          ? `R$ ${v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
-                          : <span className="zero-val">R$ 0,00 (Vale)</span>}
-                      </td>
-                    </tr>
-                  ))}
+                  {(docToDisplay.veiculos || activeCycle.veiculosAbastecidos).map(v => {
+                    const isVale = !v.recebeAporteAmbipar;
+                    const quota = quotasInDoc && quotasInDoc[v.placa] !== undefined 
+                      ? quotasInDoc[v.placa] 
+                      : v.solicitacaoAporteSugerido;
+
+                    return (
+                      <tr key={v.placa} className={isVale ? 'tr-vale-zero' : ''}>
+                        <td className="bold-cell">
+                          <div>{v.placa}</div>
+                          <small className="sub-tag">{v.prefixo}</small>
+                        </td>
+                        <td>
+                          <div className="model-name">{v.modelo}</div>
+                          <div className="op-tag">
+                            {v.operacao}
+                            {v.isSporadicGIG && <span className="badge-esporadico"> · ESPORÁDICO</span>}
+                          </div>
+                        </td>
+                        <td className="center-cell bold-cell">
+                          {!isVale ? (
+                            <span style={{ color: '#0284c7' }}>{v.cartaoNumero}</span>
+                          ) : (
+                            <span className="badge-vale-internal">Abastecimento Vale (Sem Cartão)</span>
+                          )}
+                        </td>
+                        <td className="right-cell bold-cell">{v.kmRodado.toLocaleString('pt-BR')} km</td>
+                        <td className="right-cell">{!isVale ? `${v.litrosDieselTotal} L` : '-'}</td>
+                        <td className="right-cell">
+                          {!isVale 
+                            ? `R$ ${v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+                            : 'R$ 0,00'}
+                        </td>
+                        <td className="right-cell" style={{ color: !isVale ? '#059669' : '#94a3b8' }}>
+                          {!isVale 
+                            ? `+ R$ ${(v.margemSegurancaRS || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+                            : '-'}
+                        </td>
+                        <td className="right-cell highlight-col bold-cell">
+                          {isVale ? (
+                            <span className="zero-val">R$ 0,00 (Vale)</span>
+                          ) : isDocGlobal ? (
+                            <span style={{ color: '#0369a1', fontSize: '0.85rem' }}>Saldo Master Abank</span>
+                          ) : (
+                            `R$ ${Number(quota).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr className="tfoot-totals">
@@ -469,6 +692,10 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
   // SE ESTIVER EM MODO AUDITORIA DE CUPONS DO VEÍCULO (TELA CHEIA, ZERO POP-UP)
   if (viewMode === 'vehicle_detail' && selectedVehicleForDetail) {
     const v = selectedVehicleForDetail;
+    const currentQuota = customVehicleQuotas[v.placa] !== undefined
+      ? customVehicleQuotas[v.placa]
+      : v.solicitacaoAporteSugerido;
+
     return (
       <div className="vehicle-detail-fullscreen animate-fade-in" id="vehicle-detail-fullscreen">
         <header className="detail-topbar">
@@ -484,14 +711,15 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <h2>Auditoria de Abastecimento & Motivo · {v.placa} ({v.prefixo})</h2>
             <span className="badge-cycle">
               {v.recebeAporteAmbipar 
-                ? `Cota Abank: R$ ${v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+                ? (isGlobalAporte 
+                    ? 'Modalidade: Saldo Global Master Abank' 
+                    : `Cota Abank: R$ ${Number(currentQuota).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
                 : 'Operação Vale · Cota R$ 0,00'}
             </span>
           </div>
         </header>
 
         <div className="detail-body-container">
-          {/* Header Card do Veículo */}
           <div className="vehicle-summary-card">
             <div className="v-card-main">
               <div className="v-plate-badge">{v.placa}</div>
@@ -499,7 +727,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <h3>{v.modelo}</h3>
                 <p className="v-op-sub">{v.operacao}</p>
                 <div style={{ marginTop: '10px', color: '#cbd5e1', fontSize: '0.86rem', background: 'rgba(30, 41, 59, 0.6)', padding: '10px 14px', borderRadius: '8px', borderLeft: '3px solid #10b981' }}>
-                  <strong>Justificativa Técnica da Cota ({v.recebeAporteAmbipar ? `R$ ${v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ 0,00'}):</strong>
+                  <strong>Justificativa Técnica ({v.recebeAporteAmbipar ? (isGlobalAporte ? 'Saldo Global Master' : `Cota R$ ${Number(currentQuota).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`) : 'R$ 0,00'}):</strong>
                   <div style={{ marginTop: '4px', color: '#94a3b8' }}>{v.motivoTecnico}</div>
                 </div>
               </div>
@@ -517,10 +745,12 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <small>{v.recebeAporteAmbipar ? 'Abank Frota' : 'Abastecimento Direto Vale'}</small>
               </div>
               <div className="v-kpi highlight-kpi">
-                <span>Cota Aporte Semanal</span>
+                <span>Alocação do Aporte</span>
                 <strong style={{ color: v.recebeAporteAmbipar ? '#38bdf8' : '#94a3b8' }}>
                   {v.recebeAporteAmbipar 
-                    ? `R$ ${v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+                    ? (isGlobalAporte 
+                        ? 'Saldo Master' 
+                        : `R$ ${Number(currentQuota).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
                     : 'R$ 0,00 (Vale)'}
                 </strong>
                 <small>{v.recebeAporteAmbipar ? `Saldo est. atual: R$ ${v.saldoCartaoAtual.toFixed(2)}` : 'Abastecido na Mina/Terminal'}</small>
@@ -528,7 +758,6 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             </div>
           </div>
 
-          {/* Cupons e Comprovantes */}
           <div className="tickets-section">
             <div className="tickets-header">
               <h3>
@@ -659,7 +888,16 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                     onClick={() => handleOpenExistingDocument(doc)}
                   >
                     <FileText size={16} />
-                    <span>Visualizar / Imprimir Dossiê</span>
+                    <span>Visualizar no Sistema</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-open-doc-clean"
+                    onClick={() => handlePrintCleanStandalone(doc)}
+                    title="Abre direto em janela limpa A4 para impressão e salvamento em PDF"
+                  >
+                    <ExternalLink size={16} />
+                    <span>Imprimir / PDF Limpo</span>
                   </button>
                 </div>
               </div>
@@ -682,8 +920,8 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           </div>
           <h1>Aporte Semanal & Solicitação de Saldo de Combustível</h1>
           <p>
-            Consolidação dos gastos reais para solicitação de <strong>R$ 17.000,00</strong> no Cartão Abank toda <strong>quinta-feira pela manhã</strong>.
-            Veículos da Vale constam com cota <strong>R$ 0,00</strong> (abastecimento pelo cliente).
+            Consolidação dos gastos reais para solicitação de <strong>R$ {targetTotalAporte.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> no Cartão Abank toda <strong>quinta-feira pela manhã</strong>.
+            Veículos da Vale constam com cota <strong>R$ 0,00</strong> (abastecimento direto pelo cliente).
           </p>
         </div>
 
@@ -720,6 +958,31 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
             <button
               type="button"
+              className="btn-action-clean-pdf"
+              onClick={() => handlePrintCleanStandalone({
+                numeroProtocolo: 'AMB-APORTE-2026-W43/PREVIEW',
+                valorTotalSolicitado: totals.totalAporteSugerido,
+                valorGastoReal: totals.totalGasto,
+                valorMargemSeguranca: totals.margemTotalRS,
+                totalKm: totals.totalKm,
+                totalDiesel: totals.totalDiesel,
+                gestorNome: settings.gestorNome,
+                gestorCargo: settings.gestorCargo,
+                analistaNome: settings.analistaResponsavel,
+                analistaCargo: settings.analistaCargo,
+                convenio: settings.convenioPadrao,
+                isGlobalAporte: isGlobalAporte,
+                withTechnicalMotives: withTechnicalMotives,
+                veiculos: activeCycle.veiculosAbastecidos
+              })}
+              title="Abre o documento oficial em janela limpa independente, formatado em folha A4 oficial para salvar em PDF sem bugs visuais"
+            >
+              <Printer size={16} />
+              <span>Imprimir / Salvar PDF Limpo</span>
+            </button>
+
+            <button
+              type="button"
               className="btn-action-dossier"
               onClick={handleCopyWhatsAppMessage}
               title="Copiar mensagem formatada para WhatsApp ou E-mail do Gestor"
@@ -735,7 +998,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               title="Ver histórico de solicitações e documentos emitidos anteriormente"
             >
               <History size={16} />
-              <span>Histórico de Documentos</span>
+              <span>Histórico ({documentsHistory.length})</span>
             </button>
 
             <button
@@ -745,20 +1008,51 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               title="Exportar planilha Excel/CSV do Aporte"
             >
               <Download size={16} />
-              <span>Exportar Excel</span>
+              <span>Excel</span>
             </button>
           </div>
         </div>
       </section>
 
-      {/* Barra de Opção do Relatório (Com Motivo Técnico vs Sem Motivo Técnico) */}
+      {/* Barra Dupla de Configuração Operacional do Aporte */}
       <section className="report-mode-toggle-bar">
+        {/* Bloco 1: Escolha entre Com Divisão vs Aporte Global Sem Divisão */}
         <div className="report-toggle-left">
           <div className="toggle-chip-label">
-            <Sliders size={16} color="#38bdf8" />
-            <span>Formato de Emissão do Aporte:</span>
+            <Wallet size={16} color="#38bdf8" />
+            <span>Modalidade do Aporte:</span>
           </div>
           
+          <div className="toggle-buttons-group">
+            <button
+              type="button"
+              className={`btn-toggle-option ${!isGlobalAporte ? 'active' : ''}`}
+              onClick={() => setIsGlobalAporte(false)}
+              title="Aloca cotas nominais de combustível para cada cartão Abank dos 5 veículos ativos"
+            >
+              <CheckCircle2 size={14} />
+              <span>🚛 Com Divisão por Veículo (Cotas nos Cartões)</span>
+            </button>
+
+            <button
+              type="button"
+              className={`btn-toggle-option ${isGlobalAporte ? 'active' : ''}`}
+              onClick={() => setIsGlobalAporte(true)}
+              title="Solicita o valor total como saldo único na Conta Master Abank para consumo flexível sem divisões rígidas"
+            >
+              <CheckCircle2 size={14} />
+              <span>🏢 Aporte Global Sem Divisão (Saldo Master Abank)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Bloco 2: Formato de Justificativa (Com Motivo Técnico vs Sem Motivo Técnico) */}
+        <div className="report-toggle-right">
+          <div className="toggle-chip-label">
+            <Sliders size={16} color="#10b981" />
+            <span>Formato do Relatório:</span>
+          </div>
+
           <div className="toggle-buttons-group">
             <button
               type="button"
@@ -767,7 +1061,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               title="Inclui os 4 pilares técnicos, justificativa de cota R$ 0,00 na Vale e notas da Amazon"
             >
               <CheckCircle2 size={14} />
-              <span>Gerar Relatório COM Motivo Técnico Detalhado</span>
+              <span>COM Motivo Técnico Detalhado</span>
             </button>
 
             <button
@@ -777,17 +1071,172 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               title="Gera relatório executivo simplificado: apenas valores, cotas e cartões Abank"
             >
               <CheckCircle2 size={14} />
-              <span>Gerar Relatório SEM Motivo (Apenas Valores e Cartões)</span>
+              <span>SEM Motivo (Apenas Valores)</span>
             </button>
           </div>
         </div>
-
-        <div className="report-toggle-right">
-          <span className="mode-indicator-tag">
-            {withTechnicalMotives ? '✓ Inclui Justificativa da Vale & Amazon GIG 1/7' : '⚡ Modo Resumo Rápido'}
-          </span>
-        </div>
       </section>
+
+      {/* SE MODO APORTE GLOBAL ATIVO: Card Informativo da Conta Master Abank */}
+      {isGlobalAporte && (
+        <section className="global-aporte-banner-card animate-fade-in">
+          <div className="global-banner-header">
+            <div className="global-header-left">
+              <div className="global-icon-wrap">
+                <Building size={22} color="#38bdf8" />
+              </div>
+              <div>
+                <h3>Modalidade Ativa: Aporte Global Unificado na Conta Master Abank (Sem Divisão por Veículo)</h3>
+                <p>O saldo total fica centralizado na conta corporativa Master da Abank, permitindo à Torre CCO gerenciar os abastecimentos da frota ativa de forma dinâmica sem bloquear caminhões por travas individuais.</p>
+              </div>
+            </div>
+
+            <div className="global-amount-edit-box">
+              <label>Valor Total do Aporte Global Solicitado:</label>
+              <div className="amount-input-row">
+                <span className="currency-prefix">R$</span>
+                <input
+                  type="number"
+                  step="100"
+                  min="1000"
+                  className="global-amount-input"
+                  value={targetTotalAporte}
+                  onChange={e => setTargetTotalAporte(Math.max(0, Number(e.target.value) || 0))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="global-banner-footer">
+            <div className="global-rule-pill">
+              <ShieldCheck size={14} color="#f59e0b" />
+              <span><strong>Regra Vale S.A.:</strong> Caminhões RHU-6I87 e GEB-8C37 estão excluídos deste aporte (abastecimento 100% pelo cliente na mina/terminal).</span>
+            </div>
+            <div className="global-rule-pill">
+              <Sparkles size={14} color="#38bdf8" />
+              <span><strong>Amazon Meriti (GIG 1 / GIG 7):</strong> Viagens esporádicas e sob demanda são atendidas diretamente pelo saldo Master.</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* SE MODO COM DIVISÃO ATIVO: Central de Ajuda Automática e Edição Manual das Cotas */}
+      {!isGlobalAporte && (
+        <section className="distribution-helper-card animate-fade-in">
+          <div className="helper-card-header">
+            <div className="helper-header-left">
+              <div className="helper-icon-wrap">
+                <Calculator size={20} color="#10b981" />
+              </div>
+              <div>
+                <h3>Central de Divisão do Aporte: Ajuda Automática & Edição Manual</h3>
+                <p>Ajuste as cotas dos veículos em 1 clique com as bases automáticas abaixo ou digite diretamente o valor na tabela.</p>
+              </div>
+            </div>
+
+            <div className="helper-target-box">
+              <label>Valor Alvo do Aporte a Dividir:</label>
+              <div className="helper-input-row">
+                <span className="currency-prefix">R$</span>
+                <input
+                  type="number"
+                  step="100"
+                  min="1000"
+                  className="helper-target-input"
+                  value={targetTotalAporte}
+                  onChange={e => setTargetTotalAporte(Math.max(0, Number(e.target.value) || 0))}
+                  title="Digite o valor total que deseja dividir entre os veículos"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="helper-card-body">
+            <div className="preset-buttons-grid">
+              <button
+                type="button"
+                className={`btn-preset-auto ${distributionMode === 'historical' ? 'active-preset' : ''}`}
+                onClick={handleApplyHistorical}
+                title="Aplica pesos históricos de consumo da frota ativa: EWX ~36.5%, FVV ~25.3%, FMB ~20.6%, RAW ~8.8%, GBU ~8.8%"
+              >
+                <Sparkles size={15} />
+                <span>⚡ Ajuste Automático por Consumo Histórico (Recomendado CCO)</span>
+              </button>
+
+              <button
+                type="button"
+                className={`btn-preset-auto ${distributionMode === 'equal' ? 'active-preset' : ''}`}
+                onClick={handleApplyEqual}
+                title="Divide o total igualmente entre os 5 veículos ativos da Ambipar"
+              >
+                <Sliders size={15} />
+                <span>⚖️ Dividir Igualmente entre os 5 Veículos Ativos</span>
+              </button>
+
+              <button
+                type="button"
+                className={`btn-preset-auto ${distributionMode === 'km' ? 'active-preset' : ''}`}
+                onClick={handleApplyKm}
+                title="Distribui o valor proporcionalmente aos quilômetros rodados na semana"
+              >
+                <Gauge size={15} />
+                <span>🛣️ Dividir Proporcional ao KM Rodado da Semana</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-preset-reset"
+                onClick={handleResetDefault}
+                title="Restaura a grade oficial calibrada de R$ 17.000,00 da Ambipar"
+              >
+                <RefreshCw size={15} />
+                <span>🔄 Restaurar Padrão CCO (R$ 17.000,00)</span>
+              </button>
+            </div>
+
+            {/* Barra de Status do Balanceamento em Tempo Real */}
+            <div className={`balance-status-bar ${isBalanced ? 'status-balanced' : 'status-unbalanced'}`}>
+              <div className="balance-info-left">
+                {isBalanced ? (
+                  <>
+                    <CheckCircle2 size={18} color="#10b981" />
+                    <span><strong>Total 100% Balanceado:</strong> As cotas somam exatamente <strong>R$ {allocatedQuotasSum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (igual ao valor alvo).</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle size={18} color="#f59e0b" />
+                    <span>
+                      <strong>Diferença de Alocação:</strong> Soma das Cotas = <strong>R$ {allocatedQuotasSum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> | Valor Alvo = <strong>R$ {targetTotalAporte.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (Diferença: <strong style={{ color: balanceDifference > 0 ? '#38bdf8' : '#f43f5e' }}>{balanceDifference > 0 ? `+R$ ${balanceDifference.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} sobrando` : `-R$ ${Math.abs(balanceDifference).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} excedido`}</strong>)
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {!isBalanced && (
+                <div className="balance-actions-right">
+                  <button
+                    type="button"
+                    className="btn-balance-fix"
+                    onClick={handleAutoBalanceDifference}
+                    title="Aloca o saldo excedente/faltante automaticamente no EWX-0I82 (cavalo mecânico de maior percurso)"
+                  >
+                    <span>⚡ Ajustar Diferença no EWX-0I82</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-balance-update-target"
+                    onClick={handleSetTargetToAllocatedSum}
+                    title="Atualiza o valor total solicitado do aporte para igualar à soma digitada"
+                  >
+                    <span>Definir Alvo para R$ {allocatedQuotasSum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Card Oficial do Motivo da Solicitação dos R$ 17.000,00 e Margem Técnica */}
       <section className="motivo-solicitacao-card">
@@ -797,8 +1246,8 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               <ShieldCheck size={22} color="#10b981" />
             </div>
             <div>
-              <h3>Justificativa Operacional do Aporte (R$ 17.000,00) & Regras de Atendimento</h3>
-              <p>Critérios técnicos de divisão dos 17k no Abank, isenção da Vale e atendimento esporádico da Amazon Meriti.</p>
+              <h3>Justificativa Operacional do Aporte & Regras de Atendimento</h3>
+              <p>Critérios técnicos do valor solicitado no Abank, isenção da Vale e atendimento esporádico da Amazon Meriti.</p>
             </div>
           </div>
           <button type="button" className="btn-toggle-motivo">
@@ -821,7 +1270,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <div className="pillar-num" style={{ background: '#0284c7' }}>2</div>
                 <div>
                   <strong style={{ color: '#38bdf8' }}>Amazon CD Meriti (GIG 1 / GIG 7 - Esporádico):</strong>
-                  <span>A demanda com os CDs GIG 1 e GIG 7 da Amazon é <strong>esporádica / sob demanda</strong> (não é rota fixa diária). A cota do FVV-0E16 (R$ 4.300) garante saldo de prontidão no Abank para quando o chamado for aberto.</span>
+                  <span>A demanda com os CDs GIG 1 e GIG 7 da Amazon é <strong>esporádica / sob demanda</strong> (não é rota fixa diária). A provisão do aporte garante saldo de prontidão no Abank para quando o chamado for aberto.</span>
                 </div>
               </div>
 
@@ -836,14 +1285,14 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
               <div className="pillar-item">
                 <div className="pillar-num">4</div>
                 <div>
-                  <strong>Margem Significativa de Segurança (+11.8% = R$ 1.866,02):</strong>
+                  <strong>Margem Significativa de Segurança (+11.8% = R$ {totals.margemTotalRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}):</strong>
                   <span>Provisão mandatória contra retenções severas na Dutra, Av. Brasil e Linha Vermelha para garantir que <strong>nenhum veículo com resíduos perigosos sofra pane seca em trânsito</strong>.</span>
                 </div>
               </div>
             </div>
 
             <div className="motivo-summary-bar">
-              <span><strong>Memória de Cálculo:</strong> 5 Veículos Ativos Ambipar (R$ 15.133,98 gasto previsto + R$ 1.866,02 margem técnica) = <strong>R$ 17.000,00 no Abank</strong> | 2 Veículos Vale = <strong>R$ 0,00</strong></span>
+              <span><strong>Memória de Cálculo:</strong> 5 Veículos Ativos Ambipar (R$ {totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} gasto previsto + R$ {totals.margemTotalRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} margem técnica) = <strong>R$ {totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} no Abank</strong> | 2 Veículos Vale = <strong>R$ 0,00</strong></span>
             </div>
           </div>
         )}
@@ -853,16 +1302,18 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
       <section className="kpi-cards-grid">
         <div className="kpi-card highlight-card-blue">
           <div className="kpi-card-header">
-            <span className="kpi-label">TOTAL SOLICITADO P/ APORTE (ABANK FROTA)</span>
+            <span className="kpi-label">TOTAL SOLICITADO P/ APORTE (ABANK)</span>
             <Wallet size={20} className="kpi-icon-cyan" />
           </div>
           <div className="kpi-value-row">
             <span className="kpi-currency">R$</span>
-            <span className="kpi-big-value">17.000,00</span>
+            <span className="kpi-big-value">
+              {totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
           </div>
           <div className="kpi-subtext">
-            <span>5 Cartões Abank Ativos</span>
-            <span className="badge-plus">+R$ 1.866,02 margem (+11.8%)</span>
+            <span>{isGlobalAporte ? 'Conta Master Unificada' : '5 Cartões Abank Ativos'}</span>
+            <span className="badge-plus">+R$ {totals.margemTotalRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} margem</span>
           </div>
         </div>
 
@@ -927,11 +1378,15 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
         </div>
       </section>
 
-      {/* Tabela Interativa de Veículos e Divisão dos 17k */}
+      {/* Tabela Interativa de Veículos e Divisão de Cotas */}
       <section className="vehicles-provision-table-section">
         <div className="table-controls-bar">
           <div className="table-title-group">
-            <h3>Divisão Real dos R$ 17.000,00 no Cartão Abank (Fechamento Quarta 17h)</h3>
+            <h3>
+              {isGlobalAporte 
+                ? 'Matriz de Consumo da Frota (Referência para o Aporte Global Master Abank)' 
+                : 'Divisão de Cotas por Veículo / Cartão Abank (Edição Manual e Automática)'}
+            </h3>
             <span className="table-count-pill">{filteredVehicles.length} veículos na matriz</span>
           </div>
 
@@ -972,14 +1427,21 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 <th>Diesel S10</th>
                 <th>Gasto Real</th>
                 <th>Margem Seg.</th>
-                <th className="th-aporte">Cota do Aporte (R$)</th>
+                <th className="th-aporte">
+                  {isGlobalAporte ? 'Alocação Master' : 'Cota do Aporte (R$)'}
+                </th>
                 <th className="th-action">Auditoria</th>
               </tr>
             </thead>
             <tbody>
               {filteredVehicles.map(v => {
+                const isVale = !v.recebeAporteAmbipar;
+                const quota = customVehicleQuotas[v.placa] !== undefined 
+                  ? customVehicleQuotas[v.placa] 
+                  : v.solicitacaoAporteSugerido;
+
                 return (
-                  <tr key={v.placa} className={`tr-vehicle-row ${!v.recebeAporteAmbipar ? 'tr-row-vale-zero' : ''}`}>
+                  <tr key={v.placa} className={`tr-vehicle-row ${isVale ? 'tr-row-vale-zero' : ''}`}>
                     <td>
                       <div className="plate-badge-row">
                         <strong>{v.placa}</strong>
@@ -1002,7 +1464,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                     </td>
 
                     <td>
-                      {v.recebeAporteAmbipar ? (
+                      {!isVale ? (
                         <span className="card-ref" style={{ color: '#38bdf8', fontWeight: 700 }}>
                           {v.cartaoNumero}
                         </span>
@@ -1015,33 +1477,47 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
 
                     <td className="km-val bold-text">{v.kmRodado.toLocaleString('pt-BR')} km</td>
                     <td className="liters-val">
-                      {v.recebeAporteAmbipar ? `${v.litrosDieselTotal} L` : '-'}
+                      {!isVale ? `${v.litrosDieselTotal} L` : '-'}
                     </td>
 
                     <td className="cost-val">
-                      {v.recebeAporteAmbipar 
+                      {!isVale 
                         ? `R$ ${v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
                         : 'R$ 0,00'}
                     </td>
 
-                    <td className="cost-val" style={{ color: v.recebeAporteAmbipar ? '#10b981' : '#64748b' }}>
-                      {v.recebeAporteAmbipar 
+                    <td className="cost-val" style={{ color: !isVale ? '#10b981' : '#64748b' }}>
+                      {!isVale 
                         ? `+ R$ ${(v.margemSegurancaRS || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
                         : '-'}
                     </td>
 
                     <td className="td-aporte-val">
-                      {v.recebeAporteAmbipar ? (
-                        <>
-                          <strong style={{ color: '#38bdf8' }}>
-                            R$ {v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </strong>
-                          <small>Saldo est.: R$ {(v.saldoCartaoAtual || 0).toFixed(2)}</small>
-                        </>
-                      ) : (
+                      {isVale ? (
                         <div className="vale-zero-box">
                           <strong style={{ color: '#94a3b8' }}>R$ 0,00</strong>
                           <small style={{ color: '#f59e0b' }}>Abastecido pela Vale</small>
+                        </div>
+                      ) : isGlobalAporte ? (
+                        <div className="global-allocation-box">
+                          <strong style={{ color: '#38bdf8' }}>Saldo Master</strong>
+                          <small>Estimado: R$ {v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</small>
+                        </div>
+                      ) : (
+                        <div className="quota-edit-cell">
+                          <div className="quota-input-wrapper">
+                            <span className="quota-prefix">R$</span>
+                            <input
+                              type="number"
+                              step="50"
+                              min="0"
+                              className="quota-num-input"
+                              value={quota}
+                              onChange={e => handleVehicleQuotaChange(v.placa, e.target.value)}
+                              title="Edite o valor da cota deste caminhão manualmente"
+                            />
+                          </div>
+                          <small className="quota-card-balance">Saldo est.: R$ {(v.saldoCartaoAtual || 0).toFixed(2)}</small>
                         </div>
                       )}
                     </td>
@@ -1067,7 +1543,11 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
             <tfoot>
               <tr className="tr-totals-footer">
                 <td colSpan="4">
-                  <strong>TOTAL DO APORTE (5 VEÍCULOS ABANK: R$ 17.000,00 | 2 VEÍCULOS VALE: R$ 0,00)</strong>
+                  <strong>
+                    {isGlobalAporte 
+                      ? `TOTAL DO APORTE GLOBAL MASTER: R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (5 VEÍCULOS AMBIPAR + 2 VEÍCULOS VALE R$ 0,00)`
+                      : `TOTAL DO APORTE: R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (5 CARTOES ABANK + 2 VEÍCULOS VALE R$ 0,00)`}
+                  </strong>
                 </td>
                 <td className="km-val">
                   <strong>{totals.totalKm.toLocaleString('pt-BR')} km</strong>
@@ -1083,7 +1563,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
                 </td>
                 <td className="td-aporte-val">
                   <strong className="grand-total" style={{ color: '#10b981', fontSize: '1.2rem' }}>
-                    R$ 17.000,00
+                    R$ {totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </strong>
                 </td>
                 <td>-</td>
@@ -1099,7 +1579,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           <div className="proc-step-num">1</div>
           <div>
             <h4>Quarta-feira (até 17:00h)</h4>
-            <p>O analista confere os cupons da semana. Os carros da Vale constam com R$ 0,00 e o FVV-0E16 cobre a prontidão para Amazon GIG 1/7.</p>
+            <p>O analista confere os cupons da semana. Escolha entre <strong>Aporte com Divisão por Veículo</strong> ou <strong>Aporte Global Sem Divisão</strong>. Os carros da Vale constam com R$ 0,00 e o FVV-0E16 cobre a prontidão da Amazon GIG 1/7.</p>
           </div>
         </div>
 
@@ -1107,7 +1587,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           <div className="proc-step-num">2</div>
           <div>
             <h4>Quinta-feira (08:00h da Manhã)</h4>
-            <p>Escolha se deseja o relatório <strong>com</strong> ou <strong>sem</strong> motivo técnico e clique em <strong>"Gerar Documento de Aporte"</strong> ou <strong>"Copiar p/ WhatsApp"</strong>.</p>
+            <p>Escolha se deseja o relatório <strong>com</strong> ou <strong>sem</strong> motivo técnico e clique em <strong>"Gerar Documento de Aporte"</strong>, <strong>"Imprimir / Salvar PDF Limpo"</strong> ou <strong>"Copiar p/ WhatsApp"</strong>.</p>
           </div>
         </div>
 
@@ -1115,7 +1595,7 @@ export default function WeeklyFuelProvisionModule({ user, onNavigateModule }) {
           <div className="proc-step-num">3</div>
           <div>
             <h4>Liberação do Saldo Abank</h4>
-            <p>O gestor aprova a solicitação e o financeiro credita exatamente os R$ 17.000,00 divididos nos 5 cartões da frota ativa.</p>
+            <p>O gestor aprova a solicitação e o financeiro credita o saldo solicitado no Cartão Abank Corporativo sem erros ou divergências operacionais.</p>
           </div>
         </div>
       </section>

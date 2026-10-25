@@ -438,9 +438,117 @@ export const INITIAL_APORTE_DOCUMENTS_HISTORY = [
 ];
 
 /**
- * Função utilitária para calcular o resumo consolidado de um ciclo
+ * Pesos Históricos Auditados da Frota Ativa Ambipar (Base de R$ 17.000,00)
+ * Veículos da Vale: 0% (Abastecimento fornecido diretamente pelo cliente)
  */
-export function calculateCycleTotals(cycle, marginPct = 11.8) {
+export const HISTORICAL_ACTIVE_FLEET_WEIGHTS = {
+  'EWX-0I82': 0.36470588, // 36.47% -> R$ 6.200,00 de R$ 17.000,00
+  'FVV-0E16': 0.25294118, // 25.29% -> R$ 4.300,00 de R$ 17.000,00
+  'FMB-1H09': 0.20588235, // 20.59% -> R$ 3.500,00 de R$ 17.000,00
+  'RAW-1B54': 0.08823529, // 8.82%  -> R$ 1.500,00 de R$ 17.000,00
+  'GBU-0A23': 0.08823529, // 8.82%  -> R$ 1.500,00 de R$ 17.000,00
+  'RHU-6I87': 0.0,        // 0.00%  -> Operação Vale (R$ 0,00)
+  'GEB-8C37': 0.0         // 0.00%  -> Operação Vale (R$ 0,00)
+};
+
+/**
+ * Helper de Ajuste Automático 1: Proporcional ao Consumo Histórico Auditado
+ */
+export function distributeByHistoricalWeight(targetTotal, vehicles = AUDITED_REAL_FLEET_PROVISION) {
+  const result = {};
+  const activeVehicles = vehicles.filter(v => v.recebeAporteAmbipar);
+  if (activeVehicles.length === 0) return result;
+
+  let allocatedSum = 0;
+  activeVehicles.forEach((v, index) => {
+    if (index === activeVehicles.length - 1) {
+      // Último veículo ativo absorve o resíduo para fechar 100% no centavo
+      const remainder = Number((targetTotal - allocatedSum).toFixed(2));
+      result[v.placa] = remainder;
+    } else {
+      const weight = HISTORICAL_ACTIVE_FLEET_WEIGHTS[v.placa] || (1 / activeVehicles.length);
+      const val = Math.round((targetTotal * weight) / 50) * 50; // arredondamento amigável de múltiplos de 50
+      result[v.placa] = val;
+      allocatedSum += val;
+    }
+  });
+
+  // Carros da Vale sempre recebem R$ 0,00
+  vehicles.forEach(v => {
+    if (!v.recebeAporteAmbipar) {
+      result[v.placa] = 0;
+    }
+  });
+
+  return result;
+}
+
+/**
+ * Helper de Ajuste Automático 2: Divisão Igualitária entre Veículos Ativos
+ */
+export function distributeEqually(targetTotal, vehicles = AUDITED_REAL_FLEET_PROVISION) {
+  const result = {};
+  const activeVehicles = vehicles.filter(v => v.recebeAporteAmbipar);
+  if (activeVehicles.length === 0) return result;
+
+  const equalVal = Math.floor((targetTotal / activeVehicles.length) / 50) * 50;
+  let allocatedSum = 0;
+
+  activeVehicles.forEach((v, index) => {
+    if (index === activeVehicles.length - 1) {
+      result[v.placa] = Number((targetTotal - allocatedSum).toFixed(2));
+    } else {
+      result[v.placa] = equalVal;
+      allocatedSum += equalVal;
+    }
+  });
+
+  vehicles.forEach(v => {
+    if (!v.recebeAporteAmbipar) {
+      result[v.placa] = 0;
+    }
+  });
+
+  return result;
+}
+
+/**
+ * Helper de Ajuste Automático 3: Proporcional aos KMs Rodados na Semana
+ */
+export function distributeByKm(targetTotal, vehicles = AUDITED_REAL_FLEET_PROVISION) {
+  const result = {};
+  const activeVehicles = vehicles.filter(v => v.recebeAporteAmbipar);
+  if (activeVehicles.length === 0) return result;
+
+  const totalActiveKm = activeVehicles.reduce((acc, v) => acc + (Number(v.kmRodado) || 0), 0);
+  if (totalActiveKm === 0) return distributeEqually(targetTotal, vehicles);
+
+  let allocatedSum = 0;
+  activeVehicles.forEach((v, index) => {
+    if (index === activeVehicles.length - 1) {
+      result[v.placa] = Number((targetTotal - allocatedSum).toFixed(2));
+    } else {
+      const kmRatio = (Number(v.kmRodado) || 0) / totalActiveKm;
+      const val = Math.round((targetTotal * kmRatio) / 50) * 50;
+      result[v.placa] = val;
+      allocatedSum += val;
+    }
+  });
+
+  vehicles.forEach(v => {
+    if (!v.recebeAporteAmbipar) {
+      result[v.placa] = 0;
+    }
+  });
+
+  return result;
+}
+
+/**
+ * Função utilitária para calcular o resumo consolidado de um ciclo
+ * Suporta cotas customizadas (edição manual/ajuste automático) e modalidade global
+ */
+export function calculateCycleTotals(cycle, marginPct = 11.8, customQuotas = null, isGlobalAporte = false, targetGlobalTotal = 17000.00) {
   if (!cycle || !cycle.veiculosAbastecidos) {
     return {
       totalVeiculos: 7,
@@ -472,11 +580,21 @@ export function calculateCycleTotals(cycle, marginPct = 11.8) {
       totalKm += Number(v.kmRodado) || 0;
       totalDiesel += Number(v.litrosDieselTotal) || 0;
       totalArla += Number(v.litrosArlaTotal) || 0;
-      totalAporteSugerido += Number(v.solicitacaoAporteSugerido) || 0;
+
+      if (customQuotas && customQuotas[v.placa] !== undefined) {
+        totalAporteSugerido += Number(customQuotas[v.placa]) || 0;
+      } else {
+        totalAporteSugerido += Number(v.solicitacaoAporteSugerido) || 0;
+      }
     } else {
       veiculosValeZero++;
     }
   });
+
+  // Se estiver em modo aporte global unificado sem divisão
+  if (isGlobalAporte && targetGlobalTotal) {
+    totalAporteSugerido = Number(targetGlobalTotal) || 17000.00;
+  }
 
   const mediaFrotaKmL = totalDiesel > 0 ? (totalKm / totalDiesel).toFixed(2) : '2.37';
   const precoMedioDiesel = totalDiesel > 0 ? (totalGasto / totalDiesel).toFixed(2) : '6.30';
@@ -499,10 +617,20 @@ export function calculateCycleTotals(cycle, marginPct = 11.8) {
 
 /**
  * Gera mensagem estruturada executiva pronta para copiar para o WhatsApp / E-mail do Gestor
- * Suporta o parâmetro withTechnicalMotives (true = detalhado | false = sem motivo / direto aos valores)
+ * Suporta:
+ * - withTechnicalMotives: true (completo com pilares) | false (simplificado)
+ * - isGlobalAporte: true (saldo global sem divisão) | false (divisão por veículo)
+ * - customQuotas: valores editados manualmente ou via assistente automático
  */
-export function generateManagerWhatsAppMessage(cycle, settings = DEFAULT_CYCLE_SETTINGS, marginPct = 11.8, withTechnicalMotives = true) {
-  const totals = calculateCycleTotals(cycle, marginPct);
+export function generateManagerWhatsAppMessage(
+  cycle,
+  settings = DEFAULT_CYCLE_SETTINGS,
+  marginPct = 11.8,
+  withTechnicalMotives = true,
+  isGlobalAporte = false,
+  customQuotas = null
+) {
+  const totals = calculateCycleTotals(cycle, marginPct, customQuotas, isGlobalAporte);
 
   const lines = [
     `*📋 SOLICITAÇÃO SEMANAL DE APORTE DE COMBUSTÍVEL · AMBIPAR RJ*`,
@@ -511,6 +639,7 @@ export function generateManagerWhatsAppMessage(cycle, settings = DEFAULT_CYCLE_S
     `👨‍💻 *Analista Solicitante:* ${settings.analistaResponsavel} (${settings.analistaCargo})`,
     `📅 *Ciclo:* Fechamento Quarta-feira (17h) | Envio Quinta-feira (08h)`,
     `💳 *Convênio:* ${settings.convenioPadrao}`,
+    `⚙️ *Modalidade:* ${isGlobalAporte ? '🏢 APORTE GLOBAL UNIFICADO (Saldo Master Abank)' : '🚛 APORTE COM DIVISÃO POR VEÍCULO (Cotas nos Cartões)'}`,
     ``,
     `💰 *VALOR TOTAL DO APORTE SOLICITADO: R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`,
     `• Gasto Real Previsto no Período: R$ ${totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
@@ -520,48 +649,66 @@ export function generateManagerWhatsAppMessage(cycle, settings = DEFAULT_CYCLE_S
   if (withTechnicalMotives) {
     lines.push(
       ``,
-      `🎯 *JUSTIFICATIVA TÉCNICA OPERACIONAL DO VALOR (R$ 17.000,00):*`,
+      `🎯 *JUSTIFICATIVA TÉCNICA OPERACIONAL DO VALOR:*`,
       `1. *Veículos da Vale (Cota R$ 0,00):* Os veículos dedicados à Vale S.A. (RHU-6I87 e GEB-8C37) NÃO consomem este aporte pois o combustível é fornecido diretamente pelo cliente.`,
-      `2. *Amazon CD Meriti (GIG 1 / GIG 7):* Atendimento esporádico/sob demanda. A cota do FVV-0E16 (R$ 4.300) cobre saídas extras assim que a solicitação pontual for acionada.`,
+      `2. *Amazon CD Meriti (GIG 1 / GIG 7):* Atendimento esporádico/sob demanda. A cota provê prontidão para saídas imediatas assim que a solicitação for acionada.`,
       `3. *Consumo por Tomada de Força (PTO):* Caminhões de Hidrovácuo (FMB-1H09) operam com sucção ligada sem rodar KM de odômetro.`,
       `4. *Margem Significativa de Segurança:* Garante que nenhum caminhão com resíduos perigosos sofra pane seca em trânsito no RJ.`
     );
   }
 
-  lines.push(
-    ``,
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `🔍 *DISTRIBUIÇÃO DOS R$ 17.000,00 POR VEÍCULO / CARTÃO ABANK:*`
-  );
+  if (isGlobalAporte) {
+    // MODALIDADE GLOBAL SEM DIVISÃO
+    lines.push(
+      ``,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `🏢 *SALDO GLOBAL UNIFICADO NA CONTA MASTER ABANK:*`,
+      `• *Valor Solicitado:* *R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}* na Conta Master Corporativa.`,
+      `• *Critério de Uso:* Disponibilização flexível para a frota ativa atendida pela Ambipar (5 veículos: EWX-0I82, FVV-0E16, FMB-1H09, RAW-1B54, GBU-0A23) conforme a dinâmica real da semana, sem travas rígidas individuais.`,
+      `• *Veículos da Vale:* RHU-6I87 e GEB-8C37 têm *R$ 0,00* pois são abastecidos no terminal da Vale.`,
+      `• *Amazon GIG 1/7:* Cobertura sob demanda assegurada pelo saldo unificado.`
+    );
+  } else {
+    // MODALIDADE COM DIVISÃO POR VEÍCULO
+    lines.push(
+      ``,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `🔍 *DISTRIBUIÇÃO POR VEÍCULO / CARTÃO ABANK:*`
+    );
 
-  cycle.veiculosAbastecidos.forEach((v, index) => {
-    if (v.recebeAporteAmbipar) {
-      lines.push(
-        `${index + 1}) *${v.placa}* (${v.modelo.split(' ')[0]} ${v.modelo.split(' ')[1] || ''}) · ${v.operacao.split('/')[0]}`,
-        `   • Cartão Abank: *${v.cartaoNumero}*`,
-        `   👉 *COTA DE APORTE ALOCADA: R$ ${v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`
-      );
-      if (withTechnicalMotives) {
-        lines.push(`   • Motivo: ${v.motivoTecnico.slice(0, 95)}...`);
+    cycle.veiculosAbastecidos.forEach((v, index) => {
+      const quota = customQuotas && customQuotas[v.placa] !== undefined
+        ? customQuotas[v.placa]
+        : v.solicitacaoAporteSugerido;
+
+      if (v.recebeAporteAmbipar) {
+        lines.push(
+          `${index + 1}) *${v.placa}* (${v.modelo.split(' ')[0]} ${v.modelo.split(' ')[1] || ''}) · ${v.operacao.split('/')[0]}`,
+          `   • Cartão Abank: *${v.cartaoNumero}*`,
+          `   👉 *COTA DE APORTE ALOCADA: R$ ${Number(quota).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`
+        );
+        if (withTechnicalMotives) {
+          lines.push(`   • Motivo: ${v.motivoTecnico.slice(0, 95)}...`);
+        }
+        lines.push(``);
+      } else {
+        // Veículo da Vale
+        lines.push(
+          `${index + 1}) *${v.placa}* (${v.modelo.split(' ')[0]} ${v.modelo.split(' ')[1] || ''}) · ${v.operacao}`,
+          `   • Cartão: *Sem Cartão Abank* (Abastecimento Direto Vale)`,
+          `   👉 *COTA DE APORTE: R$ 0,00*`
+        );
+        if (withTechnicalMotives) {
+          lines.push(`   • Motivo: 100% abastecido internamente pela Vale S.A. Não consome saldo Ambipar.`);
+        }
+        lines.push(``);
       }
-      lines.push(``);
-    } else {
-      // Veículo da Vale
-      lines.push(
-        `${index + 1}) *${v.placa}* (${v.modelo.split(' ')[0]} ${v.modelo.split(' ')[1] || ''}) · ${v.operacao}`,
-        `   • Cartão: *Sem Cartão Abank* (Abastecimento Direto Vale)`,
-        `   👉 *COTA DE APORTE: R$ 0,00*`
-      );
-      if (withTechnicalMotives) {
-        lines.push(`   • Motivo: 100% abastecido internamente pela Vale S.A. Não consome saldo Ambipar.`);
-      }
-      lines.push(``);
-    }
-  });
+    });
+  }
 
   lines.push(
     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `✅ *Ação Solicitada:* Autorização e liberação dos R$ 17.000,00 na plataforma Abank Frota.`,
+    `✅ *Ação Solicitada:* Autorização e liberação de R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} na plataforma Abank Frota.`,
     `Sistema CCO Ambipar Logistics · Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR').slice(0, 5)}`
   );
 
@@ -571,8 +718,8 @@ export function generateManagerWhatsAppMessage(cycle, settings = DEFAULT_CYCLE_S
 /**
  * Exporta dados do Aporte Semanal em formato CSV compatível com Excel
  */
-export function exportCycleToCSV(cycle, marginPct = 11.8) {
-  const totals = calculateCycleTotals(cycle, marginPct);
+export function exportCycleToCSV(cycle, marginPct = 11.8, isGlobalAporte = false, customQuotas = null) {
+  const totals = calculateCycleTotals(cycle, marginPct, customQuotas, isGlobalAporte);
   
   const headers = [
     'Placa',
@@ -586,10 +733,15 @@ export function exportCycleToCSV(cycle, marginPct = 11.8) {
     'Gasto_Real_RS',
     'Margem_Seguranca_RS',
     'Cota_Aporte_RS',
+    'Modalidade_Aporte',
     'Motivo_Tecnico'
   ];
 
   const rows = cycle.veiculosAbastecidos.map(v => {
+    const quota = customQuotas && customQuotas[v.placa] !== undefined
+      ? customQuotas[v.placa]
+      : v.solicitacaoAporteSugerido;
+
     return [
       v.placa,
       v.prefixo,
@@ -601,7 +753,8 @@ export function exportCycleToCSV(cycle, marginPct = 11.8) {
       v.litrosDieselTotal,
       v.valorTotalGasto.toFixed(2),
       (v.margemSegurancaRS || 0).toFixed(2),
-      v.solicitacaoAporteSugerido.toFixed(2),
+      isGlobalAporte ? (v.recebeAporteAmbipar ? 'SALDO_GLOBAL' : '0.00') : Number(quota).toFixed(2),
+      isGlobalAporte ? 'GLOBAL_UNIFICADO_ABANK' : 'COM_DIVISAO_INDIVIDUAL',
       `"${v.motivoTecnico}"`
     ].join(';');
   });
@@ -612,13 +765,14 @@ export function exportCycleToCSV(cycle, marginPct = 11.8) {
     '-',
     '-',
     '5 VEICULOS ATIVOS',
-    '-',
+    isGlobalAporte ? 'CONTA MASTER ABANK' : '5 CARTOES ABANK',
     totals.totalKm,
     totals.totalDiesel.toFixed(1),
     totals.totalGasto.toFixed(2),
     totals.margemTotalRS.toFixed(2),
     totals.totalAporteSugerido.toFixed(2),
-    '"Divisao dos R$ 17.000,00 nos cartoes Abank. Veiculos Vale com cota R$ 0,00."'
+    isGlobalAporte ? 'SALDO_GLOBAL_UNIFICADO' : 'DISTRIBUICAO_INDIVIDUAL',
+    `"${isGlobalAporte ? 'Aporte Global unificado na Conta Master Abank sem divisao previa.' : 'Divisao de cotas individuais nos cartoes Abank. Veiculos Vale com cota R$ 0,00.'}"`
   ].join(';');
 
   const csvContent = '\uFEFF' + [headers.join(';'), ...rows, totalsRow].join('\n');
@@ -626,8 +780,516 @@ export function exportCycleToCSV(cycle, marginPct = 11.8) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `Aporte_Semanal_Abank_17k_${cycle.id}.csv`);
+  link.setAttribute('download', `Aporte_Semanal_Abank_${isGlobalAporte ? 'Global_' : 'Divisao_'}${totals.totalAporteSugerido.toFixed(0)}k_${cycle.id}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+/**
+ * GERADOR DE PDF / IMPRESSÃO EM JANELA LIMPA ISOLADA
+ * Resolve 100% o bug onde o PDF ficava desconfigurado/cortado.
+ * Renderiza em janela limpa independente de qualquer elemento do layout React.
+ */
+export function printAporteDossierCleanWindow(doc, isGlobalAporte = false, withTechnicalMotives = true, customQuotas = null) {
+  const win = window.open('', '_blank', 'width=1050,height=900,menubar=no,toolbar=no,location=no,status=no');
+  if (!win) {
+    alert('Por favor, autorize a abertura de pop-ups no seu navegador para visualizar e salvar o PDF limpo.');
+    return;
+  }
+
+  const veiculos = doc.veiculos || AUDITED_REAL_FLEET_PROVISION;
+  const isWithMotives = doc.withTechnicalMotives !== undefined ? doc.withTechnicalMotives : withTechnicalMotives;
+  const isGlobal = doc.isGlobalAporte !== undefined ? doc.isGlobalAporte : isGlobalAporte;
+  const totalGeral = doc.valorTotalSolicitado || 17000.00;
+
+  const htmlRows = veiculos.map(v => {
+    const isVale = !v.recebeAporteAmbipar;
+    const quota = customQuotas && customQuotas[v.placa] !== undefined
+      ? customQuotas[v.placa]
+      : v.solicitacaoAporteSugerido;
+
+    return `
+      <tr class="${isVale ? 'tr-vale' : ''}">
+        <td class="bold-cell">
+          <strong>${v.placa}</strong><br>
+          <span class="sub-label">${v.prefixo}</span>
+        </td>
+        <td>
+          <div class="model-title">${v.modelo}</div>
+          <div class="op-desc">${v.operacao} ${v.isSporadicGIG ? '<span class="pill-gig">ESPORÁDICO</span>' : ''}</div>
+        </td>
+        <td class="center-cell">
+          ${isVale 
+            ? '<span class="pill-vale">Abastecido pela Vale (R$ 0,00)</span>' 
+            : `<strong class="card-num">${v.cartaoNumero}</strong>`}
+        </td>
+        <td class="right-cell">${Number(v.kmRodado || 0).toLocaleString('pt-BR')} km</td>
+        <td class="right-cell">${isVale ? '-' : `${v.litrosDieselTotal} L`}</td>
+        <td class="right-cell">${isVale ? 'R$ 0,00' : `R$ ${Number(v.valorTotalGasto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</td>
+        <td class="right-cell ${isVale ? '' : 'text-emerald'}">
+          ${isVale ? '-' : `+ R$ ${Number(v.margemSegurancaRS || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+        </td>
+        <td class="right-cell highlight-cell">
+          ${isVale 
+            ? '<strong class="text-vale">R$ 0,00 (Vale)</strong>' 
+            : (isGlobal 
+                ? '<span class="text-global">Saldo Global Master</span>' 
+                : `<strong>R$ ${Number(quota).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>`)}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const html = `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Solicitação de Aporte Semanal · Ambipar CCO RJ · ${doc.numeroProtocolo || 'AMB-APORTE'}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 10mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #0f172a;
+      background: #ffffff;
+      margin: 0;
+      padding: 16px;
+    }
+    .print-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+    }
+    .btn-print {
+      background: #166534;
+      color: #ffffff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-print:hover {
+      background: #15803d;
+    }
+    @media print {
+      .print-controls { display: none !important; }
+      body { padding: 0 !important; }
+    }
+    .doc-container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      border: 1px solid #cbd5e1;
+      padding: 24px;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #166534;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+    }
+    .logo-badge {
+      display: inline-block;
+      background: #166534;
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 16px;
+      letter-spacing: 2px;
+      padding: 4px 12px;
+      border-radius: 4px;
+    }
+    .header-subtext h2 {
+      margin: 6px 0 2px 0;
+      font-size: 13px;
+      color: #166534;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+    .header-subtext p {
+      margin: 0;
+      font-size: 10px;
+      color: #64748b;
+    }
+    .protocol-box {
+      text-align: right;
+      font-size: 10px;
+      color: #334155;
+    }
+    .protocol-box strong {
+      display: block;
+      font-size: 11px;
+      color: #1e293b;
+      font-family: monospace;
+    }
+    .title-banner {
+      background: #f8fafc;
+      border-left: 4px solid #166534;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      border-radius: 0 6px 6px 0;
+    }
+    .title-banner h1 {
+      margin: 0 0 4px 0;
+      font-size: 15px;
+      color: #0f172a;
+      font-weight: 800;
+    }
+    .title-banner p {
+      margin: 0;
+      font-size: 11px;
+      color: #475569;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+    .info-card label {
+      display: block;
+      font-size: 9px;
+      color: #64748b;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .info-card strong {
+      display: block;
+      font-size: 12px;
+      color: #0f172a;
+      margin-top: 2px;
+    }
+    .info-card span {
+      display: block;
+      font-size: 9.5px;
+      color: #64748b;
+    }
+    .highlight-card strong {
+      color: #166534;
+      font-size: 13px;
+    }
+    .motivo-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+    .motivo-box h3 {
+      margin: 0 0 8px 0;
+      font-size: 11.5px;
+      color: #166534;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .motivo-item {
+      margin-bottom: 6px;
+      font-size: 10.5px;
+      color: #1e293b;
+    }
+    .motivo-item strong {
+      color: #0f172a;
+    }
+    .global-mode-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+    .global-mode-box h3 {
+      margin: 0 0 6px 0;
+      font-size: 11.5px;
+      color: #1d4ed8;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .global-mode-box p {
+      margin: 0 0 6px 0;
+      font-size: 10.5px;
+      color: #1e3a8a;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      page-break-inside: auto;
+    }
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+    th {
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 9.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 7px 8px;
+      border: 1px solid #cbd5e1;
+      text-align: left;
+    }
+    td {
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 10px;
+      vertical-align: middle;
+    }
+    .tr-vale {
+      background: #fffbeb;
+    }
+    .bold-cell strong {
+      font-family: monospace;
+      font-size: 11px;
+    }
+    .sub-label {
+      font-size: 8.5px;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .model-title {
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .op-desc {
+      font-size: 9px;
+      color: #64748b;
+    }
+    .pill-gig {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-size: 7.5px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+      margin-left: 4px;
+    }
+    .pill-vale {
+      background: #fef3c7;
+      color: #92400e;
+      font-size: 8.5px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .card-num {
+      color: #0369a1;
+      font-family: monospace;
+      font-size: 10px;
+    }
+    .center-cell { text-align: center; }
+    .right-cell { text-align: right; font-family: monospace; }
+    .highlight-cell {
+      background: #f0fdf4;
+      font-weight: 700;
+      color: #166534;
+      font-size: 10.5px;
+    }
+    .text-emerald { color: #16a34a; }
+    .text-vale { color: #b45309; }
+    .text-global { color: #2563eb; font-size: 9px; }
+    tfoot td {
+      background: #f8fafc;
+      font-weight: 800;
+      border-top: 2px solid #0f172a;
+    }
+    .signatures-block {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 28px;
+      page-break-inside: avoid;
+    }
+    .sig-box {
+      text-align: center;
+      border-top: 1px solid #94a3b8;
+      padding-top: 6px;
+    }
+    .sig-box strong {
+      display: block;
+      font-size: 11px;
+      color: #0f172a;
+    }
+    .sig-box span {
+      display: block;
+      font-size: 9.5px;
+      color: #64748b;
+    }
+    .footer-stamp {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 8.5px;
+      color: #94a3b8;
+      border-top: 1px dashed #e2e8f0;
+      padding-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="print-controls">
+    <div>
+      <strong>Visualização Executiva de Impressão · Ambipar Logistics CCO</strong><br>
+      <span style="font-size: 11px; color: #64748b;">Este documento é gerado em layout padrão A4 certificado para impressão e salvamento em PDF sem bugs visuais.</span>
+    </div>
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+  </div>
+
+  <div class="doc-container">
+    <div class="doc-header">
+      <div>
+        <span class="logo-badge">AMBIPAR</span>
+        <div class="header-subtext">
+          <h2>Ambipar Logistics & Environmental Solutions</h2>
+          <p>Gestão Integrada de Frotas & Torre de Controle CCO · Base Duque de Caxias / RJ</p>
+        </div>
+      </div>
+      <div class="protocol-box">
+        PROTOCOLO OFICIAL
+        <strong>${doc.numeroProtocolo || 'AMB-APORTE-2026-W43/001'}</strong>
+        <span>Fechamento: Quarta 17h | Envio: Quinta 08h</span>
+      </div>
+    </div>
+
+    <div class="title-banner">
+      <h1>SOLICITAÇÃO OFICIAL DE APORTE SEMANAL · CARTÃO ABANK FROTA</h1>
+      <p>
+        Demonstrativo corporativo de solicitação de saldo de <strong>R$ ${Number(totalGeral).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>.
+        Modalidade: <strong>${isGlobal ? 'Aporte Global Unificado (Saldo na Conta Master Abank)' : 'Aporte com Divisão por Veículo (Cotas nos Cartões Abank)'}</strong>.
+      </p>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <label>Gestor Aprovador:</label>
+        <strong>${doc.gestorNome || 'Eng. Roberto Albuquerque'}</strong>
+        <span>${doc.gestorCargo || 'Gerente Geral Logística RJ'}</span>
+      </div>
+      <div class="info-card">
+        <label>Analista CCO:</label>
+        <strong>${doc.analistaNome || 'Carlos dos Santos'}</strong>
+        <span>${doc.analistaCargo || 'Analista de Operações'}</span>
+      </div>
+      <div class="info-card">
+        <label>Convênio de Abastecimento:</label>
+        <strong>${doc.convenio || 'Cartão Abank Frota'}</strong>
+        <span>Recargas Corporativas</span>
+      </div>
+      <div class="info-card highlight-card">
+        <label>Total do Aporte Solicitado:</label>
+        <strong>R$ ${Number(totalGeral).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+        <span>5 Veículos Ativos | 2 Veículos Vale (R$ 0,00)</span>
+      </div>
+    </div>
+
+    ${isGlobal ? `
+      <div class="global-mode-box">
+        <h3>Modalidade Executiva: Aporte Global Unificado sem Divisão Prévia</h3>
+        <p>
+          O saldo total de <strong>R$ ${Number(totalGeral).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> é solicitado como crédito unificado centralizado na <strong>Conta Master Abank Frota Corporativa</strong>.
+          Esta configuração confere flexibilidade dinâmica à Torre CCO para abastecer os 5 caminhões ativos da Ambipar sem travas rígidas de limite individual por cartão, absorvendo variações de viagens e demandas esporádicas.
+        </p>
+        <p style="margin: 0; font-size: 10px;">
+          <em>Nota de Diretriz:</em> Os caminhões dedicados à <strong>Vale S.A. (RHU-6I87 e GEB-8C37) continuam com cota R$ 0,00</strong>, pois são 100% abastecidos nos terminais do cliente.
+        </p>
+      </div>
+    ` : ''}
+
+    ${isWithMotives ? `
+      <div class="motivo-box">
+        <h3>1. Justificativa Técnica Operacional & Regras de Atendimento</h3>
+        <div class="motivo-item">
+          <strong>• Veículos da Vale S.A. (Cota R$ 0,00):</strong> Os caminhões RHU-6I87 e GEB-8C37 <em>NÃO recebem abastecimento da nossa parte e não possuem Cartão Abank</em>. O diesel é fornecido diretamente pela Vale em seus terminais/minas e suas cotas constam zeradas no aporte Ambipar.
+        </div>
+        <div class="motivo-item">
+          <strong>• Amazon CD Meriti (GIG 1 / GIG 7 - Solicitação Esporádica):</strong> Atendimento sob demanda e não rota diária fixa. A provisão alocada garante saldo de prontidão para acionamento imediato.
+        </div>
+        <div class="motivo-item">
+          <strong>• Tomada de Força (PTO):</strong> Caminhão de Hidrovácuo (FMB-1H09) opera com motor a 1.400 RPM em sucção contínua e basculamento consumindo combustível estacionado.
+        </div>
+        <div class="motivo-item">
+          <strong>• Margem Significativa de Segurança:</strong> Provisão preventiva contra retenções na Rodovia Presidente Dutra e Linha Vermelha para garantir que nenhum veículo com resíduos perigosos sofra pane seca em trânsito.
+        </div>
+      </div>
+    ` : ''}
+
+    <h3>${isGlobal ? '2. Matriz de Referência Operacional da Frota (Consumo Histórico e KM)' : '2. Matriz de Alocação de Cotas por Veículo / Cartão Abank'}</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Placa / Prefixo</th>
+          <th>Modelo & Operação</th>
+          <th>Cartão Abank</th>
+          <th style="text-align: right;">KM Rodado</th>
+          <th style="text-align: right;">Diesel (L)</th>
+          <th style="text-align: right;">Gasto Real (R$)</th>
+          <th style="text-align: right;">Margem (+11.8%)</th>
+          <th style="text-align: right; background: #e2e8f0; color: #0f172a;">${isGlobal ? 'Alocação' : 'Cota Aporte (R$)'}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${htmlRows}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3"><strong>TOTAL CONSOLIDADO (5 AMBIPAR + 2 VALE)</strong></td>
+          <td class="right-cell"><strong>${Number(doc.totalKm || 5540).toLocaleString('pt-BR')} km</strong></td>
+          <td class="right-cell"><strong>${Number(doc.totalDiesel || 2335).toLocaleString('pt-BR')} L</strong></td>
+          <td class="right-cell"><strong>R$ ${Number(doc.valorGastoReal || 15133.98).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></td>
+          <td class="right-cell text-emerald"><strong>+ R$ ${Number(doc.valorMargemSeguranca || 1866.02).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></td>
+          <td class="right-cell highlight-cell" style="font-size: 12px;"><strong>R$ ${Number(totalGeral).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="signatures-block">
+      <div class="sig-box">
+        <strong>${doc.analistaNome || 'Carlos dos Santos'}</strong>
+        <span>Analista de Operações & CCO Ambipar</span>
+        <span style="font-size: 8.5px; color: #94a3b8; margin-top: 3px;">Assinatura Digital / Emissor</span>
+      </div>
+      <div class="sig-box">
+        <strong>${doc.gestorNome || 'Eng. Roberto Albuquerque'}</strong>
+        <span>Gerente Geral de Logística & Operações RJ</span>
+        <span style="font-size: 8.5px; color: #94a3b8; margin-top: 3px;">Aprovação & Liberação Abank</span>
+      </div>
+    </div>
+
+    <div class="footer-stamp">
+      Ambipar Logistics · CCO Torre de Controle Rio de Janeiro · Documento Oficial Emitido em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR').slice(0, 5)} · Protocolo: ${doc.numeroProtocolo || 'AMB-APORTE'}
+    </div>
+  </div>
+</body>
+</html>`;
+
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
 }
