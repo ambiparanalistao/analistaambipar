@@ -2,7 +2,7 @@
  * Base de Dados e Lógica de Aporte Semanal de Combustível
  * Programação de Fechamento: Quarta-feira à tarde (17:00h)
  * Envio da Solicitação ao Gestor: Toda Quinta-feira pela manhã (08:00h)
- * Cartões Homologados: Ticket Log (Edenred) / Sodexo Frota (Wizeo)
+ * Cartões Homologados: Cartão Abank Frota
  * Ambipar Environmental Solutions - Base Duque de Caxias / Operações RJ
  */
 
@@ -16,7 +16,7 @@ export const DEFAULT_CYCLE_SETTINGS = {
   gestorCargo: 'Gerente Geral de Logística & Operações RJ',
   analistaResponsavel: 'Carlos dos Santos',
   analistaCargo: 'Analista de Operações & CCO Ambipar',
-  convenioPadrao: 'Ticket Log Edenred Frota'
+  convenioPadrao: 'Cartão Abank Frota'
 };
 
 export const INITIAL_WEEKLY_CYCLES = [
@@ -38,7 +38,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'VW 26.280 CRM Poli Duplo (6x4)',
         tipo: 'Poliguindaste Duplo',
         operacao: 'Contrato Vale S.A. (TIG Guaíba / CPBS)',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 4491',
         kmInicial: 140200,
         kmFinal: 142350,
@@ -59,7 +59,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 3095.20,
             kmNoAto: 141150,
             nfNumero: 'NF-e 28410',
-            comprovante: 'TL-981244'
+            comprovante: 'ABK-981244'
           },
           {
             data: '2026-10-21',
@@ -74,7 +74,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 3382.65,
             kmNoAto: 142350,
             nfNumero: 'NF-e 28670',
-            comprovante: 'TL-984112'
+            comprovante: 'ABK-984112'
           }
         ],
         litrosDieselTotal: 1000.0,
@@ -90,7 +90,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'Ford Cargo 2629 6x4 Roll-On',
         tipo: 'Roll-On / Roll-Off 25t',
         operacao: 'Contrato Amazon Meriti (CD GIG 1 / GIG 7)',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 8820',
         kmInicial: 186100,
         kmFinal: 188420,
@@ -111,7 +111,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 2254.85,
             kmNoAto: 186850,
             nfNumero: 'NF-e 66104',
-            comprovante: 'TL-981502'
+            comprovante: 'ABK-981502'
           },
           {
             data: '2026-10-20',
@@ -126,7 +126,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 2199.00,
             kmNoAto: 187620,
             nfNumero: 'NF-e 66320',
-            comprovante: 'TL-982991'
+            comprovante: 'ABK-982991'
           },
           {
             data: '2026-10-21',
@@ -141,7 +141,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 2332.80,
             kmNoAto: 188420,
             nfNumero: 'NF-e 66590',
-            comprovante: 'TL-984400'
+            comprovante: 'ABK-984400'
           }
         ],
         litrosDieselTotal: 1050.0,
@@ -157,7 +157,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'M.Benz Accelo 1016 Baú 3/4',
         tipo: 'Baú 3/4 Urbano',
         operacao: 'Base Duque de Caxias (Coletas Emergenciais RJ)',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 1152',
         kmInicial: 47100,
         kmFinal: 48500,
@@ -178,7 +178,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 998.75,
             kmNoAto: 47800,
             nfNumero: 'NF-e 11980',
-            comprovante: 'TL-982110'
+            comprovante: 'ABK-982110'
           },
           {
             data: '2026-10-21',
@@ -193,7 +193,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 967.50,
             kmNoAto: 48500,
             nfNumero: 'NF-e 12150',
-            comprovante: 'TL-984250'
+            comprovante: 'ABK-984250'
           }
         ],
         litrosDieselTotal: 305.0,
@@ -209,7 +209,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'VW Constellation 25.390 (Cavalo 6x2)',
         tipo: 'Cavalo Mecânico Carreta',
         operacao: 'Contrato Amazon (Transferência Inter-CDs)',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 9940',
         kmInicial: 309700,
         kmFinal: 312450,
@@ -230,7 +230,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 3334.75,
             kmNoAto: 311050,
             nfNumero: 'NF-e 88190',
-            comprovante: 'TL-981105'
+            comprovante: 'ABK-981105'
           },
           {
             data: '2026-10-21',
@@ -245,7 +245,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 3432.50,
             kmNoAto: 312450,
             nfNumero: 'NF-e 88470',
-            comprovante: 'TL-983890'
+            comprovante: 'ABK-983890'
           }
         ],
         litrosDieselTotal: 1040.0,
@@ -261,7 +261,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'VW Delivery 9.170 Baú 3/4',
         tipo: 'Baú 3/4 Urbano',
         operacao: 'Contrato Vale (Leste Fluminense / Niterói)',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 3319',
         kmInicial: 97100,
         kmFinal: 98700,
@@ -282,7 +282,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 1164.15,
             kmNoAto: 97880,
             nfNumero: 'NF-e 44320',
-            comprovante: 'TL-981770'
+            comprovante: 'ABK-981770'
           },
           {
             data: '2026-10-21',
@@ -297,7 +297,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 1195.55,
             kmNoAto: 98700,
             nfNumero: 'NF-e 44780',
-            comprovante: 'TL-984210'
+            comprovante: 'ABK-984210'
           }
         ],
         litrosDieselTotal: 365.0,
@@ -313,7 +313,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'M.Benz Accelo 1016 Baú Plataforma',
         tipo: 'Baú Urbano Plataforma',
         operacao: 'Contrato Jogue Limpo (Barra & Recreio)',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 5022',
         kmInicial: 132650,
         kmFinal: 134200,
@@ -334,7 +334,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 1141.80,
             kmNoAto: 133400,
             nfNumero: 'NF-e 55901',
-            comprovante: 'TL-982440'
+            comprovante: 'ABK-982440'
           },
           {
             data: '2026-10-21',
@@ -349,7 +349,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 1147.20,
             kmNoAto: 134200,
             nfNumero: 'NF-e 56120',
-            comprovante: 'TL-984380'
+            comprovante: 'ABK-984380'
           }
         ],
         litrosDieselTotal: 350.0,
@@ -365,7 +365,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'VW Delivery VUC Baú',
         tipo: 'VUC Carga Seca',
         operacao: 'Contrato Jogue Limpo (Zona Sul RJ)',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 7140',
         kmInicial: 117350,
         kmFinal: 118600,
@@ -386,7 +386,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 855.73,
             kmNoAto: 117950,
             nfNumero: 'NF-e 99105',
-            comprovante: 'TL-981890'
+            comprovante: 'ABK-981890'
           },
           {
             data: '2026-10-21',
@@ -401,7 +401,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 836.88,
             kmNoAto: 118600,
             nfNumero: 'NF-e 99420',
-            comprovante: 'TL-984180'
+            comprovante: 'ABK-984180'
           }
         ],
         litrosDieselTotal: 260.0,
@@ -417,7 +417,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'VW 26.280 CRM Hidrovácuo',
         tipo: 'Tanque Sucção 12m³',
         operacao: 'Efluentes Industriais / Base DCX',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 6205',
         kmInicial: 85900,
         kmFinal: 87300,
@@ -438,7 +438,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 2454.62,
             kmNoAto: 86550,
             nfNumero: 'NF-e 33100',
-            comprovante: 'TL-981320'
+            comprovante: 'ABK-981320'
           },
           {
             data: '2026-10-21',
@@ -453,7 +453,7 @@ export const INITIAL_WEEKLY_CYCLES = [
             valorTotal: 2454.62,
             kmNoAto: 87300,
             nfNumero: 'NF-e 33490',
-            comprovante: 'TL-984330'
+            comprovante: 'ABK-984330'
           }
         ],
         litrosDieselTotal: 760.0,
@@ -473,7 +473,7 @@ export const INITIAL_WEEKLY_CYCLES = [
     dataCorteQuarta: '2026-10-14T17:00:00',
     dataEnvioQuinta: '2026-10-15T08:00:00',
     status: 'APROVADO_CREDITADO',
-    statusLabel: 'Aporte Concluído · Saldo Creditado nos Cartões Ticket Log',
+    statusLabel: 'Aporte Concluído · Saldo Creditado nos Cartões Abank Frota',
     margemSegurancaPct: 8,
     observacaoCiclo: 'Aporte aprovado integralmente pelo Gestor em 15/10/2026 às 09:12. Recarga compensada no mesmo dia.',
     veiculosAbastecidos: [
@@ -483,7 +483,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'VW 26.280 CRM Poli Duplo (6x4)',
         tipo: 'Poliguindaste Duplo',
         operacao: 'Contrato Vale S.A. (TIG Guaíba / CPBS)',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 4491',
         kmInicial: 138150,
         kmFinal: 140200,
@@ -504,7 +504,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'Ford Cargo 2629 6x4 Roll-On',
         tipo: 'Roll-On / Roll-Off 25t',
         operacao: 'Contrato Amazon Meriti (CD GIG 1 / GIG 7)',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 8820',
         kmInicial: 183850,
         kmFinal: 186100,
@@ -525,7 +525,7 @@ export const INITIAL_WEEKLY_CYCLES = [
         modelo: 'VW Constellation 25.390 (Cavalo 6x2)',
         tipo: 'Cavalo Mecânico Carreta',
         operacao: 'Contrato Amazon (Transferência Inter-CDs)',
-        cartaoTipo: 'Ticket Log Frota',
+        cartaoTipo: 'Cartão Abank Frota',
         cartaoNumero: '•••• 9940',
         kmInicial: 307100,
         kmFinal: 309700,
@@ -633,14 +633,14 @@ export function generateManagerWhatsAppMessage(cycle, settings = DEFAULT_CYCLE_S
       `   • KM: ${v.kmInicial.toLocaleString('pt-BR')} ➔ ${v.kmFinal.toLocaleString('pt-BR')} (${v.kmRodado.toLocaleString('pt-BR')} km rodados)`,
       `   • Consumo: ${v.litrosDieselTotal}L Diesel | Média: ${mediaKmL} km/l`,
       `   • Gasto Realizado: R$ ${v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      `   • 💳 *Aporte Sugerido (Ticket Log ${v.cartaoNumero}): R$ ${v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`,
+      `   • 💳 *Aporte Sugerido (Abank ${v.cartaoNumero}): R$ ${v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`,
       ``
     );
   });
 
   lines.push(
     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `✅ *Ação Solicitada:* Autorização e liberação do crédito na plataforma Ticket Log para garantir a operação até a próxima quarta-feira.`,
+    `✅ *Ação Solicitada:* Autorização e liberação do crédito na plataforma Abank para garantir a operação até a próxima quarta-feira.`,
     `Sistema CCO Ambipar Logistics · Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR').slice(0, 5)}`
   );
 

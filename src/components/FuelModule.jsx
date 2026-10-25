@@ -73,6 +73,7 @@ export const FUEL_TYPES = [
 
 // Formas de Pagamento
 export const PAYMENT_METHODS = [
+  { value: 'Cartão Frota - Abank', label: 'Cartão Frota - Abank (Corporativo)', sublabel: 'Gestão de saldo e recargas operacionais em tempo real' },
   { value: 'Cartão Frota - Ticket Log', label: 'Cartão Frota - Ticket Log (Edenred)', sublabel: 'Débito via rede credenciada de postos' },
   { value: 'Cartão Frota - Good Card', label: 'Cartão Frota - Good Card / Wizeo', sublabel: 'Controle de saldo em tempo real' },
   { value: 'Cartão Frota - Sem Parar / Veloe Go', label: 'Cartão Frota - Sem Parar / Veloe Go', sublabel: 'Abastecimento automatizado' },
@@ -250,7 +251,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
     uf: 'SP',
     rodovia_km: '',
     nota_fiscal: '',
-    forma_pagamento: 'Cartão Frota - Ticket Log',
+    forma_pagamento: 'Cartão Frota - Abank',
     nivel_tanque_pos: '100%',
     observacoes: ''
   });
@@ -377,7 +378,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
       uf: 'SP',
       rodovia_km: '',
       nota_fiscal: '',
-      forma_pagamento: 'Cartão Frota - Ticket Log',
+      forma_pagamento: 'Cartão Frota - Abank',
       nivel_tanque_pos: '100%',
       observacoes: ''
     });
@@ -406,7 +407,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
       uf: rec.uf || 'SP',
       rodovia_km: rec.rodovia_km || '',
       nota_fiscal: rec.nota_fiscal || '',
-      forma_pagamento: rec.forma_pagamento || 'Cartão Frota - Ticket Log',
+      forma_pagamento: rec.forma_pagamento || 'Cartão Frota - Abank',
       nivel_tanque_pos: rec.nivel_tanque_pos || '100%',
       observacoes: rec.observacoes || ''
     });
@@ -2993,7 +2994,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                 <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '1.25rem' }}>
                   <strong style={{ color: '#ffffff' }}>Instruções ao Condutor:</strong>
                   <ul style={{ margin: '0.35rem 0 0 1rem', padding: 0 }}>
-                    <li>Abastecer obrigatoriamente na Rede de Postos Credenciados (Ticket Log / Good Card / Sem Parar).</li>
+                    <li>Abastecer obrigatoriamente na Rede de Postos Credenciados (Cartão Abank Frota).</li>
                     <li>Exigir Cupom Fiscal / NF-e com placa do cavalo e hodômetro impresso.</li>
                     <li>Não deixar o nível do tanque baixar além dos {simulatorData.reservaSegurancaPct}% de reserva técnica.</li>
                   </ul>
