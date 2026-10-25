@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Download, Database, ShieldCheck, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { reviewedLocalEntriesToRemove } from '../utils/operationalStorageReview';
 
 const LOCAL_KEYS = [
   'ambipar_real_vehicles',
@@ -56,6 +57,7 @@ export default function OperationalDataCentralization({ companyId, user, canWrit
   const [driverAssignments, setDriverAssignments] = useState({});
   const [reviewLoading, setReviewLoading] = useState(true);
   const [reviewBusy, setReviewBusy] = useState('');
+  const cleanupCandidates = reviewedLocalEntriesToRemove(entries, reviewRows, user?.id, reviewRows.length < 200 && !reviewLoading);
   const rescanLocalData = () => {
     setEntries(readLocalEntries());
     setError('');
@@ -70,7 +72,7 @@ export default function OperationalDataCentralization({ companyId, user, canWrit
       supabase.from('operational_data_import_rows')
       .select('id,entity,source_key,payload,review_status,review_note,created_at')
       .eq('company_id', companyId).eq('entity', 'local_storage')
-      .in('review_status', ['pendente', 'aprovado', 'rejeitado'])
+      .in('review_status', ['pendente', 'aprovado', 'rejeitado', 'importado'])
       .order('created_at', { ascending: false }).limit(200),
       supabase.from('operational_data_import_rows')
         .select('id,source_key,payload,review_note,created_at')
@@ -115,6 +117,17 @@ export default function OperationalDataCentralization({ companyId, user, canWrit
     setReviewBusy('');
   }
 
+  function clearFinalizedLocalCopies() {
+    if (!cleanupCandidates.length || busy || !window.confirm(`Remover ${cleanupCandidates.length} cópia(s) deste navegador? O snapshot já está finalizado no Supabase. O conteúdo permanece no banco/quarentena.`)) return;
+    try {
+      cleanupCandidates.forEach(({ key }) => localStorage.removeItem(key));
+      setEntries(readLocalEntries());
+      setMessage(`${cleanupCandidates.length} cópia(s) local(is) finalizada(s) removida(s) deste navegador.`);
+      setError('');
+    } catch {
+      setError('Não foi possível limpar todas as cópias locais. Atualize a leitura e tente novamente.');
+    }
+  }
   function downloadBackup() {
     const backup = { version: 1, exported_at: new Date().toISOString(), company_id: companyId, items: entries.map(({ key, value }) => ({ key, value })) };
     const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
@@ -165,13 +178,14 @@ export default function OperationalDataCentralization({ companyId, user, canWrit
       <button type="button" onClick={rescanLocalData} disabled={busy}><RefreshCw size={16}/> Atualizar leitura local</button>
       <button type="button" className="btn-primary" onClick={downloadBackup} disabled={!entries.length}><Download size={16}/> Baixar backup JSON</button>
       <button type="button" className="btn-primary" onClick={copyToDatabase} disabled={busy || !entries.length}><Database size={16}/>{busy ? ' Copiando…' : ' Copiar para revisão no Supabase'}</button>
+      <button type="button" onClick={clearFinalizedLocalCopies} disabled={busy || reviewLoading || !cleanupCandidates.length}>Limpar cópias locais já finalizadas ({cleanupCandidates.length})</button>
     </div>
     {error && <p role="alert" style={{ color: 'var(--danger, #ef4444)', marginTop: 18 }}>{error}</p>}
     {message && <p role="status" style={{ marginTop: 18 }}><ShieldCheck size={16}/> {message}</p>}
     <h2 style={{ marginTop: 30 }}>Áreas verificadas</h2>
     <ul>{entries.map(({ key, value }) => <li key={key}>{key} · {Array.isArray(value) ? `${value.length} registros` : '1 conjunto de configurações'}</li>)}</ul>
     <h2 style={{ marginTop: 30 }}>Revisão por empresa</h2>
-    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aprovar ou rejeitar aqui registra sua decisão no staging. A aprovação não ativa registros operacionais automaticamente; o formato ainda precisa ser validado e mapeado para a tabela correta.</p>
+    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aprovar ou rejeitar registra a revisão. A cópia local só pode ser removida após o snapshot mais recente ser importado ou rejeitado, e somente se o conteúdo deste navegador ainda for idêntico ao salvo no Supabase.</p>
     {reviewLoading ? <p role="status">Carregando registros em revisão…</p> : reviewRows.length === 0 ? <p>Nenhum registro pendente de revisão para esta empresa.</p> : <div style={{ display: 'grid', gap: 12 }}>
       {reviewRows.map(row => <article key={row.id} className="dashboard-card" style={{ padding: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>

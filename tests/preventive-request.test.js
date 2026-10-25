@@ -4,18 +4,19 @@ import {
   preventiveRequestInitial,
   preventiveRequestDescription,
 } from "../src/utils/preventiveRequest.js";
-import { PREVENTIVE_RULES } from "../src/data/preventiveMaintenanceData.js";
 test("SDO descreve todas as preventivas sem registrar execução nem modificar KM", () => {
   const vehicle = { id: "vehicle", km_atual: 123456 };
-  const initial = preventiveRequestInitial(vehicle, [
+  const plans = [
+    { nome: "Troca de óleo", estado: "em_dia" },
     { nome: "Revisão do tacógrafo", estado: "vencida" },
-  ]);
+  ];
+  const initial = preventiveRequestInitial(vehicle, plans);
   assert.equal(initial.km_abertura, 123456);
   assert.equal(vehicle.km_atual, 123456);
   assert.equal(initial.tipo, "preventiva");
   assert.equal(initial.prioridade, "alta");
-  for (const rule of PREVENTIVE_RULES)
-    assert.ok(initial.descricao_problema.includes(rule.nome));
+  for (const plan of plans)
+    assert.ok(initial.descricao_problema.includes(plan.nome));
   assert.ok(initial.descricao_problema.includes("Revisão do tacógrafo"));
   assert.ok(initial.descricao_problema.includes("Serviços adicionais"));
   assert.equal(initial.status, undefined);
@@ -25,8 +26,7 @@ test("odômetro ausente fica em branco e plano duplicado não repete serviço", 
     preventiveRequestInitial({ id: "vehicle", km_atual: null }).km_abertura,
     "",
   );
-  const text = preventiveRequestDescription([
-    { nome: PREVENTIVE_RULES[0].nome },
-  ]);
-  assert.equal(text.split(PREVENTIVE_RULES[0].nome).length, 2);
+  const text = preventiveRequestDescription([{ nome: "Troca de óleo" }]);
+  assert.equal(text.split("Troca de óleo").length, 2);
+  assert.ok(!text.includes("Troca de filtros"));
 });

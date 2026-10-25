@@ -1,5 +1,5 @@
 import {vehicleCommand} from '../services/vehicleMaintenance';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   ArrowLeft, 
   Send, 
@@ -10,14 +10,10 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Sparkles, 
-  Truck, 
   UserCheck, 
   Gauge, 
   RotateCcw,
   CheckCheck,
-  Calendar,
-  Layers,
-  Fuel,
   Info,
   Zap,
   Settings,
@@ -25,11 +21,7 @@ import {
   X
 } from 'lucide-react';
 import { formatPlateMercosul, getCountdown } from './VehiclesModule';
-import { 
-  getEvolutionSettings, 
-  saveEvolutionSettings, 
-  sendEvolutionMessage 
-} from '../services/evolutionApi';
+import { sendEvolutionMessage } from '../services/evolutionApi';
 
 /* ============================================================== */
 /* MODELOS OPERACIONAIS COM EMOJIS VIVOS E ESTRUTURAÇÃO CORPORATIVA */
@@ -140,7 +132,6 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
 
   // Configurações da Evolution API
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [apiSettings, setApiSettings] = useState(getEvolutionSettings);
 
   // Selecionar Modelo
   const handleSelectTemplate = (tpl) => {
@@ -257,7 +248,6 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
       const result = await sendEvolutionMessage({
         phone: targetPhone,
         text: messageText,
-        overrideSettings: apiSettings
       });
 
       const logEntry = {
@@ -281,20 +271,10 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
       }
     } catch (err) {
       console.warn('Falha no disparo Evolution API:', err);
-      // Registra no histórico para auditoria com feedback do que ocorreu
-      const simulatedLog = {
-        id: `API-ENV-${Date.now().toString().slice(-6)}`,
-        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        driver: vehicle.motorista_vinculado || 'Condutor',
-        phone: targetPhone,
-        preview: messageText.slice(0, 65) + '...',
-        status: 'Tentativa Registrada Central de Gestão'
-      };
-      setDispatchHistory(prev => [simulatedLog, ...prev]);
 
       setFeedback({
         type: 'warning',
-        text: `Disparo direto processado pelo módulo WhatsApp! Nota do gateway: ${err.message}`
+        text: `Não foi possível enviar a mensagem. Nenhum envio foi registrado como concluído. ${err.message}`
       });
     } finally {
       setDispatching(false);
@@ -302,14 +282,6 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
     }
   };
 
-  // Salvar configurações personalizadas da Evolution API
-  const handleSaveApiSettings = (e) => {
-    e.preventDefault();
-    saveEvolutionSettings(apiSettings);
-    setShowSettingsModal(false);
-    setFeedback({ type: 'success', text: 'Configurações do WhatsApp salvas com sucesso!' });
-    setTimeout(() => setFeedback(null), 3500);
-  };
 
   // Copiar Texto
   const handleCopyMessage = () => {
@@ -320,7 +292,6 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
   };
 
   const crlvCountdown = getCountdown(vehicle.validade_crlv);
-  const cippCountdown = getCountdown(vehicle.validade_cipp);
 
   // Cálculo de KM restante para revisão
   const kmAtualNum = parseInt(vehicle.km_atual, 10) || 0;
@@ -807,61 +778,24 @@ export default function WhatsAppDispatchWorkspace({ vehicle, companyId, onBack, 
               </button>
             </div>
 
-            <form onSubmit={handleSaveApiSettings} className="evolution-modal-form">
+            <div className="evolution-modal-form">
               <p className="settings-intro">
-                O envio de mensagens é feito diretamente via requisição HTTP para a sua instância de WhatsApp Corporativo, sem abrir o WhatsApp Web ou aplicativo.
+                A conexão é configurada no servidor e protegida. A chave da Evolution não fica salva neste navegador nem é enviada ao cliente.
               </p>
-
-              <div className="input-group-custom">
-                <label>URL Base do Gateway WhatsApp *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="http://localhost:8080 ou https://sua-api.com"
-                  value={apiSettings.serverUrl}
-                  onChange={(e) => setApiSettings({ ...apiSettings, serverUrl: e.target.value })}
-                />
-              </div>
-
-              <div className="input-group-custom">
-                <label>Nome da Instância Conectada *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: ambipar-cco"
-                  value={apiSettings.instanceName}
-                  onChange={(e) => setApiSettings({ ...apiSettings, instanceName: e.target.value })}
-                />
-              </div>
-
-              <div className="input-group-custom">
-                <label>Chave de API Global (apikey) *</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Informe o token de acesso do WhatsApp"
-                  value={apiSettings.apiKey}
-                  onChange={(e) => setApiSettings({ ...apiSettings, apiKey: e.target.value })}
-                />
-              </div>
-
+              <p>Na Vercel, configure estas variáveis em <strong>Settings → Environment Variables</strong>:</p>
+              <ul>
+                <li><code>EVOLUTION_API_URL</code></li>
+                <li><code>EVOLUTION_INSTANCE_NAME</code></li>
+                <li><code>EVOLUTION_API_KEY</code> (segredo)</li>
+              </ul>
+              <p>Depois, faça um novo deploy para aplicar as alterações.</p>
               <div className="modal-actions-bar">
-                <button 
-                  type="button" 
-                  className="btn-secondary" 
-                  onClick={() => setShowSettingsModal(false)}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="whatsapp-send-primary btn-icon-text"
-                >
+                <button type="button" className="whatsapp-send-primary btn-icon-text" onClick={() => setShowSettingsModal(false)}>
                   <Check size={16} />
-                  <span>Salvar Configurações</span>
+                  <span>Entendi</span>
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

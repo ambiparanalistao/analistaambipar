@@ -58,7 +58,7 @@ import FuelSpreadsheetWorkspace from './FuelSpreadsheetWorkspace';
 import FuelAuditWorkspace, { runPredictiveAudit } from './FuelAuditWorkspace';
 import ErrorBoundary from './ErrorBoundary';
 import { exportFuelRecordsToExcel, generateBlankTemplateExcel } from '../utils/excelFuelIntegration';
-import { saveCompanyOperationalRecord } from '../services/companyOperationalRecords';
+import { listCompanyOperationalRecords, saveCompanyOperationalRecord } from '../services/companyOperationalRecords';
 import './FuelModule.css';
 
 // Tipos de Combustíveis Homologados
@@ -157,6 +157,7 @@ export const getConsumptionEfficiency = (kmPerL, fuelType) => {
 };
 
 export default function FuelModule({ user, companyId, initialView = 'dashboard', onNavigateModule }) {
+  const [googleSheetSettings, setGoogleSheetSettings] = useState({ companyId: null, webhookUrl: '', autoSync: false });
   // Estado de abastecimentos persistente
   // Abastecimentos operacionais vêm apenas do banco da empresa selecionada.
   // A chave antiga do navegador permanece intacta para backup e revisão.
@@ -246,11 +247,46 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
     return auditAlerts.filter(a => a.severity === 'CRITICAL' && a.status !== 'JUSTIFICADO').length;
   }, [auditAlerts]);
 
+  useEffect(() => {
+    let active = true;
+    if (!companyId) return () => { active = false; };
+    listCompanyOperationalRecords(companyId, 'integration_settings')
+      .then(rows => {
+        if (!active) return;
+        const current = rows.find(row => row.record_key === 'google_sheets_fuel');
+        setGoogleSheetSettings({
+          companyId,
+          webhookUrl: typeof current?.payload?.webhookUrl === 'string'
+            ? current.payload.webhookUrl
+            : (localStorage.getItem('ambipar_sheet_webhook_url') || ''),
+          // Uma configuração legada só é migrada depois que o usuário a salva para a empresa atual.
+          autoSync: current?.payload?.autoSync === true,
+        });
+      })
+      .catch(error => console.warn('Não foi possível carregar as configurações do Google Sheets:', error));
+    return () => { active = false; };
+  }, [companyId]);
+
+  const saveGoogleSheetSettings = async settings => {
+    if (!user?.id || !companyId) throw new Error('Selecione uma empresa com sessão ativa antes de salvar.');
+    const webhookUrl = String(settings?.webhookUrl || '').trim();
+    if (webhookUrl) {
+      const parsed = new URL(webhookUrl);
+      if (parsed.protocol !== 'https:') throw new Error('Use uma URL HTTPS para o webhook.');
+    }
+    const payload = { webhookUrl, autoSync: settings?.autoSync === true };
+    await saveCompanyOperationalRecord({ companyId, collection: 'integration_settings', recordKey: 'google_sheets_fuel', payload, userId: user.id });
+    localStorage.removeItem('ambipar_sheet_webhook_url');
+    localStorage.removeItem('ambipar_sheet_auto_sync');
+    setGoogleSheetSettings({ companyId, ...payload });
+  };
+
   // Disparo em tempo real para Google Sheets / Excel 365
   const triggerGoogleSheetWebhook = (action, rec) => {
     try {
-      const webhookUrl = localStorage.getItem('ambipar_sheet_webhook_url');
-      const autoSync = localStorage.getItem('ambipar_sheet_auto_sync') === 'true';
+      const { webhookUrl, autoSync } = googleSheetSettings.companyId === companyId
+        ? googleSheetSettings
+        : { webhookUrl: '', autoSync: false };
       if (webhookUrl && autoSync && webhookUrl.startsWith('http')) {
         fetch(webhookUrl, {
           method: 'POST',
@@ -1643,6 +1679,8 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
             onUpdateRecords={updated => handleFuelWorkbookImport({ records: updated })}
             companyId={companyId}
             user={user}
+            webhookSettings={googleSheetSettings.companyId === companyId ? googleSheetSettings : { webhookUrl: '', autoSync: false }}
+            onSaveWebhookSettings={saveGoogleSheetSettings}
             initialMatrix={importedCostMatrixCompany === companyId ? importedCostMatrix : null}
             onUpdateMatrix={handleSaveCostMatrix}
             onOpenImportModal={() => setIsImportModalOpen(true)}
