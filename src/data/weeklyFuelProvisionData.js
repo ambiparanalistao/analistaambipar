@@ -49,11 +49,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 312450,
     kmRodado: 1800,
     metaKmL: 2.60,
-    diasAbastecimento: ['Seg (19/10)', 'Qua (21/10)'],
+    diasAbastecimento: ['Qui (15/10)', 'Qua (21/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-19',
-        diaSemana: 'Segunda-feira',
+        data: '2026-10-15',
+        diaSemana: 'Quinta-feira',
         hora: '05:50',
         posto: 'Rede Graal Resende (Via Dutra km 304)',
         cidade: 'Resende / RJ',
@@ -106,11 +106,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 188420,
     kmRodado: 1300,
     metaKmL: 2.20,
-    diasAbastecimento: ['Seg (19/10)', 'Qua (21/10)'],
+    diasAbastecimento: ['Sex (16/10)', 'Qua (21/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-19',
-        diaSemana: 'Segunda-feira',
+        data: '2026-10-16',
+        diaSemana: 'Sexta-feira',
         hora: '07:15',
         posto: 'Auto Posto Arco Metropolitano (Duque de Caxias)',
         cidade: 'Duque de Caxias / RJ',
@@ -162,11 +162,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 142950,
     kmRodado: 850,
     metaKmL: 1.85,
-    diasAbastecimento: ['Ter (20/10)', 'Qua (21/10)'],
+    diasAbastecimento: ['Sáb (17/10)', 'Ter (20/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-20',
-        diaSemana: 'Terça-feira',
+        data: '2026-10-17',
+        diaSemana: 'Sábado',
         hora: '11:45',
         posto: 'Posto Petrobras REDUC (Rod. Washington Luiz)',
         cidade: 'Duque de Caxias / RJ',
@@ -180,8 +180,8 @@ export const AUDITED_REAL_FLEET_PROVISION = [
         comprovante: 'ABK-982110'
       },
       {
-        data: '2026-10-21',
-        diaSemana: 'Quarta-feira',
+        data: '2026-10-20',
+        diaSemana: 'Terça-feira',
         hora: '15:30',
         posto: 'Posto Petrobras REDUC (Rod. Washington Luiz)',
         cidade: 'Duque de Caxias / RJ',
@@ -218,11 +218,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 76580,
     kmRodado: 950,
     metaKmL: 2.15,
-    diasAbastecimento: ['Seg (19/10)', 'Qua (21/10)'],
+    diasAbastecimento: ['Dom (18/10)', 'Qua (21/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-19',
-        diaSemana: 'Segunda-feira',
+        data: '2026-10-18',
+        diaSemana: 'Domingo',
         hora: '08:40',
         posto: 'Auto Posto Arco Metropolitano (Duque de Caxias)',
         cidade: 'Duque de Caxias / RJ',
@@ -274,11 +274,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 51620,
     kmRodado: 650,
     metaKmL: 2.10,
-    diasAbastecimento: ['Ter (20/10)'],
+    diasAbastecimento: ['Qui (15/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-20',
-        diaSemana: 'Terça-feira',
+        data: '2026-10-15',
+        diaSemana: 'Quinta-feira',
         hora: '10:15',
         posto: 'Posto Petrobras REDUC (Rod. Washington Luiz)',
         cidade: 'Duque de Caxias / RJ',
@@ -315,11 +315,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 48500,
     kmRodado: 720,
     metaKmL: 3.80,
-    diasAbastecimento: ['Ter (20/10)'],
+    diasAbastecimento: ['Sex (16/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-20',
-        diaSemana: 'Terça-feira',
+        data: '2026-10-16',
+        diaSemana: 'Sexta-feira',
         hora: '09:20',
         posto: 'Posto Shell Trevo São João de Meriti',
         cidade: 'São João de Meriti / RJ',
@@ -438,11 +438,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 70340,
     kmRodado: 560,
     metaKmL: 3.10,
-    diasAbastecimento: ['Seg (19/10)'],
+    diasAbastecimento: ['Qui (15/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-19',
-        diaSemana: 'Segunda-feira',
+        data: '2026-10-15',
+        diaSemana: 'Quinta-feira',
         hora: '17:30',
         posto: 'Posto Petrobras REDUC (Rod. Washington Luiz)',
         cidade: 'Duque de Caxias / RJ',
@@ -479,11 +479,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 82820,
     kmRodado: 380,
     metaKmL: 4.50,
-    diasAbastecimento: ['Ter (20/10)'],
+    diasAbastecimento: ['Sex (16/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-20',
-        diaSemana: 'Terça-feira',
+        data: '2026-10-16',
+        diaSemana: 'Sexta-feira',
         hora: '15:10',
         posto: 'Posto Shell Linha Vermelha',
         cidade: 'Rio de Janeiro / RJ',
@@ -520,11 +520,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 85940,
     kmRodado: 360,
     metaKmL: 4.50,
-    diasAbastecimento: ['Seg (19/10)'],
+    diasAbastecimento: ['Sáb (17/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-19',
-        diaSemana: 'Segunda-feira',
+        data: '2026-10-17',
+        diaSemana: 'Sábado',
         hora: '11:00',
         posto: 'Posto Shell Linha Vermelha',
         cidade: 'Rio de Janeiro / RJ',
@@ -561,11 +561,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 89060,
     kmRodado: 320,
     metaKmL: 4.50,
-    diasAbastecimento: ['Ter (20/10)'],
+    diasAbastecimento: ['Dom (18/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-20',
-        diaSemana: 'Terça-feira',
+        data: '2026-10-18',
+        diaSemana: 'Domingo',
         hora: '14:20',
         posto: 'Auto Posto Arco Metropolitano (Duque de Caxias)',
         cidade: 'Duque de Caxias / RJ',
@@ -602,11 +602,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 92180,
     kmRodado: 310,
     metaKmL: 4.50,
-    diasAbastecimento: ['Qua (21/10)'],
+    diasAbastecimento: ['Seg (19/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-21',
-        diaSemana: 'Quarta-feira',
+        data: '2026-10-19',
+        diaSemana: 'Segunda-feira',
         hora: '09:40',
         posto: 'Posto Shell Linha Amarela (Inhaúma)',
         cidade: 'Rio de Janeiro / RJ',
@@ -684,11 +684,11 @@ export const AUDITED_REAL_FLEET_PROVISION = [
     kmFinal: 110900,
     kmRodado: 450,
     metaKmL: 12.50,
-    diasAbastecimento: ['Seg (19/10)'],
+    diasAbastecimento: ['Qua (21/10)'],
     abastecimentosDetalhe: [
       {
-        data: '2026-10-19',
-        diaSemana: 'Segunda-feira',
+        data: '2026-10-21',
+        diaSemana: 'Quarta-feira',
         hora: '08:00',
         posto: 'Posto Ipiranga Base Caxias',
         cidade: 'Duque de Caxias / RJ',
@@ -871,30 +871,30 @@ export const AUDITED_REAL_FLEET_PROVISION = [
 export const INITIAL_WEEKLY_CYCLES = [
   {
     id: 'CICLO-2026-W43',
-    nome: 'Ciclo Vigente · Semana 43 (Out/2026)',
-    periodoInicio: '2026-10-18', // Domingo
-    periodoFim: '2026-10-24',    // Sábado
-    dataCorteQuarta: '2026-10-21T17:00:00', // Quarta-feira à tarde
-    dataEnvioQuinta: '2026-10-22T08:00:00', // Quinta-feira pela manhã
+    nome: 'Semana Atual · 15 a 21/Out/2026 (Quinta a Quarta)',
+    periodoInicio: '2026-10-15', // Quinta-feira
+    periodoFim: '2026-10-21',    // Quarta-feira (Fechamento)
+    dataCorteQuarta: '2026-10-21T17:00:00', // Quarta-feira 17:00h (Último abastecimento considerado)
+    dataEnvioQuinta: '2026-10-22T08:00:00', // Quinta-feira 08:00h (Solicitação de Saldo)
     status: 'PRONTO_ENVIO',
-    statusLabel: 'Fechamento Quarta-feira Concluído · Pronto p/ Quinta-feira',
+    statusLabel: 'Fechamento Quarta-feira Concluído · Solicitação Quinta-feira Manhã',
     valorTotalAporteAlvo: 17000.00,
     margemSegurancaPct: 11.8,
-    motivoGeralSolicitacao: 'Aporte semanal de R$ 17.000,00 no Cartão Abank Frota para a frota ativa atendida pela Ambipar (15 veículos). Os 6 veículos dedicados à Vale S.A. estão com cota R$ 0,00 pois o abastecimento é fornecido diretamente pelo cliente. As rotas da Amazon GIG 1 e GIG 7 são esporádicas/sob demanda, com cota de prontidão alocada.',
+    motivoGeralSolicitacao: 'Aporte semanal de R$ 17.000,00 no Cartão Abank Frota para a frota ativa atendida pela Ambipar (15 veículos). Período apurado: Quinta (15/10) a Quarta (21/10). Os abastecimentos de Quinta-feira (22/10) em diante já pertencem ao próximo aporte. Os 6 veículos da Vale S.A. estão com cota R$ 0,00 pois o abastecimento é fornecido diretamente pelo cliente.',
     veiculosAbastecidos: AUDITED_REAL_FLEET_PROVISION
   },
   {
     id: 'CICLO-2026-W42',
-    nome: 'Ciclo Anterior · Semana 42 (Out/2026)',
-    periodoInicio: '2026-10-11',
-    periodoFim: '2026-10-17',
+    nome: 'Semana Anterior · 08 a 14/Out/2026 (Quinta a Quarta)',
+    periodoInicio: '2026-10-08', // Quinta-feira
+    periodoFim: '2026-10-14',    // Quarta-feira (Fechamento)
     dataCorteQuarta: '2026-10-14T17:00:00',
     dataEnvioQuinta: '2026-10-15T08:00:00',
     status: 'APROVADO_CREDITADO',
     statusLabel: 'Aporte Concluído · Saldo de R$ 17.000,00 Creditado nos Cartões Abank',
     valorTotalAporteAlvo: 17000.00,
     margemSegurancaPct: 11.8,
-    motivoGeralSolicitacao: 'Aporte regular semana 42 aprovado pelo Gestor em 15/10/2026 às 08:35. Recargas nos cartões Abank ativas sem registro de falta de combustível.',
+    motivoGeralSolicitacao: 'Aporte regular semana 42 aprovado pelo Gestor em 15/10/2026 às 08:35. Período: Quinta (08/10) a Quarta (14/10). Recargas nos cartões Abank ativas sem registro de falta de combustível.',
     veiculosAbastecidos: AUDITED_REAL_FLEET_PROVISION
   }
 ];

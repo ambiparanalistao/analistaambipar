@@ -2783,6 +2783,34 @@
   padding: 16px 20px;
 }
 
+/* Banner de Alerta para Abastecimento Após o Fechamento de Quarta */
+.cutoff-notice-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  color: #fde68a;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.cutoff-notice-banner strong {
+  color: #fbbf24;
+  font-size: 0.92rem;
+  display: block;
+  margin-bottom: 3px;
+}
+
+.cutoff-notice-banner p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.84rem;
+}
+
 .active-day-banner-content {
   display: flex;
   align-items: center;
