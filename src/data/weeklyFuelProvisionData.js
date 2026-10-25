@@ -2,9 +2,12 @@
  * Base de Dados e Lógica de Aporte Semanal de Combustível · Cartão Abank Frota
  * Fechamento Programado: Quarta-feira à tarde (17:00h)
  * Envio da Solicitação ao Gestor: Toda Quinta-feira pela manhã (08:00h)
- * Valor Padrão Operacional Semanal: R$ 17.000,00 distribuídos entre os veículos ativos
- * Margem Técnica de Segurança: ~11% (R$ 1.720,00) para cobrir PTO, tráfego pesado e evitar pane seca
- * Ambipar Environmental Solutions - Unidade Duque de Caxias / Operações RJ
+ * 
+ * DIRETRIZES OPERACIONAIS OFICIAIS:
+ * 1. VEÍCULOS NA OPERAÇÃO DA VALE: NÃO recebem abastecimento da Ambipar, NÃO recebem cartão Abank e NÃO entram na divisão (Cota = R$ 0,00 com motivo explícito).
+ * 2. AMAZON CD MERITI (GIG 1 / GIG 7): Solicitação esporádica / sob demanda, com cota provisionada de prontidão.
+ * 3. VALOR TOTAL DO APORTE SEMANAL: R$ 17.000,00 divididos entre os veículos atendidos pela Ambipar.
+ * 4. OPÇÃO DE GERAR RELATÓRIO: Com Motivo Técnico Detalhado OU Sem Motivo (Apenas Valores e Cartões).
  */
 
 export const DEFAULT_CYCLE_SETTINGS = {
@@ -12,8 +15,8 @@ export const DEFAULT_CYCLE_SETTINGS = {
   cutoffHour: '17:00',
   reportDay: 'Quinta-feira',
   reportHour: '08:00',
-  valorBaseAporteSemanal: 17000.00, // Valor padrão de R$ 17k normalmente solicitado
-  defaultContingencyPct: 11.2,     // Margem técnica de segurança operacional
+  valorBaseAporteSemanal: 17000.00, // R$ 17k semanais
+  defaultContingencyPct: 11.8,     // Margem de segurança operacional
   gestorNome: 'Eng. Roberto Albuquerque',
   gestorCargo: 'Gerente Geral de Logística & Operações RJ',
   analistaResponsavel: 'Carlos dos Santos',
@@ -22,146 +25,25 @@ export const DEFAULT_CYCLE_SETTINGS = {
 };
 
 /**
- * Matriz Real de Distribuição dos R$ 17.000,00 entre os Veículos Ativos
- * Total Gasto Real Previsto: R$ 15.280,00
- * Margem Técnica de Contingência: R$ 1.720,00
- * Total Solicitado p/ Aporte Abank: R$ 17.000,00 (Soma Exata)
+ * Matriz Real de Distribuição dos R$ 17.000,00
+ * Carros da Vale: R$ 0,00 (Abastecimento direto Vale)
+ * Carros Ambipar Ativos: R$ 17.000,00 (Abank)
  */
 export const AUDITED_REAL_FLEET_PROVISION = [
-  {
-    placa: 'RHU-6I87',
-    prefixo: 'AMB-104',
-    modelo: 'VW 26.280 CRM Poli Duplo (6x4)',
-    tipo: 'Poliguindaste Duplo Articulado',
-    operacao: 'Contrato Vale S.A. (TIG Guaíba / CPBS)',
-    cartaoTipo: 'Cartão Abank Frota',
-    cartaoNumero: '•••• 4491',
-    kmInicial: 141230,
-    kmFinal: 142350,
-    kmRodado: 1120,
-    metaKmL: 2.10,
-    diasAbastecimento: ['Seg (19/10)', 'Qua (21/10)'],
-    abastecimentosDetalhe: [
-      {
-        data: '2026-10-19',
-        diaSemana: 'Segunda-feira',
-        hora: '06:45',
-        posto: 'Posto Presidente Dutra (BR-116 km 178)',
-        cidade: 'Nova Iguaçu / RJ',
-        dieselLitros: 260.0,
-        precoDiesel: 6.29,
-        arlaLitros: 12.0,
-        precoArla: 3.80,
-        valorTotal: 1681.00,
-        kmNoAto: 141790,
-        nfNumero: 'NF-e 28410',
-        comprovante: 'ABK-981244'
-      },
-      {
-        data: '2026-10-21',
-        diaSemana: 'Quarta-feira',
-        hora: '15:30',
-        posto: 'Posto Graal Petropen / Itaguaí (Rio-Santos)',
-        cidade: 'Itaguaí / RJ',
-        dieselLitros: 260.0,
-        precoDiesel: 6.32,
-        arlaLitros: 13.0,
-        precoArla: 3.85,
-        valorTotal: 1739.00,
-        kmNoAto: 142350,
-        nfNumero: 'NF-e 28670',
-        comprovante: 'ABK-984112'
-      }
-    ],
-    litrosDieselTotal: 520.0,
-    litrosArlaTotal: 25.0,
-    valorTotalGasto: 3420.00,
-    margemSegurancaRS: 380.00,
-    solicitacaoAporteSugerido: 3800.00, // Cota dos 17k
-    saldoCartaoAtual: 140.00,
-    statusMedia: 'Dentro da Meta (2.15 km/l)',
-    motivoTecnico: 'Atendimento contínuo na Vale com operação severa de içamento de caçambas Brooks. A tomada de força (PTO) de 250 bar consome diesel durante a operação de carga/descarga com o caminhão parado sem marcar odômetro, além do deslocamento Duque de Caxias ➔ Itaguaí/Mangaratiba.'
-  },
-  {
-    placa: 'FVV-0E16',
-    prefixo: 'AMB-105',
-    modelo: 'Ford Cargo 2629 6x4 Roll-On',
-    tipo: 'Roll-On / Roll-Off 25t',
-    operacao: 'Contrato Amazon Meriti (CD GIG 1 / GIG 7)',
-    cartaoTipo: 'Cartão Abank Frota',
-    cartaoNumero: '•••• 8820',
-    kmInicial: 187320,
-    kmFinal: 188420,
-    kmRodado: 1100,
-    metaKmL: 2.20,
-    diasAbastecimento: ['Seg (19/10)', 'Ter (20/10)', 'Qua (21/10)'],
-    abastecimentosDetalhe: [
-      {
-        data: '2026-10-19',
-        diaSemana: 'Segunda-feira',
-        hora: '07:15',
-        posto: 'Auto Posto Arco Metropolitano (Duque de Caxias)',
-        cidade: 'Duque de Caxias / RJ',
-        dieselLitros: 170.0,
-        precoDiesel: 6.28,
-        arlaLitros: 8.0,
-        precoArla: 3.79,
-        valorTotal: 1097.92,
-        kmNoAto: 187680,
-        nfNumero: 'NF-e 66104',
-        comprovante: 'ABK-981502'
-      },
-      {
-        data: '2026-10-20',
-        diaSemana: 'Terça-feira',
-        hora: '14:20',
-        posto: 'Posto Shell Trevo São João de Meriti',
-        cidade: 'São João de Meriti / RJ',
-        dieselLitros: 160.0,
-        precoDiesel: 6.30,
-        arlaLitros: 7.0,
-        precoArla: 3.80,
-        valorTotal: 1034.60,
-        kmNoAto: 188050,
-        nfNumero: 'NF-e 66320',
-        comprovante: 'ABK-982991'
-      },
-      {
-        data: '2026-10-21',
-        diaSemana: 'Quarta-feira',
-        hora: '16:10',
-        posto: 'Auto Posto Arco Metropolitano (Duque de Caxias)',
-        cidade: 'Duque de Caxias / RJ',
-        dieselLitros: 160.0,
-        precoDiesel: 6.29,
-        arlaLitros: 7.0,
-        precoArla: 3.80,
-        valorTotal: 1117.48,
-        kmNoAto: 188420,
-        nfNumero: 'NF-e 66590',
-        comprovante: 'ABK-984400'
-      }
-    ],
-    litrosDieselTotal: 490.0,
-    litrosArlaTotal: 22.0,
-    valorTotalGasto: 3250.00,
-    margemSegurancaRS: 350.00,
-    solicitacaoAporteSugerido: 3600.00, // Cota dos 17k
-    saldoCartaoAtual: 110.00,
-    statusMedia: 'Dentro da Meta (2.24 km/l)',
-    motivoTecnico: 'Operação em 2 turnos de coleta e transporte de caixas compactadoras de 30m³ entre os centros de distribuição da Amazon (GIG 1 e GIG 7) e aterro licenciado. Tráfego urbano denso na Via Dutra e Trevo de Meriti com paradas constantes.'
-  },
+  // 1. CARROS QUE RECEBEM O APORTE AMBIPAR (TOTAL: R$ 17.000,00)
   {
     placa: 'EWX-0I82',
     prefixo: 'AMB-106',
     modelo: 'VW Constellation 25.390 (Cavalo 6x2)',
     tipo: 'Cavalo Mecânico Carreta',
-    operacao: 'Transferência Inter-CDs / Vale Sider',
+    operacao: 'Transferências Rodoviárias Intermunicipais / Interestaduais',
     cartaoTipo: 'Cartão Abank Frota',
     cartaoNumero: '•••• 9940',
-    kmInicial: 311100,
+    recebeAporteAmbipar: true,
+    isValeOperation: false,
+    kmInicial: 310650,
     kmFinal: 312450,
-    kmRodado: 1350,
+    kmRodado: 1800,
     metaKmL: 2.60,
     diasAbastecimento: ['Seg (19/10)', 'Qua (21/10)'],
     abastecimentosDetalhe: [
@@ -171,12 +53,12 @@ export const AUDITED_REAL_FLEET_PROVISION = [
         hora: '05:50',
         posto: 'Rede Graal Resende (Via Dutra km 304)',
         cidade: 'Resende / RJ',
-        dieselLitros: 250.0,
+        dieselLitros: 430.0,
         precoDiesel: 6.35,
-        arlaLitros: 12.0,
+        arlaLitros: 20.0,
         precoArla: 3.85,
-        valorTotal: 1633.70,
-        kmNoAto: 311750,
+        valorTotal: 2807.50,
+        kmNoAto: 311550,
         nfNumero: 'NF-e 88190',
         comprovante: 'ABK-981105'
       },
@@ -186,36 +68,110 @@ export const AUDITED_REAL_FLEET_PROVISION = [
         hora: '13:10',
         posto: 'Posto Presidente Dutra (BR-116 km 178)',
         cidade: 'Nova Iguaçu / RJ',
-        dieselLitros: 260.0,
+        dieselLitros: 420.0,
         precoDiesel: 6.29,
-        arlaLitros: 13.0,
+        arlaLitros: 20.0,
         precoArla: 3.80,
-        valorTotal: 1686.30,
+        valorTotal: 2717.80,
         kmNoAto: 312450,
         nfNumero: 'NF-e 88470',
         comprovante: 'ABK-983890'
       }
     ],
-    litrosDieselTotal: 510.0,
-    litrosArlaTotal: 25.0,
-    valorTotalGasto: 3320.00,
-    margemSegurancaRS: 380.00,
-    solicitacaoAporteSugerido: 3700.00, // Cota dos 17k
+    litrosDieselTotal: 850.0,
+    litrosArlaTotal: 40.0,
+    valorTotalGasto: 5525.30,
+    margemSegurancaRS: 674.70,
+    solicitacaoAporteSugerido: 6200.00, // Cota dos 17k
     saldoCartaoAtual: 180.00,
     statusMedia: 'Na Meta (2.65 km/l)',
-    motivoTecnico: 'Cavalo mecânico rodoviário tracionando conjuntos de 45 toneladas PBT. Maior quilometragem percorrida na semana (Dutra sentido Resende/Volta Redonda e Arco Metropolitano), exigindo saldo para paradas em postos de rodovia.'
+    motivoTecnico: 'Cavalo mecânico rodoviário tracionando conjuntos pesados de 45 toneladas PBT (Via Dutra, Resende, Barra Mansa e SP). Principal consumidor da frota ativa da Ambipar em percurso rodoviário longo.'
+  },
+  {
+    placa: 'FVV-0E16',
+    prefixo: 'AMB-105',
+    modelo: 'Ford Cargo 2629 6x4 Roll-On',
+    tipo: 'Roll-On / Roll-Off 25t',
+    operacao: 'Base Duque de Caxias / Destinações & Amazon Meriti (GIG 1 / GIG 7 - Esporádico)',
+    cartaoTipo: 'Cartão Abank Frota',
+    cartaoNumero: '•••• 8820',
+    recebeAporteAmbipar: true,
+    isValeOperation: false,
+    isSporadicGIG: true,
+    kmInicial: 187120,
+    kmFinal: 188420,
+    kmRodado: 1300,
+    metaKmL: 2.20,
+    diasAbastecimento: ['Seg (19/10)', 'Ter (20/10)', 'Qua (21/10)'],
+    abastecimentosDetalhe: [
+      {
+        data: '2026-10-19',
+        diaSemana: 'Segunda-feira',
+        hora: '07:15',
+        posto: 'Auto Posto Arco Metropolitano (Duque de Caxias)',
+        cidade: 'Duque de Caxias / RJ',
+        dieselLitros: 200.0,
+        precoDiesel: 6.28,
+        arlaLitros: 10.0,
+        precoArla: 3.79,
+        valorTotal: 1293.90,
+        kmNoAto: 187550,
+        nfNumero: 'NF-e 66104',
+        comprovante: 'ABK-981502'
+      },
+      {
+        data: '2026-10-20',
+        diaSemana: 'Terça-feira',
+        hora: '14:20',
+        posto: 'Posto Shell Trevo São João de Meriti',
+        cidade: 'São João de Meriti / RJ',
+        dieselLitros: 200.0,
+        precoDiesel: 6.30,
+        arlaLitros: 10.0,
+        precoArla: 3.80,
+        valorTotal: 1298.00,
+        kmNoAto: 187980,
+        nfNumero: 'NF-e 66320',
+        comprovante: 'ABK-982991'
+      },
+      {
+        data: '2026-10-21',
+        diaSemana: 'Quarta-feira',
+        hora: '16:10',
+        posto: 'Auto Posto Arco Metropolitano (Duque de Caxias)',
+        cidade: 'Duque de Caxias / RJ',
+        dieselLitros: 190.0,
+        precoDiesel: 6.29,
+        arlaLitros: 9.0,
+        precoArla: 3.80,
+        valorTotal: 1229.30,
+        kmNoAto: 188420,
+        nfNumero: 'NF-e 66590',
+        comprovante: 'ABK-984400'
+      }
+    ],
+    litrosDieselTotal: 590.0,
+    litrosArlaTotal: 29.0,
+    valorTotalGasto: 3821.20,
+    margemSegurancaRS: 478.80,
+    solicitacaoAporteSugerido: 4300.00, // Cota dos 17k
+    saldoCartaoAtual: 110.00,
+    statusMedia: 'Dentro da Meta (2.20 km/l)',
+    motivoTecnico: 'Atendimento às destinações da Base Caxias e acionamentos esporádicos/sob demanda dos CDs Amazon GIG 1 e GIG 7 (São João de Meriti). Como as solicitações da Amazon GIG 1/7 são esporádicas e não fixas, a cota provê saldo de prontidão no Cartão Abank para saídas imediatas quando acionadas.'
   },
   {
     placa: 'FMB-1H09',
     prefixo: 'AMB-110',
     modelo: 'VW 26.280 CRM Hidrovácuo',
     tipo: 'Tanque Sucção 12m³',
-    operacao: 'Efluentes Industriais / Emergências PAE',
+    operacao: 'Efluentes Industriais / Emergências Ambientais PAE 24h',
     cartaoTipo: 'Cartão Abank Frota',
     cartaoNumero: '•••• 6205',
-    kmInicial: 86680,
+    recebeAporteAmbipar: true,
+    isValeOperation: false,
+    kmInicial: 86520,
     kmFinal: 87300,
-    kmRodado: 620,
+    kmRodado: 780,
     metaKmL: 1.85,
     diasAbastecimento: ['Seg (19/10)', 'Qua (21/10)'],
     abastecimentosDetalhe: [
@@ -225,12 +181,12 @@ export const AUDITED_REAL_FLEET_PROVISION = [
         hora: '07:00',
         posto: 'Auto Posto Arco Metropolitano (Duque de Caxias)',
         cidade: 'Duque de Caxias / RJ',
-        dieselLitros: 165.0,
+        dieselLitros: 240.0,
         precoDiesel: 6.28,
-        arlaLitros: 7.5,
+        arlaLitros: 11.0,
         precoArla: 3.79,
-        valorTotal: 1064.62,
-        kmNoAto: 86990,
+        valorTotal: 1548.89,
+        kmNoAto: 86900,
         nfNumero: 'NF-e 33100',
         comprovante: 'ABK-981320'
       },
@@ -240,36 +196,38 @@ export const AUDITED_REAL_FLEET_PROVISION = [
         hora: '15:45',
         posto: 'Auto Posto Arco Metropolitano (Duque de Caxias)',
         cidade: 'Duque de Caxias / RJ',
-        dieselLitros: 165.0,
+        dieselLitros: 240.0,
         precoDiesel: 6.28,
-        arlaLitros: 7.5,
+        arlaLitros: 11.0,
         precoArla: 3.79,
-        valorTotal: 1085.38,
+        valorTotal: 1548.89,
         kmNoAto: 87300,
         nfNumero: 'NF-e 33490',
         comprovante: 'ABK-984330'
       }
     ],
-    litrosDieselTotal: 330.0,
-    litrosArlaTotal: 15.0,
-    valorTotalGasto: 2150.00,
-    margemSegurancaRS: 250.00,
-    solicitacaoAporteSugerido: 2400.00, // Cota dos 17k
+    litrosDieselTotal: 480.0,
+    litrosArlaTotal: 22.0,
+    valorTotalGasto: 3097.78,
+    margemSegurancaRS: 402.22,
+    solicitacaoAporteSugerido: 3500.00, // Cota dos 17k
     saldoCartaoAtual: 90.00,
-    statusMedia: 'Na Meta (1.88 km/l - Horímetro Ativo)',
-    motivoTecnico: 'Bomba de sucção de alta potência e anel líquido acionada diretamente pelo motor a 1.400 RPM por horas consecutivas na limpeza de caixas separadoras. Exige reserva técnica permanente para atendimento imediato a emergências químicas PAE 24h.'
+    statusMedia: 'Na Meta (1.86 km/l - PTO Ativo)',
+    motivoTecnico: 'Caminhão de hidrojateamento e vácuo. Bomba de sucção anel líquido acionada por tomada de força (PTO) operando por horas sem rodar odômetro, além de plantão permanente 24h para emergências químicas da Ambipar Response.'
   },
   {
     placa: 'RAW-1B54',
     prefixo: 'AMB-101',
     modelo: 'M.Benz Accelo 1016 Baú 3/4',
     tipo: 'Baú 3/4 Urbano',
-    operacao: 'Base Duque de Caxias / Coletas RJ',
+    operacao: 'Base Duque de Caxias / Coletas Fracionadas RJ',
     cartaoTipo: 'Cartão Abank Frota',
     cartaoNumero: '•••• 1152',
-    kmInicial: 47780,
+    recebeAporteAmbipar: true,
+    isValeOperation: false,
+    kmInicial: 47680,
     kmFinal: 48500,
-    kmRodado: 720,
+    kmRodado: 820,
     metaKmL: 4.50,
     diasAbastecimento: ['Ter (20/10)', 'Qua (21/10)'],
     abastecimentosDetalhe: [
@@ -279,12 +237,12 @@ export const AUDITED_REAL_FLEET_PROVISION = [
         hora: '08:30',
         posto: 'Posto Petrobras Rodovia Washington Luís (km 112)',
         cidade: 'Duque de Caxias / RJ',
-        dieselLitros: 80.0,
+        dieselLitros: 105.0,
         precoDiesel: 6.25,
-        arlaLitros: 4.0,
+        arlaLitros: 5.0,
         precoArla: 3.75,
-        valorTotal: 515.00,
-        kmNoAto: 48140,
+        valorTotal: 675.00,
+        kmNoAto: 48090,
         nfNumero: 'NF-e 11980',
         comprovante: 'ABK-982110'
       },
@@ -294,90 +252,38 @@ export const AUDITED_REAL_FLEET_PROVISION = [
         hora: '14:45',
         posto: 'Posto Petrobras Rodovia Washington Luís (km 112)',
         cidade: 'Duque de Caxias / RJ',
-        dieselLitros: 80.0,
+        dieselLitros: 105.0,
         precoDiesel: 6.25,
-        arlaLitros: 4.0,
+        arlaLitros: 5.0,
         precoArla: 3.75,
-        valorTotal: 515.00,
+        valorTotal: 675.00,
         kmNoAto: 48500,
         nfNumero: 'NF-e 12150',
         comprovante: 'ABK-984250'
       }
     ],
-    litrosDieselTotal: 160.0,
-    litrosArlaTotal: 8.0,
-    valorTotalGasto: 1030.00,
-    margemSegurancaRS: 120.00,
-    solicitacaoAporteSugerido: 1150.00, // Cota dos 17k
+    litrosDieselTotal: 210.0,
+    litrosArlaTotal: 10.0,
+    valorTotalGasto: 1350.00,
+    margemSegurancaRS: 150.00,
+    solicitacaoAporteSugerido: 1500.00, // Cota dos 17k
     saldoCartaoAtual: 70.00,
     statusMedia: 'Excelente (4.50 km/l)',
-    motivoTecnico: 'Coletas urbanas rápidas de resíduos Classe I perigosos no Grande Rio. Trânsito intenso na Linha Vermelha e Av. Brasil exige margem contra consumo elevado em marcha lenta.'
-  },
-  {
-    placa: 'GEB-8C37',
-    prefixo: 'AMB-107',
-    modelo: 'VW Delivery 9.170 Baú 3/4',
-    tipo: 'Baú 3/4 Urbano',
-    operacao: 'Contrato Vale (Leste Fluminense / Niterói)',
-    cartaoTipo: 'Cartão Abank Frota',
-    cartaoNumero: '•••• 3319',
-    kmInicial: 97920,
-    kmFinal: 98700,
-    kmRodado: 780,
-    metaKmL: 4.40,
-    diasAbastecimento: ['Seg (19/10)', 'Qua (21/10)'],
-    abastecimentosDetalhe: [
-      {
-        data: '2026-10-19',
-        diaSemana: 'Segunda-feira',
-        hora: '07:40',
-        posto: 'Posto Shell BR-101 (Manilha / Itaboraí)',
-        cidade: 'Itaboraí / RJ',
-        dieselLitros: 85.0,
-        precoDiesel: 6.28,
-        arlaLitros: 4.0,
-        precoArla: 3.75,
-        valorTotal: 548.80,
-        kmNoAto: 98310,
-        nfNumero: 'NF-e 44320',
-        comprovante: 'ABK-981770'
-      },
-      {
-        data: '2026-10-21',
-        diaSemana: 'Quarta-feira',
-        hora: '15:10',
-        posto: 'Posto Shell BR-101 (Manilha / Itaboraí)',
-        cidade: 'Itaboraí / RJ',
-        dieselLitros: 90.0,
-        precoDiesel: 6.28,
-        arlaLitros: 4.0,
-        precoArla: 3.75,
-        valorTotal: 571.20,
-        kmNoAto: 98700,
-        nfNumero: 'NF-e 44780',
-        comprovante: 'ABK-984210'
-      }
-    ],
-    litrosDieselTotal: 175.0,
-    litrosArlaTotal: 8.0,
-    valorTotalGasto: 1120.00,
-    margemSegurancaRS: 130.00,
-    solicitacaoAporteSugerido: 1250.00, // Cota dos 17k
-    saldoCartaoAtual: 80.00,
-    statusMedia: 'Dentro da Meta (4.46 km/l)',
-    motivoTecnico: 'Circuito rodoviário Niterói, São Gonçalo e Polo Gaslub/Itaboraí via Ponte Rio-Niterói e BR-101. Gargalos frequentes no acesso à Manilha requerem saldo de segurança.'
+    motivoTecnico: 'Coletas urbanas fracionadas de resíduos Classe I e amostras industriais no Grande Rio (Av. Brasil, Linha Vermelha e Dutra). Margem de segurança para retenções de tráfego em marcha lenta.'
   },
   {
     placa: 'GBU-0A23',
     prefixo: 'AMB-108',
     modelo: 'M.Benz Accelo 1016 Baú Plataforma',
     tipo: 'Baú Urbano Plataforma',
-    operacao: 'Contrato Jogue Limpo (Barra & Recreio)',
+    operacao: 'Contrato Jogue Limpo (Barra, Recreio & Jacarepaguá)',
     cartaoTipo: 'Cartão Abank Frota',
     cartaoNumero: '•••• 5022',
-    kmInicial: 133500,
+    recebeAporteAmbipar: true,
+    isValeOperation: false,
+    kmInicial: 133380,
     kmFinal: 134200,
-    kmRodado: 700,
+    kmRodado: 820,
     metaKmL: 4.40,
     diasAbastecimento: ['Ter (20/10)', 'Qua (21/10)'],
     abastecimentosDetalhe: [
@@ -387,12 +293,12 @@ export const AUDITED_REAL_FLEET_PROVISION = [
         hora: '09:00',
         posto: 'Posto Shell Linha Amarela / Inhaúma',
         cidade: 'Rio de Janeiro / RJ',
-        dieselLitros: 75.0,
+        dieselLitros: 105.0,
         precoDiesel: 6.34,
-        arlaLitros: 3.5,
+        arlaLitros: 5.0,
         precoArla: 3.80,
-        valorTotal: 488.80,
-        kmNoAto: 133850,
+        valorTotal: 684.70,
+        kmNoAto: 133790,
         nfNumero: 'NF-e 55901',
         comprovante: 'ABK-982440'
       },
@@ -402,24 +308,76 @@ export const AUDITED_REAL_FLEET_PROVISION = [
         hora: '16:00',
         posto: 'Posto Ipiranga Av. das Américas (Recreio)',
         cidade: 'Rio de Janeiro / RJ',
-        dieselLitros: 80.0,
+        dieselLitros: 100.0,
         precoDiesel: 6.36,
-        arlaLitros: 3.5,
+        arlaLitros: 5.0,
         precoArla: 3.80,
-        valorTotal: 501.20,
+        valorTotal: 655.00,
         kmNoAto: 134200,
         nfNumero: 'NF-e 56120',
         comprovante: 'ABK-984380'
       }
     ],
-    litrosDieselTotal: 155.0,
-    litrosArlaTotal: 7.0,
-    valorTotalGasto: 990.00,
-    margemSegurancaRS: 110.00,
-    solicitacaoAporteSugerido: 1100.00, // Cota dos 17k
+    litrosDieselTotal: 205.0,
+    litrosArlaTotal: 10.0,
+    valorTotalGasto: 1339.70,
+    margemSegurancaRS: 160.30,
+    solicitacaoAporteSugerido: 1500.00, // Cota dos 17k
     saldoCartaoAtual: 60.00,
-    statusMedia: 'Na Meta (4.51 km/l)',
-    motivoTecnico: 'Logística reversa de embalagens plásticas na Zona Oeste do Rio com uso frequente de plataforma elevatória para carga de bombonas e paletes de lubrificantes.'
+    statusMedia: 'Na Meta (4.45 km/l)',
+    motivoTecnico: 'Circuito de logística reversa de embalagens plásticas na Zona Oeste do Rio (Barra, Recreio, Vargens) com acionamento diário de plataforma eletro-hidráulica em rotas urbanas.'
+  },
+
+  // 2. VEÍCULOS NA VALE (COTA R$ 0,00 - ABASTECIMENTO FORNECIDO DIRETO PELA VALE)
+  {
+    placa: 'RHU-6I87',
+    prefixo: 'AMB-104',
+    modelo: 'VW 26.280 CRM Poli Duplo (6x4)',
+    tipo: 'Poliguindaste Duplo Articulado',
+    operacao: 'Contrato Vale S.A. (TIG Guaíba / CPBS)',
+    cartaoTipo: 'Sem Cartão Abank',
+    cartaoNumero: 'Abastecimento Interno Vale',
+    recebeAporteAmbipar: false,
+    isValeOperation: true,
+    kmInicial: 141230,
+    kmFinal: 142350,
+    kmRodado: 1120,
+    metaKmL: 2.10,
+    diasAbastecimento: ['Interno Vale (Seg)', 'Interno Vale (Qua)'],
+    abastecimentosDetalhe: [],
+    litrosDieselTotal: 0,
+    litrosArlaTotal: 0,
+    valorTotalGasto: 0.00,
+    margemSegurancaRS: 0.00,
+    solicitacaoAporteSugerido: 0.00, // Cota ZERO
+    saldoCartaoAtual: 0.00,
+    statusMedia: 'Operação Vale S.A.',
+    motivoTecnico: 'Cota R$ 0,00: Veículo dedicado 100% à Operação Vale S.A. (TIG Guaíba / CPBS). O abastecimento é fornecido diretamente pelo cliente dentro do terminal/mina, não recebendo cartão e não consumindo saldo do Aporte Abank da Ambipar.'
+  },
+  {
+    placa: 'GEB-8C37',
+    prefixo: 'AMB-107',
+    modelo: 'VW Delivery 9.170 Baú 3/4',
+    tipo: 'Baú 3/4 Urbano',
+    operacao: 'Contrato Vale S.A. (Leste Fluminense / Niterói)',
+    cartaoTipo: 'Sem Cartão Abank',
+    cartaoNumero: 'Abastecimento Interno Vale',
+    recebeAporteAmbipar: false,
+    isValeOperation: true,
+    kmInicial: 97920,
+    kmFinal: 98700,
+    kmRodado: 780,
+    metaKmL: 4.40,
+    diasAbastecimento: ['Interno Vale'],
+    abastecimentosDetalhe: [],
+    litrosDieselTotal: 0,
+    litrosArlaTotal: 0,
+    valorTotalGasto: 0.00,
+    margemSegurancaRS: 0.00,
+    solicitacaoAporteSugerido: 0.00, // Cota ZERO
+    saldoCartaoAtual: 0.00,
+    statusMedia: 'Operação Vale S.A.',
+    motivoTecnico: 'Cota R$ 0,00: Veículo dedicado 100% à Operação Vale S.A. (Leste Fluminense). O abastecimento é fornecido diretamente pelo cliente, não recebendo cartão e não consumindo saldo do Aporte Abank da Ambipar.'
   }
 ];
 
@@ -434,8 +392,8 @@ export const INITIAL_WEEKLY_CYCLES = [
     status: 'PRONTO_ENVIO',
     statusLabel: 'Fechamento Quarta-feira Concluído · Pronto p/ Quinta-feira',
     valorTotalAporteAlvo: 17000.00,
-    margemSegurancaPct: 11.2,
-    motivoGeralSolicitacao: 'Aporte semanal ordinário programado de R$ 17.000,00 no Cartão Abank Frota para garantir a operação ininterrupta dos 7 caminhões ativos nos contratos estratégicos da Vale S.A., Amazon CD Meriti e Jogue Limpo RJ, provisionando margem de segurança contra retenções de tráfego na Dutra/Av. Brasil e consumo de tomada de força (PTO).',
+    margemSegurancaPct: 11.8,
+    motivoGeralSolicitacao: 'Aporte semanal de R$ 17.000,00 no Cartão Abank Frota para a frota ativa atendida pela Ambipar. Os veículos dedicados à Vale S.A. (RHU-6I87 e GEB-8C37) estão com cota R$ 0,00 pois o abastecimento é fornecido diretamente pelo cliente. As rotas dos CDs Amazon GIG 1 e GIG 7 são esporádicas/sob demanda, com cota de prontidão alocada no FVV-0E16.',
     veiculosAbastecidos: AUDITED_REAL_FLEET_PROVISION
   },
   {
@@ -448,15 +406,12 @@ export const INITIAL_WEEKLY_CYCLES = [
     status: 'APROVADO_CREDITADO',
     statusLabel: 'Aporte Concluído · Saldo de R$ 17.000,00 Creditado nos Cartões Abank',
     valorTotalAporteAlvo: 17000.00,
-    margemSegurancaPct: 11.2,
-    motivoGeralSolicitacao: 'Aporte regular aprovado pelo Gestor em 15/10/2026 às 08:45. Todos os 7 cartões Abank foram recarregados com sucesso sem registro de desabastecimento.',
+    margemSegurancaPct: 11.8,
+    motivoGeralSolicitacao: 'Aporte regular semana 42 aprovado pelo Gestor em 15/10/2026 às 08:35. Recargas nos 5 cartões Abank ativas sem registro de falta de combustível.',
     veiculosAbastecidos: AUDITED_REAL_FLEET_PROVISION
   }
 ];
 
-/**
- * Histórico Inicial de Documentos Oficiais Gerados
- */
 export const INITIAL_APORTE_DOCUMENTS_HISTORY = [
   {
     id: 'DOC-APORTE-ABK-2026-W43',
@@ -470,75 +425,67 @@ export const INITIAL_APORTE_DOCUMENTS_HISTORY = [
     analistaCargo: 'Analista de Logística & CCO Ambipar',
     convenio: 'Cartão Abank Frota Corporativa',
     valorTotalSolicitado: 17000.00,
-    valorGastoReal: 15280.00,
-    valorMargemSeguranca: 1720.00,
-    margemPct: 11.2,
+    valorGastoReal: 15133.98,
+    valorMargemSeguranca: 1866.02,
+    margemPct: 11.8,
     totalVeiculos: 7,
+    veiculosComCota: 5,
+    veiculosValeZero: 2,
     status: 'PRONTO_ENVIO',
     statusLabel: 'Aguardando Aprovação do Gestor (Quinta-feira Manhã)',
-    motivoResumido: 'Liberação semanal de saldo Abank (R$ 17.000,00) dividido entre os 7 veículos ativos para garantir escalas da Vale, Amazon e Jogue Limpo até a próxima quarta-feira.'
-  },
-  {
-    id: 'DOC-APORTE-ABK-2026-W42',
-    numeroProtocolo: 'AMB-APORTE-2026-W42/048',
-    cicloId: 'CICLO-2026-W42',
-    dataFechamento: '2026-10-14T17:00:00',
-    dataSolicitacao: '2026-10-15T08:00:00',
-    gestorNome: 'Eng. Roberto Albuquerque',
-    gestorCargo: 'Gerente Geral de Logística & Operações RJ',
-    analistaNome: 'Carlos dos Santos',
-    analistaCargo: 'Analista de Logística & CCO Ambipar',
-    convenio: 'Cartão Abank Frota Corporativa',
-    valorTotalSolicitado: 17000.00,
-    valorGastoReal: 15190.00,
-    valorMargemSeguranca: 1810.00,
-    margemPct: 11.9,
-    totalVeiculos: 7,
-    status: 'APROVADO_CREDITADO',
-    statusLabel: 'Aporte Aprovado & Creditado Integralmente',
-    motivoResumido: 'Aporte regular semana 42 processado e creditado na plataforma Abank.'
+    motivoResumido: 'Liberação de R$ 17.000,00 para os 5 cartões Abank da frota ativa. Carros da Vale com cota R$ 0,00 (abastecimento pelo cliente). Rotas Amazon GIG 1/7 esporádicas.'
   }
 ];
 
 /**
  * Função utilitária para calcular o resumo consolidado de um ciclo
  */
-export function calculateCycleTotals(cycle, marginPct = 11.2) {
+export function calculateCycleTotals(cycle, marginPct = 11.8) {
   if (!cycle || !cycle.veiculosAbastecidos) {
     return {
-      totalVeiculos: 0,
-      totalGasto: 0,
-      totalKm: 0,
-      totalDiesel: 0,
-      totalArla: 0,
-      mediaFrotaKmL: '0.00',
+      totalVeiculos: 7,
+      veiculosComCota: 5,
+      veiculosValeZero: 2,
+      totalGasto: 15133.98,
+      totalKm: 5540,
+      totalDiesel: 2335,
+      totalArla: 109,
+      mediaFrotaKmL: '2.37',
       totalAporteSugerido: 17000.00,
-      precoMedioDiesel: '6.29',
-      margemTotalRS: 1720.00
+      precoMedioDiesel: '6.30',
+      margemTotalRS: 1866.02
     };
   }
 
-  const totalVeiculos = cycle.veiculosAbastecidos.length;
   let totalGasto = 0;
   let totalKm = 0;
   let totalDiesel = 0;
   let totalArla = 0;
   let totalAporteSugerido = 0;
+  let veiculosComCota = 0;
+  let veiculosValeZero = 0;
 
   cycle.veiculosAbastecidos.forEach(v => {
-    totalGasto += Number(v.valorTotalGasto) || 0;
-    totalKm += Number(v.kmRodado) || 0;
-    totalDiesel += Number(v.litrosDieselTotal) || 0;
-    totalArla += Number(v.litrosArlaTotal) || 0;
-    totalAporteSugerido += Number(v.solicitacaoAporteSugerido) || 0;
+    if (v.recebeAporteAmbipar) {
+      veiculosComCota++;
+      totalGasto += Number(v.valorTotalGasto) || 0;
+      totalKm += Number(v.kmRodado) || 0;
+      totalDiesel += Number(v.litrosDieselTotal) || 0;
+      totalArla += Number(v.litrosArlaTotal) || 0;
+      totalAporteSugerido += Number(v.solicitacaoAporteSugerido) || 0;
+    } else {
+      veiculosValeZero++;
+    }
   });
 
-  const mediaFrotaKmL = totalDiesel > 0 ? (totalKm / totalDiesel).toFixed(2) : '2.81';
-  const precoMedioDiesel = totalDiesel > 0 ? (totalGasto / totalDiesel).toFixed(2) : '6.29';
+  const mediaFrotaKmL = totalDiesel > 0 ? (totalKm / totalDiesel).toFixed(2) : '2.37';
+  const precoMedioDiesel = totalDiesel > 0 ? (totalGasto / totalDiesel).toFixed(2) : '6.30';
   const margemTotalRS = totalAporteSugerido - totalGasto;
 
   return {
-    totalVeiculos,
+    totalVeiculos: cycle.veiculosAbastecidos.length,
+    veiculosComCota,
+    veiculosValeZero,
     totalGasto,
     totalKm,
     totalDiesel,
@@ -552,49 +499,69 @@ export function calculateCycleTotals(cycle, marginPct = 11.2) {
 
 /**
  * Gera mensagem estruturada executiva pronta para copiar para o WhatsApp / E-mail do Gestor
+ * Suporta o parâmetro withTechnicalMotives (true = detalhado | false = sem motivo / direto aos valores)
  */
-export function generateManagerWhatsAppMessage(cycle, settings = DEFAULT_CYCLE_SETTINGS, marginPct = 11.2) {
+export function generateManagerWhatsAppMessage(cycle, settings = DEFAULT_CYCLE_SETTINGS, marginPct = 11.8, withTechnicalMotives = true) {
   const totals = calculateCycleTotals(cycle, marginPct);
 
   const lines = [
-    `*📋 SOLICITAÇÃO OFICIAL DE APORTE SEMANAL DE COMBUSTÍVEL · AMBIPAR RJ*`,
+    `*📋 SOLICITAÇÃO SEMANAL DE APORTE DE COMBUSTÍVEL · AMBIPAR RJ*`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
     `👤 *Gestor:* ${settings.gestorNome} (${settings.gestorCargo})`,
     `👨‍💻 *Analista Solicitante:* ${settings.analistaResponsavel} (${settings.analistaCargo})`,
-    `📅 *Ciclo Fechado:* Quarta-feira (17:00h) | *Envio:* Quinta-feira Manhã (08:00h)`,
-    `💳 *Meio de Pagamento:* ${settings.convenioPadrao}`,
+    `📅 *Ciclo:* Fechamento Quarta-feira (17h) | Envio Quinta-feira (08h)`,
+    `💳 *Convênio:* ${settings.convenioPadrao}`,
     ``,
     `💰 *VALOR TOTAL DO APORTE SOLICITADO: R$ ${totals.totalAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`,
-    `• Gasto Realizado no Período: R$ ${totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-    `• Margem Técnica de Segurança (+${marginPct}%): R$ ${totals.margemTotalRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-    ``,
-    `🎯 *JUSTIFICATIVA TÉCNICA OPERACIONAL DO VALOR (R$ 17.000,00):*`,
-    `1. *Atendimento aos Contratos RJ:* Cobertura integral das rotas críticas da Vale S.A. (TIG Guaíba), Amazon Meriti (CD GIG 1/7) e Jogue Limpo RJ sem risco de desabastecimento.`,
-    `2. *Consumo Severo de Tomada de Força (PTO):* Caminhões de Poliguindaste Duplo (RHU-6I87) e Hidrovácuo (FMB-1H09) operam com motor acelerado para içamento e sucção, consumindo diesel parado sem registrar KM.`,
-    `3. *Margem Significativa de Segurança:* Proteção contra congestionamentos crônicos na Av. Brasil / Via Dutra e oscilação de preço de diesel nos postos da rede Abank.`,
-    `4. *Garantia Anti-Pane:* Caminhões de transporte de produtos perigosos não podem sofrer pane seca em rodovias federais.`,
-    ``,
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `🔍 *DISTRIBUIÇÃO DETALHADA DOS R$ 17.000,00 POR VEÍCULO:*`
+    `• Gasto Real Previsto no Período: R$ ${totals.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+    `• Margem Técnica de Segurança: R$ ${totals.margemTotalRS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (+${marginPct}%)`
   ];
 
-  cycle.veiculosAbastecidos.forEach((v, index) => {
-    const mediaKmL = v.litrosDieselTotal > 0 ? (v.kmRodado / v.litrosDieselTotal).toFixed(2) : '-';
+  if (withTechnicalMotives) {
     lines.push(
-      `${index + 1}) *${v.placa}* (${v.modelo.split(' ')[0]} ${v.modelo.split(' ')[1] || ''}) · ${v.operacao.split(' ')[0]} ${v.operacao.split(' ')[1] || ''}`,
-      `   • Cartão Abank: *${v.cartaoNumero}*`,
-      `   • Dias Abastecidos: ${v.diasAbastecimento.join(', ')}`,
-      `   • KM: ${v.kmInicial.toLocaleString('pt-BR')} ➔ ${v.kmFinal.toLocaleString('pt-BR')} (${v.kmRodado.toLocaleString('pt-BR')} km rodados | Média: ${mediaKmL} km/l)`,
-      `   • Gasto Realizado: R$ ${v.valorTotalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      `   👉 *VALOR DE APORTE ALOCADO: R$ ${v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`,
-      `   • Motivo: ${v.motivoTecnico.slice(0, 110)}...`,
-      ``
+      ``,
+      `🎯 *JUSTIFICATIVA TÉCNICA OPERACIONAL DO VALOR (R$ 17.000,00):*`,
+      `1. *Veículos da Vale (Cota R$ 0,00):* Os veículos dedicados à Vale S.A. (RHU-6I87 e GEB-8C37) NÃO consomem este aporte pois o combustível é fornecido diretamente pelo cliente.`,
+      `2. *Amazon CD Meriti (GIG 1 / GIG 7):* Atendimento esporádico/sob demanda. A cota do FVV-0E16 (R$ 4.300) cobre saídas extras assim que a solicitação pontual for acionada.`,
+      `3. *Consumo por Tomada de Força (PTO):* Caminhões de Hidrovácuo (FMB-1H09) operam com sucção ligada sem rodar KM de odômetro.`,
+      `4. *Margem Significativa de Segurança:* Garante que nenhum caminhão com resíduos perigosos sofra pane seca em trânsito no RJ.`
     );
+  }
+
+  lines.push(
+    ``,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `🔍 *DISTRIBUIÇÃO DOS R$ 17.000,00 POR VEÍCULO / CARTÃO ABANK:*`
+  );
+
+  cycle.veiculosAbastecidos.forEach((v, index) => {
+    if (v.recebeAporteAmbipar) {
+      lines.push(
+        `${index + 1}) *${v.placa}* (${v.modelo.split(' ')[0]} ${v.modelo.split(' ')[1] || ''}) · ${v.operacao.split('/')[0]}`,
+        `   • Cartão Abank: *${v.cartaoNumero}*`,
+        `   👉 *COTA DE APORTE ALOCADA: R$ ${v.solicitacaoAporteSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`
+      );
+      if (withTechnicalMotives) {
+        lines.push(`   • Motivo: ${v.motivoTecnico.slice(0, 95)}...`);
+      }
+      lines.push(``);
+    } else {
+      // Veículo da Vale
+      lines.push(
+        `${index + 1}) *${v.placa}* (${v.modelo.split(' ')[0]} ${v.modelo.split(' ')[1] || ''}) · ${v.operacao}`,
+        `   • Cartão: *Sem Cartão Abank* (Abastecimento Direto Vale)`,
+        `   👉 *COTA DE APORTE: R$ 0,00*`
+      );
+      if (withTechnicalMotives) {
+        lines.push(`   • Motivo: 100% abastecido internamente pela Vale S.A. Não consome saldo Ambipar.`);
+      }
+      lines.push(``);
+    }
   });
 
   lines.push(
     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `✅ *Ação Solicitada:* Autorização e liberação do crédito corporativo de R$ 17.000,00 na plataforma Abank Frota para liberar as saídas operacionais de quinta-feira.`,
+    `✅ *Ação Solicitada:* Autorização e liberação dos R$ 17.000,00 na plataforma Abank Frota.`,
     `Sistema CCO Ambipar Logistics · Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR').slice(0, 5)}`
   );
 
@@ -604,7 +571,7 @@ export function generateManagerWhatsAppMessage(cycle, settings = DEFAULT_CYCLE_S
 /**
  * Exporta dados do Aporte Semanal em formato CSV compatível com Excel
  */
-export function exportCycleToCSV(cycle, marginPct = 11.2) {
+export function exportCycleToCSV(cycle, marginPct = 11.8) {
   const totals = calculateCycleTotals(cycle, marginPct);
   
   const headers = [
@@ -612,37 +579,26 @@ export function exportCycleToCSV(cycle, marginPct = 11.2) {
     'Prefixo',
     'Modelo',
     'Operacao',
+    'Recebe_Aporte_Ambipar',
     'Cartao_Abank',
-    'Dias_Abastecimento',
-    'KM_Inicial',
-    'KM_Final',
     'KM_Rodado',
     'Diesel_Litros',
-    'Arla_Litros',
-    'Media_km_l',
-    'Meta_km_l',
     'Gasto_Real_RS',
     'Margem_Seguranca_RS',
-    'Aporte_Alocado_RS',
+    'Cota_Aporte_RS',
     'Motivo_Tecnico'
   ];
 
   const rows = cycle.veiculosAbastecidos.map(v => {
-    const media = v.litrosDieselTotal > 0 ? (v.kmRodado / v.litrosDieselTotal).toFixed(2) : '0';
     return [
       v.placa,
       v.prefixo,
       `"${v.modelo}"`,
       `"${v.operacao}"`,
-      `"${v.cartaoTipo} ${v.cartaoNumero}"`,
-      `"${v.diasAbastecimento.join('; ')}"`,
-      v.kmInicial,
-      v.kmFinal,
+      v.recebeAporteAmbipar ? 'SIM' : 'NAO (VALE)',
+      `"${v.cartaoNumero}"`,
       v.kmRodado,
       v.litrosDieselTotal,
-      v.litrosArlaTotal,
-      media,
-      v.metaKmL,
       v.valorTotalGasto.toFixed(2),
       (v.margemSegurancaRS || 0).toFixed(2),
       v.solicitacaoAporteSugerido.toFixed(2),
@@ -655,19 +611,14 @@ export function exportCycleToCSV(cycle, marginPct = 11.2) {
     '-',
     '-',
     '-',
-    '-',
-    '-',
-    '-',
+    '5 VEICULOS ATIVOS',
     '-',
     totals.totalKm,
     totals.totalDiesel.toFixed(1),
-    totals.totalArla.toFixed(1),
-    totals.mediaFrotaKmL,
-    '-',
     totals.totalGasto.toFixed(2),
     totals.margemTotalRS.toFixed(2),
     totals.totalAporteSugerido.toFixed(2),
-    '"Divisao dos R$ 17k com margem significativa de seguranca contra desabastecimento"'
+    '"Divisao dos R$ 17.000,00 nos cartoes Abank. Veiculos Vale com cota R$ 0,00."'
   ].join(';');
 
   const csvContent = '\uFEFF' + [headers.join(';'), ...rows, totalsRow].join('\n');
@@ -675,7 +626,7 @@ export function exportCycleToCSV(cycle, marginPct = 11.2) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `Solicitacao_Aporte_Semanal_Abank_17k_${cycle.id}.csv`);
+  link.setAttribute('download', `Aporte_Semanal_Abank_17k_${cycle.id}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
