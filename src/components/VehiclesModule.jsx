@@ -744,7 +744,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                   <input
                     type="text"
                     required
-                    placeholder="Ex: AMB4K89"
+                    placeholder="Selecione ou informe a placa cadastrada"
                     value={formData.placa}
                     onChange={(e) => setFormData({ ...formData, placa: e.target.value.toUpperCase() })}
                     style={{ fontWeight: 800, letterSpacing: '0.08em', fontSize: '1.05rem' }}
@@ -1276,7 +1276,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                 <Search size={18} className="search-icon-dim" />
                 <input
                   type="text"
-                  placeholder="Pesquisar por Placa (ex: AMB-4K89), Prefixo, Modelo, Tipo ou Condutor..."
+                  placeholder="Pesquisar por placa, prefixo, modelo, tipo ou condutor..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   id="input-fleet-search"

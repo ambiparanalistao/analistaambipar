@@ -760,7 +760,7 @@ export default function DriversModule({ user, maintenanceAccess }) {
                   <label>Placa do Veículo Vinculado</label>
                   <input
                     type="text"
-                    placeholder="Ex: AMB-4K89 ou clique na frota abaixo"
+                    placeholder="Selecione ou informe a placa cadastrada"
                     value={formData.veiculo_vinculado}
                     onChange={(e) => setFormData({ ...formData, veiculo_vinculado: e.target.value.toUpperCase() })}
                     style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.05em' }}

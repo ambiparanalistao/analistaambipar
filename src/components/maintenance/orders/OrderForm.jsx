@@ -235,7 +235,7 @@ export default function OrderForm({
               aria-label="Placa do veículo"
               list="order-vehicles-datalist"
               disabled={sourceLocked || vehicleLocked}
-              placeholder="Digite a placa (ex: FVV0E16)"
+              placeholder="Selecione ou informe a placa cadastrada"
               value={search}
               onChange={e => handlePlacaChange(e.target.value)}
             />

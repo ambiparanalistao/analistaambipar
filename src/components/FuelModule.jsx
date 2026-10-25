@@ -2241,7 +2241,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                   <input
                     type="text"
                     required
-                    placeholder="Ex: ABC1D23 ou BRA2E19"
+                    placeholder="Selecione ou informe a placa cadastrada"
                     value={formData.placa}
                     onChange={e => setFormData({ ...formData, placa: e.target.value.toUpperCase() })}
                   />

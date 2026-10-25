@@ -886,7 +886,7 @@ export default function FuelSpreadsheetWorkspace({
                             className="styled-native-input"
                             style={{ width: '100%', fontSize: '0.74rem', padding: '2px 4px', fontWeight: 700, textTransform: 'uppercase', background: 'transparent' }}
                             value={row.placa || ''}
-                            placeholder="ABC1D23"
+                            placeholder="Selecione ou informe a placa cadastrada"
                             onChange={(e) => handleCellChange(index, 'placa', e.target.value.toUpperCase())}
                           />
                         </td>
