@@ -1,6 +1,7 @@
 import React from "react";
 import { preventiveProgress } from "../../../utils/preventiveProgress";
 import { complianceToday, displayDate } from "../../../utils/compliance";
+import { computeVehiclePreventiveAlerts } from "../../../utils/planValidation";
 const km = (n) => Number(n).toLocaleString("pt-BR");
 export default function PreventiveProgress({
   vehicle,
@@ -8,7 +9,8 @@ export default function PreventiveProgress({
   loading,
   error,
 }) {
-  if (loading && !rows.length)
+  const effectiveRows = (rows && rows.length) ? rows : computeVehiclePreventiveAlerts(vehicle);
+  if (loading && !effectiveRows.length)
     return <p role="status">Calculando próximas preventivas…</p>;
   if (error)
     return (
@@ -23,7 +25,7 @@ export default function PreventiveProgress({
       aria-label={"Próximas preventivas de " + vehicle.placa}
     >
       <h4>Próximas manutenções preventivas</h4>
-      {rows.map((plan) => {
+      {effectiveRows.map((plan) => {
         const state = preventiveProgress(
             plan,
             vehicle.km_atual,
@@ -93,7 +95,7 @@ export default function PreventiveProgress({
           </article>
         );
       })}
-      {!rows.length && <p>Nenhum plano preventivo cadastrado para este veículo. <a href="/manutencao/planos-preventivos">Cadastrar ou consultar planos</a>.</p>}
+      {!effectiveRows.length && <p>Nenhum plano preventivo cadastrado para este veículo. <a href="/manutencao/planos-preventivos">Cadastrar ou consultar planos</a>.</p>}
     </section>
   );
 }
