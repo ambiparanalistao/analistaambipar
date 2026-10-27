@@ -548,6 +548,10 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
       if (error) { setFuelDbError(error.message); setFeedback({ type: 'error', text: 'Não foi possível salvar o abastecimento no banco de dados.' }); return; }
       payload.databaseId = savedRow.id; payload.sourceKey = savedRow.source_key;
       setFuelDbError('');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fleet-registry-changed', { detail: { vehicleId: vehicle?.id, placa: payload.placa, km: atualKm } }));
+        window.dispatchEvent(new CustomEvent('maintenance:plans-changed'));
+      }
     }
     if (editingId) {
       const updated = records.map(r => r.id === editingId ? { ...payload, id: editingId } : r);
