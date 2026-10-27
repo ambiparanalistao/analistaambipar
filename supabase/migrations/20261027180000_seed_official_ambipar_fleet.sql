@@ -314,6 +314,16 @@ DECLARE
   item jsonb;
   v_id uuid;
 BEGIN
+  -- Ajusta veículos que já possuem ordem de manutenção ativa para o status correto 'Manutenção'
+  -- evitando erro da trigger prevent_dispatch()
+  UPDATE public.veiculos v
+  SET status = 'Manutenção'
+  WHERE status IN ('Disponível','Em Viagem')
+    AND EXISTS (
+      SELECT 1 FROM public.maintenance_orders o 
+      WHERE o.company_id = v.company_id AND o.vehicle_id = v.id AND o.status NOT IN ('encerrada','cancelada')
+    );
+
   -- Percorre todas as empresas cadastradas no sistema
   FOR comp IN (SELECT id FROM public.companies) LOOP
     FOR item IN SELECT * FROM jsonb_array_elements(official_vehicles) LOOP
@@ -326,7 +336,7 @@ BEGIN
       LIMIT 1;
 
       IF v_id IS NOT NULL THEN
-        -- Atualiza dados mantendo histórico
+        -- Atualiza dados mantendo histórico e respeitando se está em manutenção ativa
         UPDATE public.veiculos 
         SET 
           prefixo = item->>'prefixo',
@@ -334,7 +344,13 @@ BEGIN
           tipo = item->>'tipo',
           tipo_carga = item->>'tipo_carga',
           combustivel = item->>'combustivel',
-          status = coalesce(status, 'Disponível'),
+          status = CASE 
+            WHEN EXISTS (
+              SELECT 1 FROM public.maintenance_orders o 
+              WHERE o.company_id = comp.id AND o.vehicle_id = v_id AND o.status NOT IN ('encerrada','cancelada')
+            ) THEN 'Manutenção'
+            ELSE coalesce(status, 'Disponível')
+          END,
           km_atual = CASE WHEN km_atual IS NULL OR km_atual = 0 THEN (item->>'km_atual')::integer ELSE km_atual END
         WHERE id = v_id AND company_id = comp.id;
       ELSE
