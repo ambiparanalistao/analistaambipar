@@ -116,6 +116,28 @@ export default function OrderForm({
     });
   }
 
+  function handleSelectVehicle(id) {
+    const matched = options.vehicles.find(v => v.id === id);
+    if (matched) {
+      setSearch(matched.placa);
+      setForm(f => ({
+        ...f,
+        vehicle_id: matched.id,
+        km_abertura: matched.km_atual != null ? String(matched.km_atual) : (f.km_abertura || '0'),
+        driver_id: driverForVehicle(matched, options.drivers)?.id || f.driver_id
+      }));
+      setErrors(errs => {
+        const next = { ...errs };
+        delete next.vehicle_id;
+        delete next.km_abertura;
+        return next;
+      });
+    } else {
+      setSearch('');
+      setForm(f => ({ ...f, vehicle_id: '' }));
+    }
+  }
+
   function handlePlacaChange(val) {
     setSearch(val);
     const clean = val.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -127,9 +149,15 @@ export default function OrderForm({
       setForm(f => ({
         ...f,
         vehicle_id: matched.id,
-        km_abertura: matched.km_atual ?? f.km_abertura,
+        km_abertura: matched.km_atual != null ? String(matched.km_atual) : (f.km_abertura || '0'),
         driver_id: driverForVehicle(matched, options.drivers)?.id || f.driver_id
       }));
+      setErrors(errs => {
+        const next = { ...errs };
+        delete next.vehicle_id;
+        delete next.km_abertura;
+        return next;
+      });
     } else {
       setForm(f => ({ ...f, vehicle_id: '' }));
     }
@@ -249,20 +277,32 @@ export default function OrderForm({
 
   function submit(e) {
     e.preventDefault();
-    const invalid = validateOrder(form, vehicle);
+    let curForm = { ...form };
+    if (vehicle && (curForm.km_abertura === '' || curForm.km_abertura == null)) {
+      curForm.km_abertura = vehicle.km_atual != null ? String(vehicle.km_atual) : '0';
+      setForm(f => ({ ...f, km_abertura: curForm.km_abertura }));
+    }
+    const invalid = validateOrder(curForm, vehicle);
     setErrors(invalid);
     if (!Object.keys(invalid).length) {
-      const formattedTipos = (form.tipos || []).map(t => ORDER_TYPES[t] || t).join(', ');
-      let cleanDesc = (form.descricao_problema || '').replace(/^\[Tipos[^\]]+\]\s*/i, '').trim();
+      const formattedTipos = (curForm.tipos || []).map(t => ORDER_TYPES[t] || t).join(', ');
+      let cleanDesc = (curForm.descricao_problema || '').replace(/^\[Tipos[^\]]+\]\s*/i, '').trim();
       const fullDesc = formattedTipos ? `[Tipos: ${formattedTipos}]\n\n${cleanDesc}` : cleanDesc;
       onSave({
-        ...form,
-        tipos: form.tipos || [form.tipo || 'corretiva'],
-        tipo: form.tipos?.[0] || form.tipo || 'corretiva',
+        ...curForm,
+        tipos: curForm.tipos || [curForm.tipo || 'corretiva'],
+        tipo: curForm.tipos?.[0] || curForm.tipo || 'corretiva',
         descricao_problema: fullDesc,
-        km_abertura: Number(form.km_abertura),
-        previsao_entrega: form.previsao_entrega ? new Date(form.previsao_entrega).toISOString() : null
+        km_abertura: Number(curForm.km_abertura),
+        previsao_entrega: curForm.previsao_entrega ? new Date(curForm.previsao_entrega).toISOString() : null
       });
+    } else {
+      setTimeout(() => {
+        const target = document.querySelector('.os-submit-error-banner, .mp-error, [aria-invalid="true"]');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
     }
   }
 
@@ -293,22 +333,31 @@ export default function OrderForm({
         <div className="mp-grid">
           <label className="mp-field">
             Placa do veículo *
-            <input
-              aria-label="Placa do veículo"
-              list="order-vehicles-datalist"
-              disabled={sourceLocked || vehicleLocked}
-              placeholder="Selecione ou informe a placa cadastrada"
-              value={search}
-              onChange={e => handlePlacaChange(e.target.value)}
-            />
+            {options.vehicles.length > 0 ? (
+              <select
+                aria-label="Placa do veículo"
+                disabled={sourceLocked || vehicleLocked}
+                value={form.vehicle_id}
+                onChange={e => handleSelectVehicle(e.target.value)}
+                aria-invalid={!!errors.vehicle_id}
+              >
+                <option value="">Selecione o veículo cadastrado...</option>
+                {options.vehicles.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.placa} · {v.marca_modelo} ({v.km_atual != null ? Number(v.km_atual).toLocaleString('pt-BR') + ' km' : '0 km'}) · {v.status}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                aria-label="Placa do veículo"
+                disabled={true}
+                placeholder="Nenhum veículo cadastrado na empresa"
+                value=""
+                readOnly
+              />
+            )}
             {errors.vehicle_id && <span className="mp-error">{errors.vehicle_id}</span>}
-            <datalist id="order-vehicles-datalist">
-              {options.vehicles.map(v => (
-                <option key={v.id} value={v.placa}>
-                  {v.placa} · {v.marca_modelo} · {v.status}
-                </option>
-              ))}
-            </datalist>
           </label>
 
           <label className="mp-field">
@@ -601,10 +650,46 @@ export default function OrderForm({
         </section>
       )}
 
+      {/* Resumo de validações e avisos visíveis acima do botão de confirmação */}
+      {(Object.keys(errors).length > 0 || error) && (
+        <div
+          className="os-submit-error-banner"
+          role="alert"
+          style={{
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid #ef4444',
+            borderRadius: 8,
+            padding: '14px 18px',
+            marginTop: 18,
+            marginBottom: 16,
+            color: '#fca5a5'
+          }}
+        >
+          <strong style={{ display: 'block', marginBottom: 6, color: '#f87171', fontSize: '0.96rem' }}>
+            ⚠️ Atenção: Não foi possível abrir a S.D.O. Revise os campos obrigatórios:
+          </strong>
+          <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.88rem', lineHeight: '1.6' }}>
+            {error && <li style={{ fontWeight: 600, color: '#fca5a5' }}>{error}</li>}
+            {errors.vehicle_id && <li><strong>Veículo:</strong> {errors.vehicle_id}</li>}
+            {errors.tipo && <li><strong>Tipo(s) de manutenção:</strong> {errors.tipo}</li>}
+            {errors.km_abertura && <li><strong>Quilometragem (KM):</strong> {errors.km_abertura}</li>}
+            {errors.descricao_problema && <li><strong>Descrição do problema:</strong> {errors.descricao_problema}</li>}
+            {errors.prioridade && <li><strong>Prioridade:</strong> {errors.prioridade}</li>}
+            {errors.partner_id && <li><strong>Oficina:</strong> {errors.partner_id}</li>}
+            {errors.prazo_entrega_dias && <li><strong>Prazo:</strong> {errors.prazo_entrega_dias}</li>}
+            {errors.previsao_entrega && <li><strong>Previsão:</strong> {errors.previsao_entrega}</li>}
+          </ul>
+        </div>
+      )}
+
       <div className="mp-row mp-footer">
         <button disabled={busy} type="button" onClick={onBack}>Cancelar</button>
-        <button className="mp-primary" disabled={busy || !options.vehicles.length} type="submit">
-          {busy ? 'Abrindo…' : submitLabel}
+        <button
+          className="mp-primary"
+          disabled={busy || !options.vehicles.length}
+          type="submit"
+        >
+          {busy ? 'Abrindo S.D.O…' : submitLabel}
         </button>
       </div>
     </form>

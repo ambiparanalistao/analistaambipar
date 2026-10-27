@@ -3,13 +3,42 @@ import {validateAttachment,FILE_TYPES} from '../utils/partnerValidation';
 export function checked(result){if(result.error)throw new Error(result.error.code==='42501'?'Seu perfil não permite esta ação nesta empresa.':result.error.message||'Falha ao acessar as solicitações de orçamento.');return result.data;}
 export const commandOrder=async(company,action,body)=>checked(await supabase.rpc(['select_partner','select_quote_types'].includes(action)?'maintenance_order_dispatch':'maintenance_order_command',{target_company:company,command:action,body}));
 export async function ensureDefaultUnassignedPartner(company,existingPartners=[]){
- const found=(existingPartners||[]).find(p=>p.status==='ativo'&&!p.deleted_at&&(p.razao_social?.toLowerCase().includes('a definir')||p.nome_fantasia?.toLowerCase().includes('a definir')||p.nome_fantasia?.toLowerCase().includes('sem oficina')));
+ if(!company)return null;
+ const matchName=p=>p.status==='ativo'&&!p.deleted_at&&(
+  p.razao_social?.toLowerCase().includes('a definir')||
+  p.nome_fantasia?.toLowerCase().includes('a definir')||
+  p.nome_fantasia?.toLowerCase().includes('sem oficina')||
+  p.razao_social?.toLowerCase().includes('sem oficina')
+ );
+ const found=(existingPartners||[]).find(matchName);
  if(found)return found;
  try{
-  const {data:dbPartner}=await supabase.from('maintenance_partners').select('id,nome_fantasia,razao_social,status,deleted_at').eq('company_id',company).eq('status','ativo').is('deleted_at',null).ilike('razao_social','%A Definir%').maybeSingle();
-  if(dbPartner)return dbPartner;
-  const {data:created,error}=await supabase.from('maintenance_partners').insert({company_id:company,razao_social:'Oficina a Definir (Sem Oficina Cadastrada)',nome_fantasia:'A Definir / Cotação Avulsa',tipo:'outros',status:'ativo'}).select('id,nome_fantasia,razao_social,status').single();
+  const {data:dbPartners}=await supabase.from('maintenance_partners').select('id,nome_fantasia,razao_social,status,deleted_at').eq('company_id',company).eq('status','ativo').is('deleted_at',null).limit(20);
+  if(Array.isArray(dbPartners)&&dbPartners.length>0){
+   const dbMatch=dbPartners.find(matchName);
+   if(dbMatch)return dbMatch;
+  }
+  const defaultPayload={
+   company_id:company,
+   razao_social:'Oficina a Definir (Sem Oficina Cadastrada)',
+   nome_fantasia:'A Definir / Cotação Avulsa',
+   tipo:'outros',
+   status:'ativo',
+   pais:'BR',
+   especialidades:[],
+   tipos_veiculo_atendidos:[],
+   horario_funcionamento:{},
+   onboarding_profile:{tipos_oficina:['Outros']},
+   valor_hora_mao_obra:0,
+   prazo_pagamento_dias:0,
+   desconto_percentual:0,
+   atende_24h:false,
+   possui_guincho:false
+  };
+  const {data:created,error}=await supabase.from('maintenance_partners').insert(defaultPayload).select('id,nome_fantasia,razao_social,status').single();
   if(!error&&created)return created;
+  if(error)console.warn('Fallback partner insert note:',error.message);
+  if(Array.isArray(dbPartners)&&dbPartners.length>0)return dbPartners[0];
  }catch(err){console.warn('Fallback partner check warning:',err);}
  const anyActive=(existingPartners||[]).find(p=>p.status==='ativo'&&!p.deleted_at);
  if(anyActive)return anyActive;

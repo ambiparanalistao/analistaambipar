@@ -77,4 +77,10 @@
  .os-doc-paper-wrapper { padding: 0 !important; background: #fff !important; }
  .printable-content, .printable-content * { visibility: visible !important; }
  .os-doc-paper { box-shadow: none !important; border-radius: 0 !important; padding: 10mm 12mm !important; max-width: 100% !important; width: 100% !important; page-break-after: avoid; }
+.os-submit-error-banner {
+  animation: osFadeIn 0.25s ease-out;
+}
+@keyframes osFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }

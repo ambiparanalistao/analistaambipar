@@ -36,6 +36,8 @@ export default function OrdersPage({access,setLocked}){
     const placeholder=await ensureDefaultUnassignedPartner(access.companyId,options?.partners);
     if(placeholder?.id){
      payload.partner_id=placeholder.id;
+    }else{
+     throw new Error('Não foi possível definir uma oficina para esta empresa. Por favor, cadastre uma oficina parceira em "Oficinas Parceiras" ou contate o administrador.');
     }
    }
    const row=view.reportId?await reportOrder(access.companyId,'create',{...payload,report_id:view.reportId}):view.planVehicleId?await planCommand(access.companyId,'create_order',{...payload,plan_vehicle_id:view.planVehicleId}):view.occurrenceId?await vehicleCommand(access.companyId,'from_occurrence',{id:view.occurrenceId,order:payload}):await commandOrder(access.companyId,'create',payload);
@@ -44,7 +46,14 @@ export default function OrdersPage({access,setLocked}){
    if(payload.selected_partner_ids?.length&&payload.quote_partner_types?.length)await deliver(row.id,'abertura');
    else setNotice((view.fleetPreventiveId||view.planVehicleId?'SDO ':'S.D.O ')+row.numero+' salva com sucesso. Documento pronto para download e envio.');
    data.reload();
-  }catch(e){setError(e.message);}finally{setBusy(false);}}
+   }catch(e){
+   console.error('Erro na abertura da S.D.O:', e);
+   setError(e.message||'Falha ao processar abertura da S.D.O.');
+   setTimeout(()=>{
+    const errElem=document.querySelector('.os-submit-error-banner, [role="alert"]');
+    if(errElem)errElem.scrollIntoView({behavior:'smooth',block:'center'});
+   },50);
+  }finally{setBusy(false);}}
  async function confirm(form,file){let object;setBusy(true);setError('');try{if(file)object=await uploadOrderObject(access.companyId,modal.order.id,file,true);await perform(modal.command,{...form,foto:object?.url},modal.order);}catch(e){if(object)await removeOrderObject(object.url).catch(()=>{});setError(e.message);}finally{setBusy(false);}}
  async function upload(file,tipo){let object;setBusy(true);setError('');try{if(tipo==='orcamento'&&file.type!=='application/pdf')throw new Error('Orçamento deve ser PDF.');if(['foto_antes','foto_depois'].includes(tipo)&&!file.type.startsWith('image/'))throw new Error('Selecione uma imagem.');object=await uploadOrderObject(access.companyId,view.id,file);await perform('attachment_add',{...object,tipo});}catch(e){if(object)await removeOrderObject(object.url).catch(()=>{});setError(e.message);throw e;}finally{setBusy(false);}}
  async function remove(file){await perform('attachment_delete',{attachment_id:file.id});await removeOrderObject(file.url);}
