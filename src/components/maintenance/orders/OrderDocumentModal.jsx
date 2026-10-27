@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { ORDER_STATUS, ORDER_TYPES, PRIORITIES, formatTiposLabels, getOrderTipos, getItemFiscalCode, getItemCleanDescription } from '../../../utils/orderValidation';
+import React, { useState, useEffect } from 'react';
+import { ORDER_STATUS, ORDER_TYPES, PRIORITIES, formatTiposLabels, getOrderTipos, getItemFiscalCode, getItemCleanDescription, LC116_SERVICE_CODES, getOrderCodigoServico } from '../../../utils/orderValidation';
 import { money, date } from '../PartnerDetail';
 import { orderDocumentName, orderMessage, downloadOrderWorkbook } from '../../../utils/orderWorkbook';
-import { orderDispatchDocument } from '../../../services/maintenanceOrders';
+import { orderDispatchDocument, updateOrderData } from '../../../services/maintenanceOrders';
 
 export const PRINT_MONOCHROME_CSS = `
   @page {
@@ -352,6 +352,34 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
     return base;
   }, [order]);
 
+  const [currentCodigoServico, setCurrentCodigoServico] = useState(() => {
+    return getOrderCodigoServico(order, items) || '14.01';
+  });
+
+  useEffect(() => {
+    const code = getOrderCodigoServico(effectiveOrder, items);
+    if (code) {
+      setCurrentCodigoServico(code);
+    }
+  }, [effectiveOrder, items]);
+
+  function handleUpdateCodigoServico(val) {
+    const clean = String(val || '').trim();
+    setCurrentCodigoServico(clean);
+    if (effectiveOrder?.id) {
+      try {
+        const cached = localStorage.getItem(`sdo_edit_${effectiveOrder.id}`);
+        const obj = cached ? JSON.parse(cached) : {};
+        localStorage.setItem(`sdo_edit_${effectiveOrder.id}`, JSON.stringify({ ...obj, codigo_servico: clean }));
+      } catch {}
+      if (company) {
+        updateOrderData(company, effectiveOrder.id, { codigo_servico: clean }, effectiveOrder).catch(err => {
+          console.warn('Background sync note for codigo_servico:', err);
+        });
+      }
+    }
+  }
+
   const placa = vehicle?.placa || 'VEICULO';
   const numero = effectiveOrder?.numero || 'SDO';
   const tipos = getOrderTipos(effectiveOrder);
@@ -363,6 +391,7 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
     company: { nome: 'Ambipar Group' },
     order: {
       ...effectiveOrder,
+      codigo_servico: currentCodigoServico,
       tipos,
       tipos_formatados: tiposFormatados
     },
@@ -478,32 +507,68 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
     <div className="os-doc-modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Documento da S.D.O">
       <div className="os-doc-modal-container" onClick={e => e.stopPropagation()}>
         {/* BARRA DE FERRAMENTAS SUPERIOR (Não impressa) */}
-        <header className="os-doc-toolbar no-print">
-          <div className="os-doc-toolbar-info">
-            <h3>📄 S.D.O {numero} · Placa {placa} (1 Folha A4 - Preto e Branco)</h3>
-            <span className="os-doc-toolbar-sub">Layout executivo otimizado para impressão sem páginas vazias</span>
-          </div>
-          <div className="os-doc-toolbar-actions">
-            {onEdit && (
-              <button type="button" className="os-btn-edit-doc" onClick={onEdit} title="Editar SDO e registrar novas ocorrências da oficina">
-                ✏️ Editar S.D.O
+        <header className="os-doc-toolbar no-print" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0, padding: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: '14px 20px' }}>
+            <div className="os-doc-toolbar-info">
+              <h3>📄 S.D.O {numero} · Placa {placa} (1 Folha A4 - Preto e Branco)</h3>
+              <span className="os-doc-toolbar-sub">Layout executivo otimizado para impressão sem páginas vazias</span>
+            </div>
+            <div className="os-doc-toolbar-actions">
+              {onEdit && (
+                <button type="button" className="os-btn-edit-doc" onClick={onEdit} title="Editar SDO e registrar novas ocorrências da oficina">
+                  ✏️ Editar S.D.O
+                </button>
+              )}
+              <button type="button" className="os-btn-print" onClick={handlePrint} title="Imprimir em 1 folha A4 Preto e Branco">
+                🖨️ Imprimir 1 Folha A4
               </button>
-            )}
-            <button type="button" className="os-btn-print" onClick={handlePrint} title="Imprimir em 1 folha A4 Preto e Branco">
-              🖨️ Imprimir 1 Folha A4
-            </button>
-            <button type="button" className="os-btn-excel" disabled={busyExcel} onClick={handleDownloadExcel} title="Baixar planilha Excel com a placa">
-              📊 {busyExcel ? 'Gerando…' : 'Baixar Excel'}
-            </button>
-            <button type="button" className="os-btn-whatsapp" onClick={handleCopyMessage} title="Copiar mensagem para o WhatsApp">
-              {copied ? '✓ Copiado!' : '📋 Copiar Msg'}
-            </button>
-            <button type="button" className="os-btn-whatsapp-open" onClick={handleOpenWhatsApp} title="Abrir WhatsApp para enviar">
-              📲 WhatsApp
-            </button>
-            <button type="button" className="os-btn-close" onClick={onClose} aria-label="Fechar">
-              ✕ Fechar
-            </button>
+              <button type="button" className="os-btn-excel" disabled={busyExcel} onClick={handleDownloadExcel} title="Baixar planilha Excel com a placa">
+                📊 {busyExcel ? 'Gerando…' : 'Baixar Excel'}
+              </button>
+              <button type="button" className="os-btn-whatsapp" onClick={handleCopyMessage} title="Copiar mensagem para o WhatsApp">
+                {copied ? '✓ Copiado!' : '📋 Copiar Msg'}
+              </button>
+              <button type="button" className="os-btn-whatsapp-open" onClick={handleOpenWhatsApp} title="Abrir WhatsApp para enviar">
+                📲 WhatsApp
+              </button>
+              <button type="button" className="os-btn-close" onClick={onClose} aria-label="Fechar">
+                ✕ Fechar
+              </button>
+            </div>
+          </div>
+
+          {/* ÁREA DE MARCAÇÃO / PREENCHIMENTO DO CÓDIGO DO SERVIÇO NA IMPRESSÃO */}
+          <div className="os-doc-toolbar-code-banner">
+            <div className="os-doc-code-flex">
+              <div className="os-doc-code-title">
+                <span style={{ fontSize: '1.15rem' }}>🏷️</span>
+                <div>
+                  <strong>Marcar / Preencher Código do Serviço (LC 116 / Municipal / CNAE):</strong>
+                  <span className="os-doc-code-sub">Selecione ou edite o código fiscal exigido no orçamento e nota fiscal desta S.D.O</span>
+                </div>
+              </div>
+              <div className="os-doc-code-controls">
+                <select
+                  aria-label="Selecionar código de serviço padrão LC 116"
+                  value={currentCodigoServico}
+                  onChange={e => handleUpdateCodigoServico(e.target.value)}
+                  className="os-doc-select"
+                >
+                  {LC116_SERVICE_CODES.map(c => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                  <option value="custom">Outro código municipal...</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Ex: 14.01 - Manutenção Mecânica, Freios e Revisão"
+                  value={currentCodigoServico}
+                  onChange={e => handleUpdateCodigoServico(e.target.value)}
+                  className="os-doc-input"
+                  title="Código fiscal do serviço impresso na ordem de serviço"
+                />
+              </div>
+            </div>
           </div>
         </header>
 
@@ -542,6 +607,12 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
                     </span>
                   ))}
                 </div>
+              </div>
+              <div className="os-bw-class-item">
+                <span className="os-bw-class-label">Cód. Serviço (LC 116):</span>
+                <span className="os-bw-class-badge" style={{ fontWeight: 800 }}>
+                  {currentCodigoServico || '14.01 - Mecânica'}
+                </span>
               </div>
             </div>
 
@@ -661,7 +732,7 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
               <div className="os-bw-ncm-body">
                 <ol>
                   <li>
-                    <strong>CÓDIGO NCM E CÓDIGO DO SERVIÇO OBRIGATÓRIOS:</strong> Toda peça e insumo a ser trocado deve conter obrigatoriamente a respectiva Nomenclatura Comum do Mercosul (NCM de 8 dígitos) e todo serviço deve conter o Código de Serviço municipal (LC 116 / CNAE) na proposta e na Nota Fiscal. Cotações sem NCM das peças ou sem Código do Serviço serão recusadas pelo setor fiscal.
+                    <strong>CÓDIGO NCM E CÓDIGO DO SERVIÇO OBRIGATÓRIOS:</strong> Toda peça e insumo a ser trocado deve conter obrigatoriamente a respectiva Nomenclatura Comum do Mercosul (NCM de 8 dígitos) e todo serviço deve conter o Código de Serviço municipal (LC 116 / CNAE — Código Requerido nesta SDO: <u><strong>{currentCodigoServico || '14.01 - Manutenção Mecânica, Freios e Revisão'}</strong></u>) na proposta e na Nota Fiscal. Cotações sem NCM das peças ou sem Código do Serviço serão recusadas pelo setor fiscal.
                   </li>
                   <li>
                     <strong>DISCRIMINAÇÃO SEPARADA:</strong> Apresentar valores unitários e totais discriminados individualmente por peças e por mão de obra / serviços.
@@ -679,7 +750,7 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
             {/* QUADRO 5: DISCRIMINAÇÃO DE PEÇAS, SERVIÇOS & COTAÇÃO (FOLHA COMPLETA) */}
             <section className="os-bw-section">
               <div className="os-bw-section-title">
-                5. DISCRIMINAÇÃO DE PEÇAS, SERVIÇOS & PROPOSTA DE COTAÇÃO
+                5. DISCRIMINAÇÃO DE PEÇAS, SERVIÇOS & PROPOSTA DE COTAÇÃO (CÓD. SERVIÇO LC 116: {currentCodigoServico || '14.01'})
               </div>
               <table className="os-bw-table">
                 <thead>
@@ -704,8 +775,10 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
                             <td className="center">{idx + 1}</td>
                             <td className="center">{i.tipo === 'peca' ? 'Peça' : 'Serviço'}</td>
                             <td>{cleanDesc}</td>
-                            <td className="center mono col-ncm">
-                              {fiscalCode || (i.tipo === 'peca' ? 'Pendente NCM' : 'Pendente Cód.')}
+                            <td className="center mono col-ncm bold">
+                              {i.tipo === 'peca'
+                                ? (fiscalCode || 'Pendente NCM')
+                                : (fiscalCode || currentCodigoServico || '14.01 - Mecânica')}
                             </td>
                             <td className="center">{i.quantidade}</td>
                             <td className="right">{money(i.valor_unitario)}</td>
@@ -720,7 +793,9 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
                             <td className="center">{line}</td>
                             <td className="center">[ ] Peça [ ] Serv.</td>
                             <td></td>
-                            <td className="center mono col-ncm">___ . ___ . ___</td>
+                            <td className="center mono col-ncm" style={{ fontSize: '6.5pt' }}>
+                              [ ] NCM Peça &nbsp; [ ] Cód. Serv: {currentCodigoServico || '14.01'}
+                            </td>
                             <td className="center"></td>
                             <td className="right"></td>
                             <td className="right"></td>
@@ -733,7 +808,9 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
                         <td className="center">{line}</td>
                         <td className="center">[ ] Peça [ ] Serv.</td>
                         <td></td>
-                        <td className="center mono col-ncm">___ . ___ . ___</td>
+                        <td className="center mono col-ncm" style={{ fontSize: '6.5pt' }}>
+                          [ ] NCM Peça &nbsp; [ ] Cód. Serv: {currentCodigoServico || '14.01'}
+                        </td>
                         <td className="center"></td>
                         <td className="right"></td>
                         <td className="right"></td>

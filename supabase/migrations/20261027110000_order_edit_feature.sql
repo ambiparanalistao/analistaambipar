@@ -100,6 +100,11 @@ BEGIN
     UPDATE public.maintenance_orders SET servicos_executados = nullif(btrim(b->>'servicos_executados'),'') WHERE id = o.id;
   END IF;
 
+  -- Atualizar Código do Serviço (LC 116 / Municipal / CNAE)
+  IF b ? 'codigo_servico' THEN
+    UPDATE public.maintenance_orders SET codigo_servico = nullif(btrim(b->>'codigo_servico'),'') WHERE id = o.id;
+  END IF;
+
   -- Atualizar Prazos
   IF b ? 'prazo_entrega_dias' THEN
     UPDATE public.maintenance_orders SET prazo_entrega_dias = nullif(b->>'prazo_entrega_dias','')::integer WHERE id = o.id;
@@ -135,7 +140,10 @@ $$;
 REVOKE ALL ON FUNCTION public.maintenance_order_edit(uuid,uuid,jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.maintenance_order_edit(uuid,uuid,jsonb) TO authenticated;
 
--- 3. Suporte a Código de Serviço nos Itens de Orçamento da S.D.O
+-- 3. Suporte a Código de Serviço na S.D.O e nos Itens de Orçamento
+ALTER TABLE public.maintenance_orders ADD COLUMN IF NOT EXISTS codigo_servico text;
+GRANT SELECT(codigo_servico), UPDATE(codigo_servico) ON public.maintenance_orders TO authenticated;
+
 ALTER TABLE public.maintenance_order_items ADD COLUMN IF NOT EXISTS codigo_servico text;
 
 CREATE OR REPLACE FUNCTION maintenance_private.normalize_item_ncm() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ORDER_STATUS, ORDER_TYPES, PRIORITIES, getOrderTipos, toLocalInput } from '../../../utils/orderValidation';
+import { ORDER_STATUS, ORDER_TYPES, PRIORITIES, getOrderTipos, toLocalInput, LC116_SERVICE_CODES, getOrderCodigoServico } from '../../../utils/orderValidation';
 
 export default function OrderEditModal({ order, vehicle, options, busy, error, onSave, onClose }) {
   const currentTipos = getOrderTipos(order);
+  const initialCodigoServico = getOrderCodigoServico(order) || '14.01';
 
   const [form, setForm] = useState({
     descricao_problema: order?.descricao_problema || '',
@@ -10,6 +11,7 @@ export default function OrderEditModal({ order, vehicle, options, busy, error, o
     servicos_executados: order?.servicos_executados || '',
     prioridade: order?.prioridade || 'media',
     tipos: currentTipos.length ? currentTipos : [order?.tipo || 'corretiva'],
+    codigo_servico: initialCodigoServico,
     km_abertura: order?.km_abertura != null ? String(order.km_abertura) : '',
     partner_id: order?.partner_id || '',
     driver_id: order?.driver_id || '',
@@ -77,8 +79,12 @@ export default function OrderEditModal({ order, vehicle, options, busy, error, o
     // Preserva as tags de tipos na descrição para consistência com o motor de persistência
     let finalDescricao = form.descricao_problema.trim();
     finalDescricao = finalDescricao.replace(/\s*\[Tipos(?:\s+de\s+manutenção)?:\s*[^\]]+\]/gi, '').trim();
+    finalDescricao = finalDescricao.replace(/\s*\[(?:Cód(?:\.|\s+do)?\s*Serviço|Serviço\s*Cód):\s*[^\]]+\]/gi, '').trim();
     if (form.tipos.length > 0) {
       finalDescricao = `${finalDescricao}\n\n[Tipos: ${form.tipos.join(', ')}]`;
+    }
+    if (form.codigo_servico && form.codigo_servico.trim()) {
+      finalDescricao = `${finalDescricao}\n\n[Cód. Serviço: ${form.codigo_servico.trim()}]`;
     }
 
     const payload = {
@@ -88,6 +94,7 @@ export default function OrderEditModal({ order, vehicle, options, busy, error, o
       prioridade: form.prioridade,
       tipo: form.tipos[0] || 'corretiva',
       tipos: form.tipos,
+      codigo_servico: form.codigo_servico ? form.codigo_servico.trim() : '14.01',
       partner_id: form.partner_id || null,
       driver_id: form.driver_id || null,
       km_abertura: form.km_abertura !== '' ? Number(form.km_abertura) : null,
@@ -176,6 +183,50 @@ export default function OrderEditModal({ order, vehicle, options, busy, error, o
                 })}
               </div>
             </div>
+
+            {/* Bloco 2.1: Código do Serviço (LC 116 / CNAE / Municipal) */}
+            <div className="os-edit-field-group">
+              <div className="os-edit-label-row">
+                <label>
+                  <strong>🏷️ Código do Serviço (LC 116 / Municipal / CNAE) *</strong>
+                </label>
+                <span className="os-edit-count-badge" style={{ background: '#e0f2fe', color: '#0369a1' }}>
+                  Obrigatório para emissão & orçamento
+                </span>
+              </div>
+              <p style={{ margin: '0 0 6px', fontSize: '0.8rem', color: '#555' }}>
+                Clique para selecionar o código tributário oficial do serviço ou digite o código específico da sua cidade:
+              </p>
+              <div className="os-types-pill-grid" style={{ marginBottom: 8 }}>
+                {LC116_SERVICE_CODES.map(c => {
+                  const active = form.codigo_servico === c.code || (form.codigo_servico || '').startsWith(c.code);
+                  return (
+                    <button
+                      type="button"
+                      key={c.code}
+                      className={`os-type-pill ${active ? 'active' : ''}`}
+                      onClick={() => setForm(f => ({ ...f, codigo_servico: c.code }))}
+                      style={{ fontSize: '0.8rem', padding: '5px 9px' }}
+                    >
+                      <span className="os-type-check">{active ? '✓' : '+'}</span> {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="Ex: 14.01 - Manutenção Mecânica, Freios e Revisão"
+                  value={form.codigo_servico}
+                  onChange={e => setForm(f => ({ ...f, codigo_servico: e.target.value }))}
+                  style={{ flex: 1, padding: '7px 10px', fontSize: '0.88rem', border: '1.5px solid #2563eb', borderRadius: 4 }}
+                />
+              </div>
+              <span className="os-edit-hint" style={{ marginTop: 4 }}>
+                💡 Este código de serviço será impresso no Quadro de Exigências e no Orçamento da S.D.O e exigido no orçamento fiscal da oficina mecânica.
+              </span>
+            </div>
+
 
             {/* Bloco 3: Grid com Prioridade, KM, Oficina e Motorista */}
             <div className="os-edit-grid-2">

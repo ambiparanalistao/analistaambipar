@@ -13,6 +13,14 @@
 .os-btn-whatsapp{background:rgba(37,211,102,0.18);color:#4ade80;border-color:rgba(37,211,102,0.4)}.os-btn-whatsapp:hover{background:rgba(37,211,102,0.28)}
 .os-btn-whatsapp-open{background:#25D366;color:#0b3a1a;font-weight:700}.os-btn-whatsapp-open:hover{background:#20ba59}
 .os-btn-close{background:rgba(255,255,255,0.08);color:#f1f5f9;border-color:rgba(255,255,255,0.15)}.os-btn-close:hover{background:rgba(255,255,255,0.16)}
+.os-doc-toolbar-code-banner{width:100%;background:#0b1120;border-top:1px solid rgba(255,255,255,0.1);padding:10px 20px}
+.os-doc-code-flex{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.os-doc-code-title{display:flex;align-items:center;gap:10px;color:#f8fafc;font-size:.88rem}
+.os-doc-code-sub{display:block;font-size:.74rem;color:#94a3b8}
+.os-doc-code-controls{display:flex;align-items:center;gap:8px;flex:1;max-width:560px}
+.os-doc-select{padding:6px 10px;background:#1e293b;border:1px solid #3b82f6;color:#f8fafc;border-radius:6px;font-size:.82rem;outline:none;cursor:pointer;max-width:260px}
+.os-doc-input{flex:1;padding:6px 10px;background:#1e293b;border:1px solid rgba(255,255,255,0.2);color:#f8fafc;border-radius:6px;font-size:.82rem;outline:none}
+.os-doc-input:focus{border-color:#3b82f6}
 .os-doc-paper-wrapper{flex:1;overflow-y:auto;padding:24px;background:#090d16;display:flex;justify-content:center}
 .os-doc-paper{width:100%;max-width:840px;background:#ffffff;color:#0f172a;border-radius:8px;padding:32px 36px;box-shadow:0 8px 30px rgba(0,0,0,0.5);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.45}
 .os-doc-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #047857;padding-bottom:14px;margin-bottom:14px}

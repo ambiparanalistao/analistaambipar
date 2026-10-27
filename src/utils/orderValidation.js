@@ -76,3 +76,30 @@ export function getItemCleanDescription(item) {
   return desc.replace(/^\s*\[(?:Cód(?:\.|\s+do)?\s*Serviço|Serviço\s*Cód):\s*[^\]]+\]\s*/i, '').trim();
 }
 
+export const LC116_SERVICE_CODES = [
+  { code: '14.01', label: '14.01 - Lubrificação, Manutenção Mecânica, Freios e Revisão Geral' },
+  { code: '14.02', label: '14.02 - Assistência Técnica, Socorro Mecânico e Diagnóstico' },
+  { code: '14.03', label: '14.03 - Recondicionamento de Motores, Câmbio e Transmissão' },
+  { code: '14.04', label: '14.04 - Pneus, Alinhamento, Balanceamento e Geometria' },
+  { code: '14.05', label: '14.05 - Funilaria, Pintura, Lanternagem e Tapeçaria' },
+  { code: '14.06', label: '14.06 - Instalação e Montagem de Equipamentos / Implementos' }
+];
+
+export function getOrderCodigoServico(order, items = []) {
+  if (!order) return '';
+  if (order.codigo_servico) return String(order.codigo_servico).trim();
+  const text = `${order.descricao_problema || ''} ${order.observacoes || ''} ${order.servicos_executados || ''}`;
+  const match = text.match(/\[(?:Cód(?:\.|\s+do)?\s*Serviço|Serviço\s*Cód|Código\s+Serviço):\s*([^\]]+)\]/i);
+  if (match) return match[1].trim();
+  if (Array.isArray(items)) {
+    for (const item of items) {
+      if (item.tipo === 'servico') {
+        const code = getItemFiscalCode(item);
+        if (code) return code;
+      }
+    }
+  }
+  return '';
+}
+
+

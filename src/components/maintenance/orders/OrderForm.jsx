@@ -2,7 +2,7 @@ import QuoteTypeSelector from './QuoteTypeSelector';
 import {driverForVehicle} from '../../../utils/registryMatching';
 import {vehicleCommand} from '../../../services/vehicleMaintenance';
 import React,{useState,useEffect,useMemo} from 'react';
-import {ORDER_TYPES,PRIORITIES,validateOrder,formatTiposLabels,getOrderTipos} from '../../../utils/orderValidation';
+import {ORDER_TYPES,PRIORITIES,validateOrder,formatTiposLabels,getOrderTipos,LC116_SERVICE_CODES} from '../../../utils/orderValidation';
 import {PARTNER_TYPES} from '../../../utils/partnerValidation';
 
 export function computeQuotePartnerTypes(selectedIds, allPartners) {
@@ -83,6 +83,7 @@ export default function OrderForm({
     driver_id: '',
     tipos: initialTipos,
     tipo: initialTipos[0] || 'corretiva',
+    codigo_servico: initialValues.codigo_servico || '14.01',
     incluir_mensagem_envio: true,
     prioridade: 'media',
     descricao_problema: '',
@@ -92,6 +93,7 @@ export default function OrderForm({
     ...initialValues,
     driver_id: initialValues.driver_id || driverForVehicle(options.vehicles.find(v => v.id === initialValues.vehicle_id), options.drivers)?.id || ''
   });
+
 
   const [search, setSearch] = useState(initialV ? initialV.placa : '');
   const [workshopSearch, setWorkshopSearch] = useState('');
@@ -286,12 +288,22 @@ export default function OrderForm({
     setErrors(invalid);
     if (!Object.keys(invalid).length) {
       const formattedTipos = (curForm.tipos || []).map(t => ORDER_TYPES[t] || t).join(', ');
-      let cleanDesc = (curForm.descricao_problema || '').replace(/^\[Tipos[^\]]+\]\s*/i, '').trim();
-      const fullDesc = formattedTipos ? `[Tipos: ${formattedTipos}]\n\n${cleanDesc}` : cleanDesc;
+      let cleanDesc = (curForm.descricao_problema || '')
+        .replace(/^\[Tipos[^\]]+\]\s*/i, '')
+        .replace(/\s*\[(?:Cód(?:\.|\s+do)?\s*Serviço|Serviço\s*Cód):\s*[^\]]+\]/gi, '')
+        .trim();
+      let fullDesc = cleanDesc;
+      if (formattedTipos) {
+        fullDesc = `[Tipos: ${formattedTipos}]\n\n${fullDesc}`;
+      }
+      if (curForm.codigo_servico && curForm.codigo_servico.trim()) {
+        fullDesc = `${fullDesc}\n\n[Cód. Serviço: ${curForm.codigo_servico.trim()}]`;
+      }
       onSave({
         ...curForm,
         tipos: curForm.tipos || [curForm.tipo || 'corretiva'],
         tipo: curForm.tipos?.[0] || curForm.tipo || 'corretiva',
+        codigo_servico: curForm.codigo_servico ? curForm.codigo_servico.trim() : '14.01',
         descricao_problema: fullDesc,
         km_abertura: Number(curForm.km_abertura),
         previsao_entrega: curForm.previsao_entrega ? new Date(curForm.previsao_entrega).toISOString() : null
@@ -408,6 +420,43 @@ export default function OrderForm({
               )}
               {errors.tipo && <span className="mp-error" style={{ display: 'block', marginTop: 4 }}>{errors.tipo}</span>}
             </div>
+          </div>
+
+          {/* SELEÇÃO DO CÓDIGO DO SERVIÇO (LC 116 / CNAE / MUNICIPAL) */}
+          <div className="os-field-container" style={{ marginBottom: 16 }}>
+            <label className="mp-field-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
+              🏷️ Código do Serviço (LC 116 / Municipal / CNAE) *
+            </label>
+            <div className="os-types-pill-grid">
+              {LC116_SERVICE_CODES.map(c => {
+                const isChecked = form.codigo_servico === c.code || (form.codigo_servico || '').startsWith(c.code);
+                return (
+                  <button
+                    key={c.code}
+                    type="button"
+                    className={`os-type-pill ${isChecked ? 'active' : ''}`}
+                    disabled={busy}
+                    onClick={() => set('codigo_servico', c.code)}
+                    style={{ fontSize: '0.8rem', padding: '5px 9px' }}
+                  >
+                    <span className="os-type-check">{isChecked ? '✓' : '+'}</span>
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="text"
+                placeholder="Ex: 14.01 - Manutenção Mecânica, Freios e Revisão"
+                value={form.codigo_servico || ''}
+                onChange={e => set('codigo_servico', e.target.value)}
+                style={{ flex: 1, padding: '7px 10px', fontSize: '0.88rem', border: '1.5px solid #2563eb', borderRadius: 4 }}
+              />
+            </div>
+            <span className="mp-muted" style={{ display: 'block', marginTop: 4, fontSize: '0.8rem' }}>
+              💡 Código tributário obrigatório que sairá na Ordem de Serviço impressa e no orçamento enviado para a oficina.
+            </span>
           </div>
 
           <label className="mp-field">

@@ -127,6 +127,15 @@ export async function updateOrderData(company, orderId, payload, currentOrder) {
   if (payload.prioridade) summaryPayload.prioridade = payload.prioridade;
   if (payload.tipo) summaryPayload.tipo = payload.tipo;
   if (payload.km_abertura != null) summaryPayload.km_abertura = Number(payload.km_abertura);
+  if (payload.codigo_servico) summaryPayload.codigo_servico = payload.codigo_servico;
+
+  try {
+    if (payload.codigo_servico) {
+      await supabase.from('maintenance_orders').update({ codigo_servico: payload.codigo_servico }).eq('company_id', company).eq('id', orderId);
+    }
+  } catch (directErr) {
+    console.warn('Direct order codigo_servico update note:', directErr);
+  }
 
   try {
     const cmdData = await commandOrder(company, 'summary', summaryPayload);
