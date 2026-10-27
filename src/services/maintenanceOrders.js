@@ -78,3 +78,75 @@ export const orderDispatchDocument=async(company,id)=>checked(await supabase.rpc
 async function sendOrderBatch(company,id,kind,confirmUncertain=false,dispatchId){const s=await supabase.auth.getSession();if(s.error||!s.data?.session?.access_token)throw new Error('Entre novamente para enviar a S.D.O.');let r;try{r=await fetch('/api/order-dispatch',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.data.session.access_token},body:JSON.stringify({company,id,kind,confirmUncertain,...(dispatchId?{dispatchId}:{})}),signal:AbortSignal.timeout(240000)});}catch{throw new Error('Não foi possível confirmar o envio. Confira o WhatsApp antes de repetir.');}let d;try{d=await r.json();}catch{throw new Error('Resposta inválida. Confira o WhatsApp antes de repetir.');}if(!r.ok)throw new Error(d.error||'Não foi possível enviar.');return d;}
 
 export async function sendOrderDispatch(company,id,kind,confirmUncertain=false,dispatchId){let previous=Infinity,result;for(let batch=0;batch<1000;batch++){result=await sendOrderBatch(company,id,kind,confirmUncertain,dispatchId);if(kind!=='abertura'||dispatchId||!result.remaining||result.remaining>=previous)return result;previous=result.remaining;}return result;}
+
+export async function updateOrderData(company, orderId, payload, currentOrder) {
+  // 1. Tenta a RPC dedicada de edição
+  try {
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('maintenance_order_edit', {
+      target_company: company,
+      order_id: orderId,
+      body: payload
+    });
+    if (!rpcErr && rpcData) return rpcData;
+  } catch (err) {
+    console.warn('RPC maintenance_order_edit note:', err);
+  }
+
+  // 2. Se a oficina mudou, dispara a seleção de oficina
+  if (payload.partner_id && payload.partner_id !== currentOrder?.partner_id) {
+    try {
+      await commandOrder(company, 'select_partner', {
+        id: orderId,
+        partner_id: payload.partner_id,
+        version: currentOrder?.version
+      });
+    } catch (err) {
+      console.warn('select_partner note:', err);
+    }
+  }
+
+  // 3. Atualiza via command 'summary'
+  const summaryPayload = {
+    id: orderId,
+    version: currentOrder?.version,
+    diagnostico: payload.diagnostico || '',
+    servicos_executados: payload.servicos_executados || '',
+    prazo_entrega_dias: payload.prazo_entrega_dias ? Number(payload.prazo_entrega_dias) : null,
+    previsao_entrega: payload.previsao_entrega ? new Date(payload.previsao_entrega).toISOString() : null,
+    observacao: payload.observacao_edicao || 'S.D.O editada com ocorrências da oficina'
+  };
+
+  if (payload.descricao_problema) summaryPayload.descricao_problema = payload.descricao_problema;
+  if (payload.prioridade) summaryPayload.prioridade = payload.prioridade;
+  if (payload.tipo) summaryPayload.tipo = payload.tipo;
+  if (payload.km_abertura != null) summaryPayload.km_abertura = Number(payload.km_abertura);
+
+  try {
+    return await commandOrder(company, 'summary', summaryPayload);
+  } catch (cmdErr) {
+    // 4. Fallback de atualização direta
+    const directFields = {
+      descricao_problema: payload.descricao_problema,
+      diagnostico: payload.diagnostico || null,
+      servicos_executados: payload.servicos_executados || null,
+      prioridade: payload.prioridade,
+      tipo: payload.tipo,
+      partner_id: payload.partner_id || currentOrder?.partner_id,
+      driver_id: payload.driver_id || null
+    };
+    if (payload.km_abertura != null) directFields.km_abertura = Number(payload.km_abertura);
+    if (payload.prazo_entrega_dias != null) directFields.prazo_entrega_dias = Number(payload.prazo_entrega_dias);
+    if (payload.previsao_entrega) directFields.previsao_entrega = new Date(payload.previsao_entrega).toISOString();
+
+    const { data: updated, error: directErr } = await supabase
+      .from('maintenance_orders')
+      .update(directFields)
+      .eq('id', orderId)
+      .eq('company_id', company)
+      .select()
+      .single();
+
+    if (!directErr && updated) return updated;
+    throw cmdErr;
+  }
+}

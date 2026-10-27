@@ -334,7 +334,7 @@ export const PRINT_MONOCHROME_CSS = `
   }
 `;
 
-export default function OrderDocumentModal({ order, vehicle, driver, partner, items = [], company, onClose }) {
+export default function OrderDocumentModal({ order, vehicle, driver, partner, items = [], company, onEdit, onClose }) {
   const [copied, setCopied] = useState(false);
   const [busyExcel, setBusyExcel] = useState(false);
 
@@ -465,6 +465,11 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
             <span className="os-doc-toolbar-sub">Layout executivo otimizado para impressão sem páginas vazias</span>
           </div>
           <div className="os-doc-toolbar-actions">
+            {onEdit && (
+              <button type="button" className="os-btn-edit-doc" onClick={onEdit} title="Editar SDO e registrar novas ocorrências da oficina">
+                ✏️ Editar S.D.O
+              </button>
+            )}
             <button type="button" className="os-btn-print" onClick={handlePrint} title="Imprimir em 1 folha A4 Preto e Branco">
               🖨️ Imprimir 1 Folha A4
             </button>
