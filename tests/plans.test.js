@@ -28,5 +28,13 @@ test('automatic periodic plans are generated for vehicles based on KM', () => {
   // Fleet alerts sort 'vencida' first
   const fleetAlerts = generateFleetAlerts([vehicleNew, vehicleSoon, vehicleOver]);
   assert.equal(fleetAlerts[0].estado, 'vencida');
+
+  // Universal fleet plans with categoria_veiculo='TODOS'
+  const customTodosPlan = [
+    { id: 'p-todos', nome: 'Revisão Universal', intervalo_km: 15000, intervalo_dias: 365, categoria_veiculo: 'TODOS', ativo: true }
+  ];
+  const todosAlerts = generateFleetAlerts([vehicleNew], customTodosPlan);
+  assert.equal(todosAlerts.length, 1);
+  assert.equal(todosAlerts[0].nome, 'Revisão Universal');
 });
 

@@ -23,7 +23,7 @@ export default function PlansPage({access,setLocked}){const context=useMaintenan
     <section className="mp-card">
       <h3>Planos periódicos monitorados</h3>
       {!context.data?.plans.length?<p>Nenhum plano cadastrado.</p>:<ul className="pp-list">{context.data.plans.map(p=>{
-        const scopeLabel = p.vehicle_id ? context.data.vehicles.find(v=>v.id===p.vehicle_id)?.placa : (p.categoria_veiculo || 'Todos os veículos (Frota Geral)');
+        const scopeLabel = p.vehicle_id ? context.data.vehicles.find(v=>v.id===p.vehicle_id)?.placa : (!p.categoria_veiculo || p.categoria_veiculo === 'TODOS' ? 'Todos os veículos (Frota Geral)' : p.categoria_veiculo);
         return <li key={p.id} className="mp-row mp-between"><span><strong>{p.nome}</strong> · {scopeLabel} · {p.intervalo_km?Number(p.intervalo_km).toLocaleString('pt-BR')+' km':''}{p.intervalo_km&&p.intervalo_dias?' ou ':''}{p.intervalo_dias?p.intervalo_dias+' dias':''} · {p.ativo?'Ativo':'Inativo'}</span>{access.canWrite&&<button onClick={()=>edit(p)}>Editar {p.nome}</button>}</li>;
       })}</ul>}
     </section>

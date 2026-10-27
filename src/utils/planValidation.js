@@ -140,7 +140,7 @@ export function generateFleetAlerts(vehicles = [], savedPlans = [], settings = {
   if (!Array.isArray(vehicles) || !vehicles.length) return [];
   const allAlerts = [];
   for (const v of vehicles) {
-    const vehiclePlans = (savedPlans || []).filter(p => p.vehicle_id === v.id || (!p.vehicle_id && (!p.categoria_veiculo || p.categoria_veiculo === v.tipo)));
+    const vehiclePlans = (savedPlans || []).filter(p => p.vehicle_id === v.id || (!p.vehicle_id && (!p.categoria_veiculo || p.categoria_veiculo === 'TODOS' || p.categoria_veiculo?.toUpperCase() === 'TODOS' || p.categoria_veiculo === v.tipo)));
     const alerts = computeVehiclePreventiveAlerts(v, vehiclePlans.length ? vehiclePlans : DEFAULT_PREVENTIVE_PLANS, settings, openOrders);
     allAlerts.push(...alerts);
   }
