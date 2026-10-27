@@ -69,14 +69,139 @@
 .os-doc-sign-cargo{display:block;font-size:.7rem;color:#64748b}
 .os-doc-footer{display:flex;justify-content:space-between;border-top:1px solid #e2e8f0;padding-top:10px;margin-top:24px;font-size:.68rem;color:#94a3b8}
 
+/* ESTILOS MONOCROMÁTICOS DA S.D.O (PRETO E BRANCO - 1 FOLHA A4) */
+.os-doc-paper.monochrome {
+  width: 100%;
+  max-width: 820px;
+  background: #ffffff;
+  color: #000000;
+  border-radius: 6px;
+  padding: 20px 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+  font-size: 8pt;
+  line-height: 1.25;
+}
+.os-bw-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 3px; margin-bottom: 4px; }
+.os-bw-brand-title { font-size: 14pt; font-weight: 900; color: #000; letter-spacing: 0.5px; margin: 0; line-height: 1.1; }
+.os-bw-brand-sub { font-size: 7pt; font-weight: 700; text-transform: uppercase; color: #222; letter-spacing: 0.4px; }
+.os-bw-meta-box { text-align: right; }
+.os-bw-sdo-badge { display: inline-block; background: #000; color: #fff; font-size: 7.5pt; font-weight: 900; padding: 2px 7px; border-radius: 2px; letter-spacing: 0.5px; text-transform: uppercase; }
+.os-bw-sdo-num { font-size: 13pt; font-weight: 900; font-family: monospace; color: #000; letter-spacing: 1px; margin: 1px 0; line-height: 1.1; }
+.os-bw-sdo-date { font-size: 7pt; font-weight: 600; color: #333; }
+.os-bw-class-bar { display: flex; justify-content: space-between; align-items: center; border: 1px solid #000; background: #f4f4f4; padding: 2.5px 6px; margin-bottom: 4px; font-size: 7.5pt; }
+.os-bw-class-item { display: flex; align-items: center; gap: 4px; }
+.os-bw-class-label { font-weight: 700; text-transform: uppercase; font-size: 7pt; }
+.os-bw-class-badge { display: inline-block; border: 1px solid #000; background: #fff; padding: 1px 5px; font-weight: 800; font-size: 7.5pt; border-radius: 2px; }
+.os-bw-section { border: 1px solid #000; margin-bottom: 4px; page-break-inside: avoid !important; }
+.os-bw-section-title { background: #e6e6e6; color: #000; font-size: 7.5pt; font-weight: 900; text-transform: uppercase; padding: 2px 6px; border-bottom: 1px solid #000; letter-spacing: 0.3px; }
+.os-bw-vehicle-layout { display: flex; align-items: center; padding: 3px 6px; gap: 8px; }
+.os-bw-plate-card { width: 105px; flex-shrink: 0; border: 2px solid #000; border-radius: 3px; text-align: center; background: #fff; overflow: hidden; }
+.os-bw-plate-top { background: #000; color: #fff; font-size: 6pt; font-weight: 900; letter-spacing: 0.8px; padding: 1px 0; }
+.os-bw-plate-num { font-size: 13.5pt; font-weight: 900; letter-spacing: 1.5px; font-family: monospace; color: #000; padding: 1px 0; line-height: 1.1; }
+.os-bw-plate-bot { font-size: 5.5pt; font-weight: 800; color: #000; border-top: 1px solid #000; letter-spacing: 0.5px; background: #f4f4f4; padding: 0.5px 0; }
+.os-bw-km-highlight { border: 1.5px solid #000; background: #f4f4f4; border-radius: 3px; padding: 3px 8px; text-align: center; flex-shrink: 0; min-width: 125px; }
+.os-bw-km-label { font-size: 6pt; font-weight: 800; text-transform: uppercase; color: #000; margin-bottom: 1px; }
+.os-bw-km-val { font-size: 12pt; font-weight: 900; font-family: monospace; color: #000; line-height: 1.1; }
+.os-bw-vehicle-details { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5px 8px; flex: 1; font-size: 7.2pt; }
+.os-bw-field-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #d0d0d0; padding: 0.5px 0; }
+.os-bw-field-line:last-child { border-bottom: none; }
+.os-bw-label { font-weight: 700; color: #222; }
+.os-bw-val { font-weight: 800; color: #000; text-align: right; }
+.os-bw-two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px; page-break-inside: avoid !important; }
+.os-bw-card-inner { padding: 2.5px 6px; font-size: 7.2pt; }
+.os-bw-defects-body { padding: 3px 6px; font-size: 7.5pt; line-height: 1.25; }
+.os-bw-defects-text { margin: 0; font-weight: 600; color: #000; white-space: pre-wrap; word-break: break-word; }
+.os-bw-diagnostic-text { margin-top: 2px; padding-top: 2px; border-top: 1px dashed #888; font-size: 7pt; }
+.os-bw-ncm-box { border: 1.5px solid #000; background: #fafafa; margin-bottom: 4px; page-break-inside: avoid !important; }
+.os-bw-ncm-header { background: #000; color: #fff; font-size: 7.2pt; font-weight: 900; text-transform: uppercase; padding: 2px 6px; letter-spacing: 0.4px; }
+.os-bw-ncm-body { padding: 2.5px 6px; font-size: 6.8pt; line-height: 1.22; }
+.os-bw-ncm-body ol, .os-bw-ncm-body ul { margin: 0; padding-left: 12px; }
+.os-bw-ncm-body li { margin-bottom: 1px; }
+.os-bw-table { width: 100%; border-collapse: collapse; font-size: 7.2pt; margin-top: 0; }
+.os-bw-table th, .os-bw-table td { border: 1px solid #000; padding: 2px 4px; }
+.os-bw-table th { background: #e6e6e6; color: #000; font-weight: 900; text-transform: uppercase; font-size: 6.8pt; }
+.os-bw-table th.col-ncm, .os-bw-table td.col-ncm { background: #f4f4f4; font-weight: 800; }
+.os-bw-table td.center { text-align: center; }
+.os-bw-table td.right { text-align: right; }
+.os-bw-table td.bold { font-weight: 800; }
+.os-bw-table td.mono { font-family: monospace; }
+.os-bw-table tr.empty-row td { height: 14px; }
+.os-bw-signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; page-break-inside: avoid !important; }
+.os-bw-sign-block { text-align: center; }
+.os-bw-sign-line { border-top: 1px solid #000; margin-bottom: 2px; }
+.os-bw-sign-name { display: block; font-size: 7.2pt; font-weight: 800; color: #000; line-height: 1.1; }
+.os-bw-sign-cargo { display: block; font-size: 6.2pt; font-weight: 600; color: #333; }
+.os-bw-footer { display: flex; justify-content: space-between; border-top: 1px solid #000; padding-top: 2px; margin-top: 5px; font-size: 6.2pt; font-weight: 600; color: #222; }
+
+/* REGRAS NATIVAS DE IMPRESSÃO (SEM PÁGINAS VAZIAS E CABENDO EM 1 FOLHA A4) */
 @media print {
- body * { visibility: hidden !important; }
- .os-doc-modal-overlay { position: static !important; padding: 0 !important; background: transparent !important; }
- .os-doc-modal-container { border: none !important; box-shadow: none !important; width: 100% !important; max-width: 100% !important; max-height: none !important; overflow: visible !important; background: #fff !important; }
- .no-print, .os-doc-toolbar { display: none !important; }
- .os-doc-paper-wrapper { padding: 0 !important; background: #fff !important; }
- .printable-content, .printable-content * { visibility: visible !important; }
- .os-doc-paper { box-shadow: none !important; border-radius: 0 !important; padding: 10mm 12mm !important; max-width: 100% !important; width: 100% !important; page-break-after: avoid; }
+  @page {
+    size: A4 portrait;
+    margin: 5mm 7mm 5mm 7mm;
+  }
+  *, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body, html {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    height: 100% !important;
+    overflow: visible !important;
+  }
+  body > *:not(.os-doc-modal-overlay),
+  #root > *:not(.os-doc-modal-overlay),
+  .no-print,
+  .os-doc-toolbar,
+  header,
+  nav,
+  aside {
+    display: none !important;
+  }
+  .os-doc-modal-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    z-index: 999999 !important;
+  }
+  .os-doc-modal-container {
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .os-doc-paper-wrapper {
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+  .os-doc-paper.monochrome {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
 .os-submit-error-banner {
   animation: osFadeIn 0.25s ease-out;
 }
