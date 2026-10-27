@@ -135,4 +135,39 @@ $$;
 REVOKE ALL ON FUNCTION public.maintenance_order_edit(uuid,uuid,jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.maintenance_order_edit(uuid,uuid,jsonb) TO authenticated;
 
+-- 3. Suporte a Código de Serviço nos Itens de Orçamento da S.D.O
+ALTER TABLE public.maintenance_order_items ADD COLUMN IF NOT EXISTS codigo_servico text;
+
+CREATE OR REPLACE FUNCTION maintenance_private.normalize_item_ncm() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
+BEGIN
+  NEW.ncm := nullif(regexp_replace(coalesce(NEW.ncm,''),'[.[:space:]]','','g'),'');
+  IF NEW.tipo = 'servico' THEN
+    NEW.ncm := NULL;
+    NEW.codigo_servico := nullif(btrim(coalesce(NEW.codigo_servico, '')), '');
+  ELSE
+    NEW.codigo_servico := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+GRANT SELECT(codigo_servico) ON public.maintenance_order_items TO authenticated;
+
+DO $$ DECLARE def text; BEGIN
+  SELECT pg_get_functiondef('maintenance_private.order_document(uuid,uuid)'::regprocedure) INTO def;
+  IF def NOT LIKE '%codigo_servico%' THEN
+    def := replace(def, '''ncm'',i.ncm)', '''ncm'',i.ncm,''codigo_servico'',i.codigo_servico)');
+    EXECUTE def;
+  END IF;
+
+  SELECT pg_get_functiondef('maintenance_private.order_command(uuid,text,jsonb)'::regprocedure) INTO def;
+  IF def NOT LIKE '%codigo_servico%' THEN
+    def := replace(def, 'maintenance_order_items(company_id,order_id,tipo,descricao,quantidade,valor_unitario,created_by,ncm)', 'maintenance_order_items(company_id,order_id,tipo,descricao,quantidade,valor_unitario,created_by,ncm,codigo_servico)');
+    def := replace(def, 'nullif(payload->>''ncm'','''')) RETURNING * INTO item', 'nullif(payload->>''ncm'',''''),nullif(payload->>''codigo_servico'','''')) RETURNING * INTO item');
+    def := replace(def, 'SET ncm=nullif(payload->>''ncm'',''''),tipo=payload->>''tipo'',descricao=', 'SET codigo_servico=nullif(payload->>''codigo_servico'',''''),ncm=nullif(payload->>''ncm'',''''),tipo=payload->>''tipo'',descricao=');
+    EXECUTE def;
+  END IF;
+END $$;
+
 COMMIT;
+

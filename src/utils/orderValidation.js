@@ -55,3 +55,24 @@ export function validateAction(action,f,o,vehicle){
 }
 export function validateItem(f){const e={};if(f.tipo==='peca'&&String(f.ncm||'').trim()&&!/^[0-9]{8}$/.test(String(f.ncm).replace(/[.\s]/g,'')))e.ncm='Informe 8 dígitos de NCM ou deixe vazio quando não aplicável.';if(!['peca','servico'].includes(f.tipo))e.tipo='Tipo inválido.';if(!f.descricao?.trim())e.descricao='Descreva o item.';if(!Number.isFinite(Number(f.quantidade))||Number(f.quantidade)<=0)e.quantidade='Quantidade deve ser maior que zero.';if(f.valor_unitario===''||!Number.isFinite(Number(f.valor_unitario))||Number(f.valor_unitario)<0)e.valor_unitario='Informe um valor não negativo.';return e;}
 export function toLocalInput(value){if(!value)return '';const d=new Date(value);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
+
+export function getItemFiscalCode(item) {
+  if (!item) return '';
+  if (item.tipo === 'peca') {
+    return item.ncm ? String(item.ncm).trim() : '';
+  }
+  if (item.codigo_servico) {
+    return String(item.codigo_servico).trim();
+  }
+  const match = String(item.descricao || '').match(/\[(?:Cód(?:\.|\s+do)?\s*Serviço|Serviço\s*Cód):\s*([^\]]+)\]/i);
+  if (match) return match[1].trim();
+  if (item.ncm) return String(item.ncm).trim();
+  return '';
+}
+
+export function getItemCleanDescription(item) {
+  if (!item) return '';
+  const desc = typeof item === 'string' ? item : String(item.descricao || '');
+  return desc.replace(/^\s*\[(?:Cód(?:\.|\s+do)?\s*Serviço|Serviço\s*Cód):\s*[^\]]+\]\s*/i, '').trim();
+}
+

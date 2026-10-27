@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ORDER_STATUS, ORDER_TYPES, PRIORITIES, formatTiposLabels, getOrderTipos } from '../../../utils/orderValidation';
+import { ORDER_STATUS, ORDER_TYPES, PRIORITIES, formatTiposLabels, getOrderTipos, getItemFiscalCode, getItemCleanDescription } from '../../../utils/orderValidation';
 import { money, date } from '../PartnerDetail';
 import { orderDocumentName, orderMessage, downloadOrderWorkbook } from '../../../utils/orderWorkbook';
 import { orderDispatchDocument } from '../../../services/maintenanceOrders';
@@ -653,7 +653,7 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
               </div>
             </section>
 
-            {/* QUADRO 4: EXIGÊNCIAS OBRIGATÓRIAS (NCM DAS PEÇAS) */}
+            {/* QUADRO 4: EXIGÊNCIAS OBRIGATÓRIAS (NCM DAS PEÇAS & CÓDIGO DO SERVIÇO) */}
             <section className="os-bw-ncm-box">
               <div className="os-bw-ncm-header">
                 📌 EXIGÊNCIAS OBRIGATÓRIAS PARA APROVAÇÃO DO ORÇAMENTO PELA AMBIPAR
@@ -661,7 +661,7 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
               <div className="os-bw-ncm-body">
                 <ol>
                   <li>
-                    <strong>CÓDIGO NCM OBRIGATÓRIO (8 DÍGITOS):</strong> Toda peça e insumo a ser trocado deve conter obrigatoriamente a respectiva Nomenclatura Comum do Mercosul (NCM) na proposta e na Nota Fiscal. Cotações sem NCM das peças serão recusadas pelo setor fiscal.
+                    <strong>CÓDIGO NCM E CÓDIGO DO SERVIÇO OBRIGATÓRIOS:</strong> Toda peça e insumo a ser trocado deve conter obrigatoriamente a respectiva Nomenclatura Comum do Mercosul (NCM de 8 dígitos) e todo serviço deve conter o Código de Serviço municipal (LC 116 / CNAE) na proposta e na Nota Fiscal. Cotações sem NCM das peças ou sem Código do Serviço serão recusadas pelo setor fiscal.
                   </li>
                   <li>
                     <strong>DISCRIMINAÇÃO SEPARADA:</strong> Apresentar valores unitários e totais discriminados individualmente por peças e por mão de obra / serviços.
@@ -687,8 +687,8 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
                     <th style={{ width: '6%' }}>Item</th>
                     <th style={{ width: '9%' }}>Tipo</th>
                     <th>Descrição da Peça ou Serviço</th>
-                    <th style={{ width: '18%' }} className="col-ncm">NCM da Peça *</th>
-                    <th style={{ width: '7%' }}>Qtd</th>
+                    <th style={{ width: '22%' }} className="col-ncm">NCM (Peça) / Cód. Serviço *</th>
+                    <th style={{ width: '6%' }}>Qtd</th>
                     <th style={{ width: '13%' }}>Valor Unit. (R$)</th>
                     <th style={{ width: '14%' }}>Subtotal (R$)</th>
                   </tr>
@@ -696,17 +696,23 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
                 <tbody>
                   {items.length > 0 ? (
                     <>
-                      {items.map((i, idx) => (
-                        <tr key={i.id || idx}>
-                          <td className="center">{idx + 1}</td>
-                          <td className="center">{i.tipo === 'peca' ? 'Peça' : 'Serviço'}</td>
-                          <td>{i.descricao}</td>
-                          <td className="center mono col-ncm">{i.tipo === 'peca' ? (i.ncm || 'Pendente NCM') : '—'}</td>
-                          <td className="center">{i.quantidade}</td>
-                          <td className="right">{money(i.valor_unitario)}</td>
-                          <td className="right bold">{money(Number(i.quantidade) * Number(i.valor_unitario))}</td>
-                        </tr>
-                      ))}
+                      {items.map((i, idx) => {
+                        const fiscalCode = getItemFiscalCode(i);
+                        const cleanDesc = getItemCleanDescription(i);
+                        return (
+                          <tr key={i.id || idx}>
+                            <td className="center">{idx + 1}</td>
+                            <td className="center">{i.tipo === 'peca' ? 'Peça' : 'Serviço'}</td>
+                            <td>{cleanDesc}</td>
+                            <td className="center mono col-ncm">
+                              {fiscalCode || (i.tipo === 'peca' ? 'Pendente NCM' : 'Pendente Cód.')}
+                            </td>
+                            <td className="center">{i.quantidade}</td>
+                            <td className="right">{money(i.valor_unitario)}</td>
+                            <td className="right bold">{money(Number(i.quantidade) * Number(i.valor_unitario))}</td>
+                          </tr>
+                        );
+                      })}
                       {/* Preenche com linhas vazias até completar 10 itens para fechar a folha A4 */}
                       {items.length < 10 &&
                         Array.from({ length: 10 - items.length }, (_, k) => items.length + k + 1).map(line => (
