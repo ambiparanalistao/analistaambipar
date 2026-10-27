@@ -49,3 +49,94 @@ export async function buildOrderWorkbook(data){
  return book.xlsx.writeBuffer();
 }
 export async function downloadOrderWorkbook(data){const buffer=await buildOrderWorkbook(data);const url=URL.createObjectURL(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));const a=document.createElement('a');a.href=url;a.download=orderDocumentName(data);a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
+
+export async function exportOrdersListExcel(orders = [], vehicles = [], partners = [], filters = {}) {
+  const book = new ExcelJS.Workbook();
+  book.creator = 'Central de Manutenção Ambipar';
+  book.title = 'Relatório Geral de S.D.O por Veículo';
+  book.created = new Date();
+
+  const s = book.addWorksheet('S.D.O Veículos', {
+    views: [{ state: 'frozen', ySplit: 3 }],
+    pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1 }
+  });
+
+  s.columns = [
+    { width: 16 },
+    { width: 18 },
+    { width: 14 },
+    { width: 26 },
+    { width: 14 },
+    { width: 16 },
+    { width: 28 },
+    { width: 18 },
+    { width: 14 },
+    { width: 18 },
+    { width: 18 },
+  ];
+
+  s.mergeCells('A1:K1');
+  s.getCell('A1').value = 'RELATÓRIO DE S.D.O POR VEÍCULO • AMBIPAR GROUP';
+  s.getRow(1).height = 32;
+  s.getCell('A1').font = { size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  s.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF102A20' } };
+  s.getCell('A1').alignment = { vertical: 'middle', indent: 1 };
+
+  s.mergeCells('A2:K2');
+  const filterDesc = [
+    filters.placa ? `Placa: ${filters.placa}` : 'Todas as Placas',
+    filters.mes ? `Mês: ${filters.mes}` : '',
+    filters.periodo ? `Período: ${filters.periodo}` : '',
+    filters.status ? `Status: ${filters.status}` : '',
+    `Emitido em: ${new Date().toLocaleString('pt-BR')}`
+  ].filter(Boolean).join(' • ');
+  s.getCell('A2').value = filterDesc;
+  s.getRow(2).height = 22;
+  s.getCell('A2').font = { size: 9, bold: true, color: { argb: 'FF24764B' } };
+
+  s.addRow([
+    'Número S.D.O', 'Data Abertura', 'Placa', 'Marca / Modelo', 'KM Abertura',
+    'Tipo', 'Oficina', 'Status', 'Prioridade', 'Previsão Entrega', 'Valor Total (R$)'
+  ]);
+  s.getRow(3).height = 24;
+  s.getRow(3).font = { bold: true, color: { argb: 'FF18382A' } };
+  s.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCEDE3' } };
+
+  let totalGeral = 0;
+  for (const o of orders) {
+    const v = vehicles.find(x => x.id === o.vehicle_id);
+    const p = partners.find(x => x.id === o.partner_id);
+    const vTotal = Number(o.valor_total || 0);
+    totalGeral += vTotal;
+
+    const r = s.addRow([
+      o.numero || '—',
+      o.data_abertura ? new Date(o.data_abertura).toLocaleString('pt-BR') : '—',
+      v?.placa || o.placa || '—',
+      v?.marca_modelo || v?.tipo || '—',
+      o.km_abertura != null ? Number(o.km_abertura) : '—',
+      Array.isArray(o.tipos) ? o.tipos.join(', ') : (o.tipo || '—'),
+      p?.nome_fantasia || p?.razao_social || 'A Definir',
+      labels[o.status] || o.status || '—',
+      o.prioridade || '—',
+      o.previsao_entrega ? new Date(o.previsao_entrega).toLocaleDateString('pt-BR') : '—',
+      vTotal
+    ]);
+    r.height = 20;
+  }
+
+  const rowTotal = s.addRow(['', '', '', '', '', '', '', '', '', 'TOTAL GERAL', totalGeral]);
+  rowTotal.font = { bold: true };
+  rowTotal.height = 24;
+
+  s.getColumn(11).numFmt = 'R$ #,##0.00';
+  s.autoFilter = { from: 'A3', to: 'K' + (s.rowCount - 1) };
+
+  const buffer = await book.xlsx.writeBuffer();
+  const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Relatorio_SDO_Veiculos_${(filters.placa || 'Geral').replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
