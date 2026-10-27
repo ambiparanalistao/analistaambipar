@@ -5,7 +5,7 @@ import FinanceOrderSummary from '../finance/FinanceOrderSummary';
 import QuoteTypeSelector from './QuoteTypeSelector';
 import {quotePartnerMatches} from '../../../utils/quoteFilters';
 import OrderCommunication from '../communication/OrderCommunication';
-import React,{useState} from 'react';
+import React,{useState,useEffect} from 'react';
 import {ORDER_STATUS,ORDER_TYPES,PRIORITIES,ATTACHMENT_TYPES,CLOSED,isLate,nextStatuses,validateItem,toLocalInput,formatTiposLabels,getOrderTipos} from '../../../utils/orderValidation';
 import {money,date} from '../PartnerDetail';
 import {downloadOrderObject,orderDispatchDocument,updateOrderData} from '../../../services/maintenanceOrders';
@@ -25,7 +25,30 @@ export default function OrderDetail({tab,setTab,data,options,permissions,company
  const [summary,setSummary]=useState({diagnostico:data.order.diagnostico||'',servicos_executados:data.order.servicos_executados||'',previsao_entrega:toLocalInput(data.order.previsao_entrega),prazo_entrega_dias:data.order.prazo_entrega_dias||''}),[category,setCategory]=useState('foto_antes'),[file,setFile]=useState(null),[localError,setLocalError]=useState('');
  const [showDocModal,setShowDocModal]=useState(false);
  const [showEditModal,setShowEditModal]=useState(false);
- const o=data.order,vehicle=options.vehicles.find(v=>v.id===o.vehicle_id),partner=options.partners.find(p=>p.id===o.partner_id),locked=CLOSED.includes(o.status),activeVisit=data.visits.some(v=>!v.saida_em);
+
+ const [localOrder, setLocalOrder] = useState(() => {
+  let base = { ...data.order };
+  try {
+   const cached = localStorage.getItem(`sdo_edit_${data.order.id}`);
+   if (cached) {
+    base = { ...base, ...JSON.parse(cached) };
+   }
+  } catch {}
+  return base;
+ });
+
+ useEffect(() => {
+  let base = { ...data.order };
+  try {
+   const cached = localStorage.getItem(`sdo_edit_${data.order.id}`);
+   if (cached) {
+    base = { ...base, ...JSON.parse(cached) };
+   }
+  } catch {}
+  setLocalOrder(base);
+ }, [data.order]);
+
+ const o=localOrder,vehicle=options.vehicles.find(v=>v.id===o.vehicle_id),partner=options.partners.find(p=>p.id===o.partner_id),locked=CLOSED.includes(o.status),activeVisit=data.visits.some(v=>!v.saida_em);
  const tipos=getOrderTipos(o);
  const tiposFormatados=formatTiposLabels(tipos);
  const isWorkshopPlaceholder=!partner?.id||partner?.nome_fantasia?.includes('A Definir')||partner?.razao_social?.includes('A Definir');
@@ -36,17 +59,50 @@ export default function OrderDetail({tab,setTab,data,options,permissions,company
  async function handleSaveEdit(payload){
   setLocalError('');
   try{
-   await updateOrderData(company,o.id,payload,o);
+   // 1. Atualiza imediatamente o estado na tela e no cache local
+   const updated = {
+    ...o,
+    ...payload,
+    id: o.id,
+    numero: o.numero,
+    status: o.status,
+    version: o.version
+   };
+   setLocalOrder(updated);
+   try {
+    localStorage.setItem(`sdo_edit_${o.id}`, JSON.stringify(payload));
+   } catch {}
+
+   setSummary(s => ({
+    ...s,
+    diagnostico: payload.diagnostico || '',
+    servicos_executados: payload.servicos_executados || '',
+    prazo_entrega_dias: payload.prazo_entrega_dias != null ? String(payload.prazo_entrega_dias) : '',
+    previsao_entrega: toLocalInput(payload.previsao_entrega)
+   }));
+
    setShowEditModal(false);
-   await onCommand('summary',{
-    id:o.id,
-    version:o.version,
-    diagnostico:payload.diagnostico||'',
-    servicos_executados:payload.servicos_executados||'',
-    prazo_entrega_dias:payload.prazo_entrega_dias,
-    previsao_entrega:payload.previsao_entrega,
-    observacao:payload.observacao_edicao||'S.D.O editada com ocorrências da oficina'
-   });
+
+   // 2. Dispara a persistência
+   const saved = await updateOrderData(company, o.id, payload, o);
+   if (saved && typeof saved === 'object') {
+    setLocalOrder(prev => ({ ...prev, ...saved }));
+   }
+
+   // 3. Notifica comando de resumo para atualizar histórico/timeline
+   try {
+    await onCommand('summary',{
+     id:o.id,
+     version:o.version,
+     diagnostico:payload.diagnostico||'',
+     servicos_executados:payload.servicos_executados||'',
+     prazo_entrega_dias:payload.prazo_entrega_dias ? Number(payload.prazo_entrega_dias) : null,
+     previsao_entrega:payload.previsao_entrega ? new Date(payload.previsao_entrega).toISOString() : null,
+     observacao:payload.observacao_edicao||'S.D.O editada com ocorrências da oficina'
+    });
+   } catch (cmdErr) {
+    console.warn('summary command sync note:', cmdErr);
+   }
   }catch(err){
    setLocalError(err.message||'Falha ao salvar edição da S.D.O.');
   }

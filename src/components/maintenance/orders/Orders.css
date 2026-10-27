@@ -126,7 +126,7 @@
 .os-bw-table td.right { text-align: right; }
 .os-bw-table td.bold { font-weight: 800; }
 .os-bw-table td.mono { font-family: monospace; }
-.os-bw-table tr.empty-row td { height: 14px; }
+.os-bw-table tr.empty-row td { height: 18px; }
 .os-bw-signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; page-break-inside: avoid !important; }
 .os-bw-sign-block { text-align: center; }
 .os-bw-sign-line { border-top: 1px solid #000; margin-bottom: 2px; }

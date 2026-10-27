@@ -293,7 +293,7 @@ export const PRINT_MONOCHROME_CSS = `
   .os-bw-table td.bold { font-weight: 800; }
   .os-bw-table td.mono { font-family: monospace; }
   .os-bw-table tr.empty-row td {
-    height: 14px;
+    height: 18px;
   }
   .os-bw-signatures {
     display: grid;
@@ -338,9 +338,23 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
   const [copied, setCopied] = useState(false);
   const [busyExcel, setBusyExcel] = useState(false);
 
+  // Garante que qualquer edição recente em cache seja mesclada imediatamente
+  const effectiveOrder = React.useMemo(() => {
+    let base = { ...order };
+    try {
+      if (order?.id) {
+        const cached = localStorage.getItem(`sdo_edit_${order.id}`);
+        if (cached) {
+          base = { ...base, ...JSON.parse(cached) };
+        }
+      }
+    } catch {}
+    return base;
+  }, [order]);
+
   const placa = vehicle?.placa || 'VEICULO';
-  const numero = order?.numero || 'SDO';
-  const tipos = getOrderTipos(order);
+  const numero = effectiveOrder?.numero || 'SDO';
+  const tipos = getOrderTipos(effectiveOrder);
   const tiposFormatados = formatTiposLabels(tipos);
   const isWorkshopPlaceholder = !partner?.id || partner?.nome_fantasia?.includes('A Definir') || partner?.razao_social?.includes('A Definir');
   const partnerNome = isWorkshopPlaceholder ? 'A Definir / Cotação Avulsa' : (partner?.nome_fantasia || partner?.razao_social || 'Oficina Credenciada');
@@ -348,7 +362,7 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
   const snapshotData = {
     company: { nome: 'Ambipar Group' },
     order: {
-      ...order,
+      ...effectiveOrder,
       tipos,
       tipos_formatados: tiposFormatados
     },
@@ -420,15 +434,20 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
   async function handleDownloadExcel() {
     setBusyExcel(true);
     try {
-      let docSnapshot;
-      if (company && order?.id) {
+      let docSnapshot = snapshotData;
+      if (company && effectiveOrder?.id) {
         try {
-          docSnapshot = await orderDispatchDocument(company, order.id);
+          const remote = await orderDispatchDocument(company, effectiveOrder.id);
+          docSnapshot = {
+            ...remote,
+            ...snapshotData,
+            order: { ...(remote?.order || {}), ...(snapshotData?.order || {}) },
+            vehicle: { ...(remote?.vehicle || {}), ...(snapshotData?.vehicle || {}) },
+            partner: { ...(remote?.partner || {}), ...(snapshotData?.partner || {}) }
+          };
         } catch {
           docSnapshot = snapshotData;
         }
-      } else {
-        docSnapshot = snapshotData;
       }
       await downloadOrderWorkbook(docSnapshot || snapshotData);
     } catch (e) {
@@ -500,7 +519,7 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
               <div className="os-bw-meta-box">
                 <span className="os-bw-sdo-badge">SOLICITAÇÃO DE MANUTENÇÃO (S.D.O)</span>
                 <div className="os-bw-sdo-num">{numero}</div>
-                <div className="os-bw-sdo-date">Emissão: {date(order?.data_abertura || new Date().toISOString())}</div>
+                <div className="os-bw-sdo-date">Emissão: {date(effectiveOrder?.data_abertura || new Date().toISOString())}</div>
               </div>
             </div>
 
@@ -508,11 +527,11 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
             <div className="os-bw-class-bar">
               <div className="os-bw-class-item">
                 <span className="os-bw-class-label">Status:</span>
-                <span className="os-bw-class-badge">{ORDER_STATUS[order?.status] || order?.status || 'Aberta'}</span>
+                <span className="os-bw-class-badge">{ORDER_STATUS[effectiveOrder?.status] || effectiveOrder?.status || 'Aberta'}</span>
               </div>
               <div className="os-bw-class-item">
                 <span className="os-bw-class-label">Urgência:</span>
-                <span className="os-bw-class-badge">{PRIORITIES[order?.prioridade] || 'Média'}</span>
+                <span className="os-bw-class-badge">{PRIORITIES[effectiveOrder?.prioridade] || 'Média'}</span>
               </div>
               <div className="os-bw-class-item">
                 <span className="os-bw-class-label">Classificação da Manutenção:</span>
@@ -543,7 +562,7 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
                 <div className="os-bw-km-highlight">
                   <div className="os-bw-km-label">KM na Abertura da SDO</div>
                   <div className="os-bw-km-val">
-                    {order?.km_abertura != null ? `${Number(order.km_abertura).toLocaleString('pt-BR')} km` : 'Não informado'}
+                    {effectiveOrder?.km_abertura != null ? `${Number(effectiveOrder.km_abertura).toLocaleString('pt-BR')} km` : 'Não informado'}
                   </div>
                 </div>
 
@@ -612,18 +631,23 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
               </section>
             </div>
 
-            {/* QUADRO 3: RELATO DOS PROBLEMAS INFORMADOS PELO MOTORISTA */}
+            {/* QUADRO 3: RELATO DOS PROBLEMAS INFORMADOS PELO MOTORISTA / OFICINA */}
             <section className="os-bw-section">
               <div className="os-bw-section-title">
-                4. RELATO DOS PROBLEMAS & DEFEITOS INFORMADOS PELO MOTORISTA
+                4. RELATO DOS PROBLEMAS & DEFEITOS (MOTORISTA / OFICINA MECÂNICA)
               </div>
               <div className="os-bw-defects-body">
                 <p className="os-bw-defects-text">
-                  {order?.descricao_problema || 'Nenhum detalhe adicional informado na abertura.'}
+                  {effectiveOrder?.descricao_problema || 'Nenhum detalhe adicional informado na abertura.'}
                 </p>
-                {order?.diagnostico && (
+                {effectiveOrder?.diagnostico && (
                   <div className="os-bw-diagnostic-text">
-                    <strong>Diagnóstico Prévio / Anotações Técnicas:</strong> {order.diagnostico}
+                    <strong>Diagnóstico Técnico / Anotações da Oficina:</strong> {effectiveOrder.diagnostico}
+                  </div>
+                )}
+                {effectiveOrder?.servicos_executados && (
+                  <div className="os-bw-diagnostic-text">
+                    <strong>Serviços Executados / em Execução:</strong> {effectiveOrder.servicos_executados}
                   </div>
                 )}
               </div>
@@ -652,7 +676,7 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
               </div>
             </section>
 
-            {/* QUADRO 5: DISCRIMINAÇÃO DE PEÇAS, SERVIÇOS & COTAÇÃO */}
+            {/* QUADRO 5: DISCRIMINAÇÃO DE PEÇAS, SERVIÇOS & COTAÇÃO (FOLHA COMPLETA) */}
             <section className="os-bw-section">
               <div className="os-bw-section-title">
                 5. DISCRIMINAÇÃO DE PEÇAS, SERVIÇOS & PROPOSTA DE COTAÇÃO
@@ -671,19 +695,34 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
                 </thead>
                 <tbody>
                   {items.length > 0 ? (
-                    items.map((i, idx) => (
-                      <tr key={i.id || idx}>
-                        <td className="center">{idx + 1}</td>
-                        <td className="center">{i.tipo === 'peca' ? 'Peça' : 'Serviço'}</td>
-                        <td>{i.descricao}</td>
-                        <td className="center mono col-ncm">{i.tipo === 'peca' ? (i.ncm || 'Pendente NCM') : '—'}</td>
-                        <td className="center">{i.quantidade}</td>
-                        <td className="right">{money(i.valor_unitario)}</td>
-                        <td className="right bold">{money(Number(i.quantidade) * Number(i.valor_unitario))}</td>
-                      </tr>
-                    ))
+                    <>
+                      {items.map((i, idx) => (
+                        <tr key={i.id || idx}>
+                          <td className="center">{idx + 1}</td>
+                          <td className="center">{i.tipo === 'peca' ? 'Peça' : 'Serviço'}</td>
+                          <td>{i.descricao}</td>
+                          <td className="center mono col-ncm">{i.tipo === 'peca' ? (i.ncm || 'Pendente NCM') : '—'}</td>
+                          <td className="center">{i.quantidade}</td>
+                          <td className="right">{money(i.valor_unitario)}</td>
+                          <td className="right bold">{money(Number(i.quantidade) * Number(i.valor_unitario))}</td>
+                        </tr>
+                      ))}
+                      {/* Preenche com linhas vazias até completar 10 itens para fechar a folha A4 */}
+                      {items.length < 10 &&
+                        Array.from({ length: 10 - items.length }, (_, k) => items.length + k + 1).map(line => (
+                          <tr key={`fill-${line}`} className="empty-row">
+                            <td className="center">{line}</td>
+                            <td className="center">[ ] Peça [ ] Serv.</td>
+                            <td></td>
+                            <td className="center mono col-ncm">___ . ___ . ___</td>
+                            <td className="center"></td>
+                            <td className="right"></td>
+                            <td className="right"></td>
+                          </tr>
+                        ))}
+                    </>
                   ) : (
-                    [1, 2, 3].map(line => (
+                    Array.from({ length: 10 }, (_, k) => k + 1).map(line => (
                       <tr key={line} className="empty-row">
                         <td className="center">{line}</td>
                         <td className="center">[ ] Peça [ ] Serv.</td>
@@ -700,7 +739,7 @@ export default function OrderDocumentModal({ order, vehicle, driver, partner, it
                   <tr>
                     <td colSpan={5} className="right bold">TOTAL GERAL ORÇADO:</td>
                     <td colSpan={2} className="right bold" style={{ fontSize: '8.5pt' }}>
-                      {items.length > 0 ? money(order?.valor_total || 0) : 'R$ ____________________'}
+                      {items.length > 0 ? money(effectiveOrder?.valor_total || 0) : 'R$ ____________________'}
                     </td>
                   </tr>
                 </tfoot>

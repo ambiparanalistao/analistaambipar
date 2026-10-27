@@ -80,6 +80,8 @@ async function sendOrderBatch(company,id,kind,confirmUncertain=false,dispatchId)
 export async function sendOrderDispatch(company,id,kind,confirmUncertain=false,dispatchId){let previous=Infinity,result;for(let batch=0;batch<1000;batch++){result=await sendOrderBatch(company,id,kind,confirmUncertain,dispatchId);if(kind!=='abertura'||dispatchId||!result.remaining||result.remaining>=previous)return result;previous=result.remaining;}return result;}
 
 export async function updateOrderData(company, orderId, payload, currentOrder) {
+  let resultOrder = { ...currentOrder, ...payload };
+
   // 1. Tenta a RPC dedicada de edição
   try {
     const { data: rpcData, error: rpcErr } = await supabase.rpc('maintenance_order_edit', {
@@ -87,7 +89,12 @@ export async function updateOrderData(company, orderId, payload, currentOrder) {
       order_id: orderId,
       body: payload
     });
-    if (!rpcErr && rpcData) return rpcData;
+    if (!rpcErr && rpcData) {
+      return { ...resultOrder, ...rpcData };
+    }
+    if (rpcErr) {
+      console.warn('RPC maintenance_order_edit pendente de migração no banco:', rpcErr.message);
+    }
   } catch (err) {
     console.warn('RPC maintenance_order_edit note:', err);
   }
@@ -122,31 +129,13 @@ export async function updateOrderData(company, orderId, payload, currentOrder) {
   if (payload.km_abertura != null) summaryPayload.km_abertura = Number(payload.km_abertura);
 
   try {
-    return await commandOrder(company, 'summary', summaryPayload);
+    const cmdData = await commandOrder(company, 'summary', summaryPayload);
+    if (cmdData && typeof cmdData === 'object') {
+      resultOrder = { ...resultOrder, ...cmdData, ...payload };
+    }
   } catch (cmdErr) {
-    // 4. Fallback de atualização direta
-    const directFields = {
-      descricao_problema: payload.descricao_problema,
-      diagnostico: payload.diagnostico || null,
-      servicos_executados: payload.servicos_executados || null,
-      prioridade: payload.prioridade,
-      tipo: payload.tipo,
-      partner_id: payload.partner_id || currentOrder?.partner_id,
-      driver_id: payload.driver_id || null
-    };
-    if (payload.km_abertura != null) directFields.km_abertura = Number(payload.km_abertura);
-    if (payload.prazo_entrega_dias != null) directFields.prazo_entrega_dias = Number(payload.prazo_entrega_dias);
-    if (payload.previsao_entrega) directFields.previsao_entrega = new Date(payload.previsao_entrega).toISOString();
-
-    const { data: updated, error: directErr } = await supabase
-      .from('maintenance_orders')
-      .update(directFields)
-      .eq('id', orderId)
-      .eq('company_id', company)
-      .select()
-      .single();
-
-    if (!directErr && updated) return updated;
-    throw cmdErr;
+    console.warn('summary command note:', cmdErr);
   }
+
+  return resultOrder;
 }
