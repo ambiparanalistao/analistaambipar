@@ -1,3 +1,4 @@
+import AmbiparConfirmDialog from './common/AmbiparConfirmDialog';
 import FleetBranchField from './maintenance/analytics/FleetBranchField';
 import VehicleMaintenancePanel from './maintenance/vehicles/VehicleMaintenancePanel';
 import {persistFleetVehicle} from '../services/fleetPersistence';
@@ -292,6 +293,8 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   const [editingId, setEditingId] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [fleetSaving,setFleetSaving]=useState(false);
+  const [deleteConfirmVehicle, setDeleteConfirmVehicle] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   // Estado para a Central de Despacho WhatsApp Central de Gestão (Tela Completa)
   const [dispatchVehicle, setDispatchVehicle] = useState(null);
@@ -477,14 +480,18 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   };
 
   const handleQuickStatusChange=async(id,status)=>{try{const saved=await updateRegistryStatus('veiculos',id,status,companyId);setVehicles(rows=>rows.map(v=>v.id===id?saved:v));}catch(e){setFeedback({type:'error',text:e.message});}};
-  const handleDeleteVehicle = async (id, placa) => {
-    if (!window.confirm(`Confirma a exclusão definitiva do veículo ${placa} da frota? Esta ação removerá os planos associados e desvinculará os históricos.`)) return;
-    
-    // Remoção otimista imediata na interface para o veículo sumir sem demora
+  const handleRequestDeleteVehicle = (vehicle) => {
+    setDeleteConfirmVehicle(vehicle);
+  };
+  const handleDeleteVehicle = handleRequestDeleteVehicle;
+  const handleConfirmDeleteVehicle = async () => {
+    if (!deleteConfirmVehicle) return;
+    const { id, placa } = deleteConfirmVehicle;
+    setDeleteBusy(true);
     const backupVehicles = [...vehicles];
     setVehicles(rows => rows.filter(v => v.id !== id));
     setFeedback({ type: 'info', text: `Excluindo veículo ${placa} do sistema...` });
-
+    setDeleteConfirmVehicle(null);
     try {
       await deleteRegistryRecord('veiculos', id, companyId);
       directory.reload();
@@ -492,9 +499,10 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
       setTimeout(() => setFeedback(null), 4000);
     } catch (e) {
       console.error('Erro na exclusão do veículo:', e);
-      // Restaura o veículo em caso de falha
       setVehicles(backupVehicles);
       setFeedback({ type: 'error', text: `Não foi possível excluir o veículo ${placa}: ${e.message}` });
+    } finally {
+      setDeleteBusy(false);
     }
   };
   const getWhatsAppLink = (phoneStr) => {
@@ -1522,7 +1530,18 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                           {vehicle.motorista_vinculado || 'Nenhum condutor fixo alocado'}
                         </strong>
                       </div>
-                      {maintenanceAccess?.canRead&&<button type="button" onClick={()=>setMaintenanceVehicle(vehicle)}>Ficha · Manutenção</button>}
+                      {maintenanceAccess?.canRead && (
+                        <button
+                          type="button"
+                          onClick={() => setMaintenanceVehicle(vehicle)}
+                          className="btn-maintenance-pill"
+                          title="Abrir Ficha Técnica e Histórico de Manutenção"
+                          id={`btn-ficha-card-${vehicle.id}`}
+                        >
+                          <Wrench size={13} />
+                          <span>Ficha Manutenção</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleOpenWhatsAppWorkspace(vehicle)}
@@ -1612,7 +1631,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                           type="button"
                           className="btn-danger-icon"
                           style={{ width: '32px', height: '32px' }}
-                          onClick={() => handleDeleteVehicle(vehicle.id, vehicle.placa)}
+                          onClick={() => handleRequestDeleteVehicle(vehicle)}
                           title="Remover veículo da frota"
                         >
                           <Trash2 size={15} />
@@ -1711,7 +1730,19 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                             <strong style={{ fontSize: '0.82rem', color: '#ffffff' }}>
                               {vehicle.motorista_vinculado || 'Não vinculado'}
                             </strong>
-                            {maintenanceAccess?.canRead&&<button type="button" onClick={()=>setMaintenanceVehicle(vehicle)}>Ficha · Manutenção</button>}
+                            {maintenanceAccess?.canRead && (
+                              <button
+                                type="button"
+                                onClick={() => setMaintenanceVehicle(vehicle)}
+                                className="btn-maintenance-pill"
+                                title="Abrir Ficha Técnica e Histórico de Manutenção"
+                                style={{ alignSelf: 'flex-start' }}
+                                id={`btn-ficha-tbl-${vehicle.id}`}
+                              >
+                                <Wrench size={12} />
+                                <span>Ficha Manutenção</span>
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleOpenWhatsAppWorkspace(vehicle)}
@@ -1769,7 +1800,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                               type="button"
                               className="btn-danger-icon"
                               style={{ width: '30px', height: '30px' }}
-                              onClick={() => handleDeleteVehicle(vehicle.id, vehicle.placa)}
+                              onClick={() => handleRequestDeleteVehicle(vehicle)}
                               title="Excluir veículo"
                             >
                               <Trash2 size={14} />
@@ -1785,7 +1816,22 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
           )}
         </>
       )}
-    </div>
+    
+      <AmbiparConfirmDialog
+        isOpen={!!deleteConfirmVehicle}
+        title="Excluir Veículo da Frota"
+        message={`Deseja realmente remover este veículo permanentemente da frota operacional?`}
+        subtitle="Esta ação removerá planos de manutenção vinculados e desvinculará os históricos com segurança."
+        itemLabel="Placa"
+        itemBadge={deleteConfirmVehicle?.placa}
+        confirmText="Sim, Excluir Veículo"
+        cancelText="Cancelar"
+        isDanger={true}
+        loading={deleteBusy}
+        onConfirm={handleConfirmDeleteVehicle}
+        onCancel={() => !deleteBusy && setDeleteConfirmVehicle(null)}
+      />
+</div>
   );
 }
 

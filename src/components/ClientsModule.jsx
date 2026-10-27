@@ -1,3 +1,4 @@
+import AmbiparConfirmDialog from './common/AmbiparConfirmDialog';
 import AvailableVehicleSelect from './maintenance/AvailableVehicleSelect';
 import {allocateVehicle} from '../services/vehicleMaintenance';
 import React, { useState, useEffect } from 'react';
@@ -144,6 +145,8 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
   const [clients, setClients] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const [deleteConfirmClient, setDeleteConfirmClient] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [searchingCep, setSearchingCep] = useState(false);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table' | 'form'
   const [activeTab, setActiveTab] = useState('todos'); // 'todos' | 'em_operacao' | 'ativos' | 'platinum' | 'bloqueados'
@@ -391,19 +394,36 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
   };
 
   // Exclusão
-  const handleDeleteClient = async (clientId, name) => {
-    if (!window.confirm(`Confirma a exclusão do cliente "${name}" da carteira ativa Central de Gestão?`)) return;
+  const handleDeleteClient = (clientId, name) => {
+    setDeleteConfirmClient({ clientId, name });
+  };
+  const handleConfirmDeleteClient = async () => {
+    if (!deleteConfirmClient) return;
+    const { clientId, name } = deleteConfirmClient;
+    setDeleteBusy(true);
+    setDeleteConfirmClient(null);
     try {
       if (!isSupabaseConfigured || !supabase || !companyId) throw new Error('Conecte-se à empresa para confirmar a exclusão.');
-      const target=clients.find(c=>c.id===clientId);
-      let found=await supabase.from('clientes').select('id').eq('company_id',companyId).eq('id',clientId);
-      if(found.error)throw found.error;
-      if(!found.data?.length&&target?.cnpj){found=await supabase.from('clientes').select('id').eq('company_id',companyId).eq('cnpj',target.cnpj).limit(2);if(found.error)throw found.error;}
-      if(found.data?.length>1)throw new Error('Há mais de um cliente com este CNPJ. Sincronize e confira o cadastro antes de excluir.');
-      if(found.data?.length){const result=await supabase.from('clientes').delete().eq('company_id',companyId).eq('id',found.data[0].id).select('id');if(result.error)throw result.error;if(!result.data?.length)throw new Error('Exclusão não confirmada pelo banco.');}
-      setClients(rows=>rows.filter(c=>c.id!==clientId));
-      setFeedback({type:'success',text:`Cliente "${name}" removido.`});
-    } catch(error){setFeedback({type:'error',text:error.code==='23503'?'O cliente possui vínculos ou histórico e não pode ser excluído.':error.message||'Não foi possível excluir o cliente.'});}
+      const target = clients.find(c => c.id === clientId);
+      let found = await supabase.from('clientes').select('id').eq('company_id', companyId).eq('id', clientId);
+      if (found.error) throw found.error;
+      if (!found.data?.length && target?.cnpj) {
+        found = await supabase.from('clientes').select('id').eq('company_id', companyId).eq('cnpj', target.cnpj).limit(2);
+        if (found.error) throw found.error;
+      }
+      if (found.data?.length > 1) throw new Error('Há mais de um cliente com este CNPJ. Sincronize e confira o cadastro antes de excluir.');
+      if (found.data?.length) {
+        const result = await supabase.from('clientes').delete().eq('company_id', companyId).eq('id', found.data[0].id).select('id');
+        if (result.error) throw result.error;
+        if (!result.data?.length) throw new Error('Exclusão não confirmada pelo banco.');
+      }
+      setClients(rows => rows.filter(c => c.id !== clientId));
+      setFeedback({ type: 'success', text: `Cliente "${name}" removido.` });
+    } catch(error) {
+      setFeedback({ type: 'error', text: error.code === '23503' ? 'O cliente possui vínculos ou histórico e não pode ser excluído.' : error.message || 'Não foi possível excluir o cliente.' });
+    } finally {
+      setDeleteBusy(false);
+    }
   };
 
   // Abrir Redirecionamento de Rota em Tela Cheia (SEM POP-UP)
@@ -2146,6 +2166,20 @@ export default function ClientsModule({ user, companyId, onNavigateTrips, onNavi
           )}
         </>
       )}
+      <AmbiparConfirmDialog
+        isOpen={!!deleteConfirmClient}
+        title="Excluir Cliente"
+        message="Confirma a remoção definitiva deste cliente da carteira ativa da Central de Gestão?"
+        subtitle="Esta ação removerá o cadastro do cliente e desvinculará suas operações."
+        itemLabel="Cliente"
+        itemBadge={deleteConfirmClient?.name}
+        confirmText="Sim, Excluir Cliente"
+        cancelText="Cancelar"
+        isDanger={true}
+        loading={deleteBusy}
+        onConfirm={handleConfirmDeleteClient}
+        onCancel={() => !deleteBusy && setDeleteConfirmClient(null)}
+      />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import AmbiparConfirmDialog from '../../common/AmbiparConfirmDialog';
 import FleetPreventiveOrderForm from '../plans/FleetPreventiveOrderForm';
 import DriverReportOrderForm from '../driver-requests/DriverReportOrderForm';
 import {reportOrder} from '../../../services/driverReports';
@@ -43,6 +44,7 @@ export default function OrdersPage({access,setLocked}){
   const [page,setPage]=useState(1);
   const [board,setBoard]=useState(true);
   const [busy,setBusy]=useState(false);
+  const [deleteConfirmOrder, setDeleteConfirmOrder] = useState(null);
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
   const [modal,setModal]=useState(null);
@@ -164,16 +166,20 @@ export default function OrdersPage({access,setLocked}){
     }
   }
 
-  async function handleDeleteOrder(order) {
+  function handleDeleteOrder(order) {
     if (!order) return;
-    const confirmMsg = `Tem certeza que deseja excluir a S.D.O ${order.numero || ''}? Esta ação removerá a solicitação permanentemente.`;
-    if (!window.confirm(confirmMsg)) return;
+    setDeleteConfirmOrder(order);
+  }
 
+  async function handleConfirmDeleteOrder() {
+    if (!deleteConfirmOrder) return;
+    const order = deleteConfirmOrder;
     setBusy(true);
     setError('');
     try {
       await deleteOrder(access.companyId, order.id);
       setNotice(`S.D.O ${order.numero || ''} excluída com sucesso.`);
+      setDeleteConfirmOrder(null);
       if (view.id === order.id) {
         go('list');
       }
@@ -658,6 +664,20 @@ export default function OrdersPage({access,setLocked}){
           onClose={() => { setEditModalOrder(null); setError(''); }}
         />
       )}
+      <AmbiparConfirmDialog
+        isOpen={!!deleteConfirmOrder}
+        title="Excluir Ordem de Serviço (S.D.O)"
+        message="Tem certeza que deseja excluir esta Ordem de Serviço permanentemente do sistema?"
+        subtitle="Esta ação removerá a solicitação e os registros vinculados de forma definitiva e segura."
+        itemLabel="S.D.O"
+        itemBadge={deleteConfirmOrder?.numero}
+        confirmText="Sim, Excluir S.D.O"
+        cancelText="Cancelar"
+        isDanger={true}
+        loading={busy}
+        onConfirm={handleConfirmDeleteOrder}
+        onCancel={() => !busy && setDeleteConfirmOrder(null)}
+      />
     </div>
   );
 }

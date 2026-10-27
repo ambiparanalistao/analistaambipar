@@ -1,3 +1,4 @@
+import AmbiparConfirmDialog from './common/AmbiparConfirmDialog';
 import {requestDriverToxicology} from '../services/driverToxicology';
 import {driverValidityRequest} from '../utils/driverValidityRequest';
 import DriverBindingPanel from './maintenance/driver/DriverBindingPanel';
@@ -190,6 +191,8 @@ export default function DriversModule({ user, maintenanceAccess }) {
   const [drivers, setDrivers] = useState([]);
 
   const [loading, setLoading] = useState(false);
+  const [deleteConfirmDriver, setDeleteConfirmDriver] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [feedback, setFeedback] = useState(null);
@@ -273,7 +276,24 @@ export default function DriversModule({ user, maintenanceAccess }) {
 
   const handleSubmitForm=async e=>{e.preventDefault();if(loading)return;setLoading(true);try{const saved=await saveDriver(formData,editingId,user?.id,company);setDrivers(list=>editingId?list.map(d=>d.id===editingId?saved:d):[saved,...list]);setViewMode('list');setFeedback({type:'success',text:'Motorista salvo no banco.'});}catch(e){setFeedback({type:'error',text:'Motorista não salvo: '+e.message});}finally{setLoading(false);}};
   const handleChangeStatus=async(id,status)=>{try{const saved=await updateRegistryStatus('motoristas',id,status,company);setDrivers(rows=>rows.map(d=>d.id===id?saved:d));}catch(e){setFeedback({type:'error',text:e.message});}};
-  const handleDeleteDriver=async(id,nome)=>{if(!window.confirm('Confirma a exclusão do motorista '+nome+'?'))return;try{await deleteRegistryRecord('motoristas',id,company);setDrivers(rows=>rows.filter(d=>d.id!==id));setFeedback({type:'success',text:'Motorista excluído do banco.'});}catch(e){setFeedback({type:'error',text:e.message});}};
+  const handleDeleteDriver = (id, nome) => {
+    setDeleteConfirmDriver({ id, nome });
+  };
+  const handleConfirmDeleteDriver = async () => {
+    if (!deleteConfirmDriver) return;
+    const { id, nome } = deleteConfirmDriver;
+    setDeleteBusy(true);
+    setDeleteConfirmDriver(null);
+    try {
+      await deleteRegistryRecord('motoristas', id, company);
+      setDrivers(rows => rows.filter(d => d.id !== id));
+      setFeedback({ type: 'success', text: `Motorista ${nome} excluído do banco.` });
+    } catch(e) {
+      setFeedback({ type: 'error', text: e.message });
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
   // Verifica se o motorista tem alerta de conformidade em qualquer documento ou curso
   const hasComplianceAlert = (driver) => {
     const dates = [
@@ -1326,6 +1346,20 @@ export default function DriversModule({ user, maintenanceAccess }) {
           </div>
         </>
       )}
+      <AmbiparConfirmDialog
+        isOpen={!!deleteConfirmDriver}
+        title="Excluir Motorista"
+        message="Confirma a exclusão deste motorista da base operacional Central de Gestão?"
+        subtitle="O registro será removido e eventuais vínculos serão desassociados."
+        itemLabel="Motorista"
+        itemBadge={deleteConfirmDriver?.nome}
+        confirmText="Sim, Excluir Motorista"
+        cancelText="Cancelar"
+        isDanger={true}
+        loading={deleteBusy}
+        onConfirm={handleConfirmDeleteDriver}
+        onCancel={() => !deleteBusy && setDeleteConfirmDriver(null)}
+      />
     </div>
   );
 }

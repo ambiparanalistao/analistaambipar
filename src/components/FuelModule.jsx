@@ -1,3 +1,4 @@
+import AmbiparConfirmDialog from './common/AmbiparConfirmDialog';
 import {driverForVehicle} from '../utils/registryMatching';
 import useFleetDirectory from '../hooks/useFleetDirectory';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -573,17 +574,27 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
     setTimeout(() => setFeedback(null), 4000);
   };
 
-  const handleDeleteRecord = async (id, placa) => {
-    const existing = records.find(record => String(record.id) === String(id));
-    if (supabase && companyId && existing?.sourceKey) {
-      const { error } = await supabase.from('fuel_transactions').delete().eq('company_id', companyId).eq('source_key', existing.sourceKey);
-      if (error) { setFuelDbError(error.message); setFeedback({ type: 'error', text: 'Não foi possível excluir o registro no banco de dados.' }); return; }
-    }
-    if (window.confirm(`Confirma a exclusão do registro de abastecimento da placa "${placa}"?`)) {
+  const handleDeleteRecord = (id, placa) => {
+    setDeleteConfirmFuel({ id, placa });
+  };
+
+  const handleConfirmDeleteRecord = async () => {
+    if (!deleteConfirmFuel) return;
+    const { id, placa } = deleteConfirmFuel;
+    setDeleteFuelBusy(true);
+    try {
+      const existing = records.find(record => String(record.id) === String(id));
+      if (supabase && companyId && existing?.sourceKey) {
+        const { error } = await supabase.from('fuel_transactions').delete().eq('company_id', companyId).eq('source_key', existing.sourceKey);
+        if (error) { setFuelDbError(error.message); setFeedback({ type: 'error', text: 'Não foi possível excluir o registro no banco de dados.' }); return; }
+      }
       setRecords(records.filter(r => r.id !== id));
       triggerGoogleSheetWebhook('DELETE', { id });
-      setFeedback({ type: 'info', text: `Registro de abastecimento removido.` });
+      setFeedback({ type: 'info', text: 'Registro de abastecimento removido.' });
+      setDeleteConfirmFuel(null);
       setTimeout(() => setFeedback(null), 3000);
+    } finally {
+      setDeleteFuelBusy(false);
     }
   };
 
@@ -3201,6 +3212,20 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
           </div>
         </div>
       )}
+      <AmbiparConfirmDialog
+        isOpen={!!deleteConfirmFuel}
+        title="Excluir Abastecimento"
+        message="Confirma a exclusão definitiva do registro de abastecimento?"
+        subtitle="O lançamento será removido da base de dados e do histórico de combustível."
+        itemLabel="Placa"
+        itemBadge={deleteConfirmFuel?.placa}
+        confirmText="Sim, Excluir Registro"
+        cancelText="Cancelar"
+        isDanger={true}
+        loading={deleteFuelBusy}
+        onConfirm={handleConfirmDeleteRecord}
+        onCancel={() => !deleteFuelBusy && setDeleteConfirmFuel(null)}
+      />
     </div>
   );
 }
