@@ -29,7 +29,7 @@ function AlertSettings({ company, settings, onSaved }) {
   return (
     <form onSubmit={submit} className="mp-card pp-settings" style={{ marginTop: '20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-        <Settings size={18} style={{ color: '#0ea5e9' }} />
+        <Settings size={18} style={{ color: 'var(--mp-accent, #b6ff3b)' }} />
         <h3 style={{ margin: 0 }}>Antecedência Geral dos Alertas na Tela</h3>
       </div>
       <p className="mp-muted">
@@ -119,27 +119,28 @@ function QuickKmEditor({ plan, companyId, canWrite, onUpdated }) {
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: '12px',
-        padding: '12px 14px',
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
-        borderRadius: '8px',
-        marginBottom: '10px'
+        padding: '14px 16px',
+        background: 'var(--mp-panel, #122018)',
+        border: '1px solid var(--mp-border, #2c4434)',
+        borderRadius: '10px',
+        marginBottom: '10px',
+        transition: 'border-color 0.2s ease'
       }}
     >
       <div style={{ flex: '1 1 240px' }}>
-        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>
+        <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--mp-text, #e9f4ec)' }}>
           {plan.nome}
         </div>
-        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+        <div style={{ fontSize: '0.82rem', color: 'var(--mp-muted, #a0b8a8)', marginTop: '2px' }}>
           {plan.vehicle_id ? 'Veículo específico' : (!plan.categoria_veiculo || plan.categoria_veiculo === 'TODOS' ? 'Toda a Frota (Geral)' : `Categoria: ${plan.categoria_veiculo}`)}
           {plan.intervalo_dias ? ` · ou a cada ${plan.intervalo_dias} dias` : ''}
         </div>
-        {error && <span style={{ color: '#ef4444', fontSize: '0.78rem' }}>{error}</span>}
+        {error && <span style={{ color: 'var(--mp-error, #ffabb3)', fontSize: '0.78rem' }}>{error}</span>}
       </div>
 
-      <form onSubmit={handleSaveKm} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <label style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
+      <form onSubmit={handleSaveKm} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label style={{ fontSize: '0.85rem', color: 'var(--mp-muted, #a0b8a8)', fontWeight: 600 }}>
             KM Programado:
           </label>
           <input
@@ -151,15 +152,18 @@ function QuickKmEditor({ plan, companyId, canWrite, onUpdated }) {
             value={kmValue}
             onChange={e => setKmValue(e.target.value)}
             style={{
-              width: '110px',
-              padding: '6px 8px',
-              borderRadius: '6px',
-              border: '1px solid #cbd5e1',
+              width: '115px',
+              padding: '8px 10px',
+              borderRadius: '8px',
+              border: '1px solid var(--mp-border, #2c4434)',
+              background: 'var(--mp-input, #09130d)',
+              color: 'var(--mp-text, #e9f4ec)',
               fontWeight: 700,
+              fontSize: '0.95rem',
               textAlign: 'right'
             }}
           />
-          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>km</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--mp-muted, #a0b8a8)', fontWeight: 600 }}>km</span>
         </div>
 
         {canWrite && (
@@ -171,9 +175,12 @@ function QuickKmEditor({ plan, companyId, canWrite, onUpdated }) {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 12px',
+              padding: '8px 14px',
               background: savedSuccess ? '#10b981' : undefined,
-              color: savedSuccess ? '#ffffff' : undefined
+              borderColor: savedSuccess ? '#10b981' : undefined,
+              color: savedSuccess ? '#ffffff' : undefined,
+              fontWeight: 600,
+              borderRadius: '8px'
             }}
           >
             {savedSuccess ? <Check size={14} /> : saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
@@ -267,20 +274,23 @@ export default function PlansPage({ access, setLocked }) {
       <div
         className="mp-card"
         style={{
-          borderLeft: '4px solid #3b82f6',
-          background: 'rgba(59, 130, 246, 0.05)',
-          marginBottom: '16px'
+          border: '1px solid var(--mp-border, #2c4434)',
+          borderLeft: '4px solid #10b981',
+          background: 'color-mix(in srgb, #10b981 8%, var(--mp-panel, #122018))',
+          marginBottom: '16px',
+          padding: '16px 18px',
+          borderRadius: '12px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-          <Wrench size={18} style={{ color: '#2563eb' }} />
-          <h3 style={{ margin: 0, fontSize: '1rem', color: '#1e3a8a' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <Wrench size={18} style={{ color: '#10b981' }} />
+          <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--mp-text, #e9f4ec)', fontWeight: 700 }}>
             Controle de KM Programado & Notificação com 1.500 km de Antecedência
           </h3>
         </div>
-        <p style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: '#334155' }}>
-          Você pode alterar o <strong>KM programado</strong> de qualquer manutenção periódica abaixo (ex: Óleo para 10.000 km, Filtros para 10.000 km, Freios para 20.000 km).
-          O sistema recalcula a meta de cada veículo automaticamente e <strong>emite uma notificação em destaque na tela sempre que o odômetro estiver a 1.500 km do vencimento</strong> (ou já vencido).
+        <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--mp-muted, #a0b8a8)', lineHeight: 1.6 }}>
+          Você pode alterar o <strong style={{ color: 'var(--mp-text, #e9f4ec)' }}>KM programado</strong> de qualquer manutenção periódica abaixo (ex: Óleo para 10.000 km, Filtros para 10.000 km, Freios para 20.000 km).
+          O sistema recalcula a meta de cada veículo automaticamente e <strong style={{ color: 'var(--mp-accent, #b6ff3b)' }}>emite uma notificação em destaque na tela sempre que o odômetro estiver a 1.500 km do vencimento</strong> (ou já vencido).
         </p>
       </div>
 
@@ -289,10 +299,10 @@ export default function PlansPage({ access, setLocked }) {
           role="status"
           style={{
             padding: '10px 14px',
-            background: '#dcfce7',
-            border: '1px solid #86efac',
-            color: '#166534',
-            borderRadius: '6px',
+            background: 'color-mix(in srgb, #10b981 12%, var(--mp-panel, #122018))',
+            border: '1px solid #10b981',
+            color: '#34d399',
+            borderRadius: '8px',
             marginBottom: '14px',
             fontWeight: 600
           }}

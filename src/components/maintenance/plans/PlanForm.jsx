@@ -101,7 +101,7 @@ export default function PlanForm({ initial, vehicles, onSave, onBack, busy, erro
             </select>
           </label>
           {scope === 'all' ? (
-            <div style={{ gridColumn: 'span 2', padding: '8px 12px', background: 'rgba(59, 130, 246, 0.08)', borderRadius: '6px', fontSize: '0.88rem', color: '#1e40af' }}>
+            <div style={{ gridColumn: 'span 2', padding: '8px 12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '6px', fontSize: '0.88rem', color: 'var(--mp-text, #e9f4ec)' }}>
               ✓ Este plano será aplicado automaticamente a todos os veículos atuais e novos da empresa.
             </div>
           ) : scope === 'vehicle' ? (

@@ -44,12 +44,12 @@ export default function PreventiveBanner({ companyId, onNavigate }) {
       className="preventive-screen-banner animate-fade-in"
       style={{
         margin: '12px 0 16px 0',
-        borderRadius: '10px',
-        background: overdueCount > 0 ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' : 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-        border: overdueCount > 0 ? '1px solid #f87171' : '1px solid #fbbf24',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-        color: '#1e293b',
-        padding: '12px 16px',
+        borderRadius: '12px',
+        background: overdueCount > 0 ? 'color-mix(in srgb, #ef4444 14%, var(--mp-panel, #122018))' : 'color-mix(in srgb, #f59e0b 14%, var(--mp-panel, #122018))',
+        border: overdueCount > 0 ? '1px solid rgba(239, 68, 68, 0.45)' : '1px solid rgba(245, 158, 11, 0.45)',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+        color: 'var(--mp-text, #e9f4ec)',
+        padding: '14px 18px',
         position: 'relative',
         zIndex: 50
       }}
@@ -59,9 +59,9 @@ export default function PreventiveBanner({ companyId, onNavigate }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
+              width: '38px',
+              height: '38px',
+              borderRadius: '9px',
               background: overdueCount > 0 ? '#ef4444' : '#f59e0b',
               display: 'flex',
               alignItems: 'center',
@@ -80,12 +80,12 @@ export default function PreventiveBanner({ companyId, onNavigate }) {
                   : `Atenção: ${criticalOrWarningItems.length} manutenção(ões) preventiva(s) a menos de 1.500 km do vencimento!`}
               </span>
               {warningCount > 0 && overdueCount > 0 && (
-                <span style={{ fontSize: '0.8rem', background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', border: '1px solid #fde68a' }}>
+                <span style={{ fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.35)' }}>
                   +{warningCount} próximas de 1.500 km
                 </span>
               )}
             </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#475569' }}>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: 'var(--mp-muted, #a0b8a8)' }}>
               Monitore a troca de óleo, filtros, freios e demais itens periódicos programados para garantir a disponibilidade da frota.
             </p>
           </div>
@@ -96,8 +96,8 @@ export default function PreventiveBanner({ companyId, onNavigate }) {
             type="button"
             onClick={() => setExpanded(v => !v)}
             style={{
-              background: 'transparent',
-              border: '1px solid rgba(0,0,0,0.15)',
+              background: 'var(--mp-input, #09130d)',
+              border: '1px solid var(--mp-border, #2c4434)',
               borderRadius: '6px',
               padding: '6px 12px',
               fontSize: '0.82rem',
@@ -105,7 +105,7 @@ export default function PreventiveBanner({ companyId, onNavigate }) {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              color: '#334155'
+              color: 'var(--mp-text, #e9f4ec)'
             }}
           >
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -156,7 +156,7 @@ export default function PreventiveBanner({ companyId, onNavigate }) {
       </div>
 
       {expanded && (
-        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed rgba(0,0,0,0.12)' }}>
+        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--mp-border, rgba(255,255,255,0.12))' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '8px' }}>
             {criticalOrWarningItems.map(item => {
               const diff = item.proxima_km != null ? Number(item.proxima_km) - Number(item.km_atual || 0) : null;
@@ -165,37 +165,38 @@ export default function PreventiveBanner({ companyId, onNavigate }) {
                 <div
                   key={item.id}
                   style={{
-                    background: '#ffffff',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
+                    background: 'var(--mp-panel, #122018)',
+                    border: '1px solid var(--mp-border, #2c4434)',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
                     borderLeft: `4px solid ${isOverdue ? '#ef4444' : '#f59e0b'}`,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '2px'
+                    gap: '4px'
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong>{item.placa}</strong>
+                    <strong style={{ color: 'var(--mp-text, #e9f4ec)' }}>{item.placa}</strong>
                     <span
                       style={{
                         fontSize: '0.75rem',
                         fontWeight: 600,
                         padding: '1px 6px',
                         borderRadius: '4px',
-                        background: isOverdue ? '#fef2f2' : '#fffbeb',
-                        color: isOverdue ? '#b91c1c' : '#b45309'
+                        background: isOverdue ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
+                        color: isOverdue ? '#fca5a5' : '#fcd34d'
                       }}
                     >
                       {isOverdue ? 'Vencida' : 'Próxima (≤ 1.500 km)'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: '#1e293b' }}>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--mp-text, #e9f4ec)', fontWeight: 600 }}>
                     {item.nome}
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--mp-muted, #a0b8a8)', display: 'flex', justifyContent: 'space-between' }}>
                     <span>KM atual: {Number(item.km_atual || 0).toLocaleString('pt-BR')}</span>
-                    <strong style={{ color: isOverdue ? '#ef4444' : '#d97706' }}>
+                    <strong style={{ color: isOverdue ? '#ef4444' : '#f59e0b' }}>
                       {diff != null ? (diff <= 0 ? `${Math.abs(diff).toLocaleString('pt-BR')} km em atraso` : `restam ${diff.toLocaleString('pt-BR')} km`) : '—'}
                     </strong>
                   </div>
