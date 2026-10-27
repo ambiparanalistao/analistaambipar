@@ -8,8 +8,8 @@ export default function PreventiveAlerts({rows,canGenerate}){const [filters,setF
       <td>{Number(a.ultima_execucao_km||0).toLocaleString('pt-BR')} km<br/><small className="mp-muted">{a.ultima_execucao_data}</small></td>
       <td>
         <strong>{a.proxima_km != null ? `${Number(a.proxima_km).toLocaleString('pt-BR')} km` : '—'}</strong>
-        {diff != null && <span style={{ fontSize: '0.75rem', display: 'block', color: diff < 0 ? '#ef4444' : diff <= 500 ? '#f59e0b' : '#10b981' }}>
-          {diff < 0 ? `(${Math.abs(diff).toLocaleString('pt-BR')} km em atraso)` : `(restam ${diff.toLocaleString('pt-BR')} km)`}
+        {diff != null && <span style={{ fontSize: '0.75rem', display: 'block', color: diff < 0 ? '#ef4444' : diff <= 1500 ? '#f59e0b' : '#10b981', fontWeight: diff <= 1500 ? 600 : 'normal' }}>
+          {diff < 0 ? `(${Math.abs(diff).toLocaleString('pt-BR')} km em atraso)` : diff <= 1500 ? `(⚠️ restam ${diff.toLocaleString('pt-BR')} km — próximo do vencimento)` : `(restam ${diff.toLocaleString('pt-BR')} km)`}
         </span>}
         <small className="mp-muted">Até {a.proxima_data || '—'}</small>
       </td>

@@ -1,32 +1,376 @@
-import React,{useState,useEffect} from 'react';import useMaintenancePlans from '../../../hooks/useMaintenancePlans';import {planCommand} from '../../../services/maintenancePlans';import PlanForm from './PlanForm';import PreventiveAlerts from './PreventiveAlerts';import './Plans.css';
-function AlertSettings({company,settings,onSaved}){const [dias,setDias]=useState(settings.antecedencia_alerta_dias),[km,setKm]=useState(settings.antecedencia_alerta_km),[busy,setBusy]=useState(false),[error,setError]=useState('');async function submit(e){e.preventDefault();setBusy(true);setError('');try{await planCommand(company,'settings',{dias,km,version:settings.version});onSaved();}catch(e){setError(e.message);}finally{setBusy(false);}}return <form onSubmit={submit} className="mp-card pp-settings"><h3>Antecedência dos alertas</h3><p className="mp-muted">O primeiro limite atingido ativa o alerta. A rotina diária notifica Analistas e Operadores; o painel usa o KM e a data atuais.</p>{error&&<p role="alert">{error}</p>}<div className="mp-grid"><label>Dias<input aria-label="Dias" type="number" min="0" max="365" required value={dias} onChange={e=>setDias(e.target.value)}/></label><label>KM<input aria-label="KM" type="number" min="0" max="1000000" required value={km} onChange={e=>setKm(e.target.value)}/></label></div><button disabled={busy}>{busy?'Salvando…':'Salvar antecedência'}</button></form>;}
-export default function PlansPage({access,setLocked}){const context=useMaintenancePlans(access.companyId,'context'),alerts=useMaintenancePlans(access.companyId),[editing,setEditing]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');useEffect(()=>()=>setLocked(false),[setLocked]);function edit(plan){setEditing(plan);setError('');setLocked(!!plan);}async function save(form){setBusy(true);setError('');try{await planCommand(access.companyId,'save',form);edit(null);setNotice('Plano salvo com auditoria.');context.reload();alerts.reload();}catch(e){setError(e.message);}finally{setBusy(false);}}
-  if(context.loading&&!context.data)return <p role="status">Carregando planos preventivos…</p>;if(context.error)return <div role="alert">{context.error}<button onClick={context.reload}>Tentar novamente</button></div>;if(editing)return <PlanForm key={editing.id||'new'} initial={editing.id?editing:undefined} vehicles={context.data?.vehicles||[]} onSave={save} onBack={()=>edit(null)} busy={busy} error={error}/>;
-  return <div>
-    <div className="mp-row mp-between">
-      <h2>Planos Preventivos</h2>
-      {access.canWrite&&<button className="mp-primary" onClick={()=>edit({})}>Novo plano personalizado</button>}
-    </div>
-    <div className="mp-card" style={{ borderLeft: '4px solid #10b981', background: 'rgba(16, 185, 129, 0.08)', marginBottom: '16px' }}>
-      <h3 style={{ margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span>⚡ Planos Periódicos Automáticos Ativos para Toda a Frota</span>
-      </h3>
-      <p style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: '#334155' }}>
-        Os planos preventivos de <strong>Óleo de Motor (10.000 km)</strong>, <strong>Filtros (10.000 km)</strong>, <strong>Freios (20.000 km)</strong>, <strong>Pneus (10.000 km)</strong>, <strong>Correias (40.000 km)</strong> e <strong>Revisão Geral (30.000 km)</strong> são gerados e calculados automaticamente conforme o KM de cada veículo é atualizado.
+import React, { useState, useEffect } from 'react';
+import useMaintenancePlans from '../../../hooks/useMaintenancePlans';
+import { planCommand } from '../../../services/maintenancePlans';
+import PlanForm from './PlanForm';
+import PreventiveAlerts from './PreventiveAlerts';
+import { Settings, Save, Check, AlertCircle, Wrench, RefreshCw } from 'lucide-react';
+import './Plans.css';
+
+function AlertSettings({ company, settings, onSaved }) {
+  const [dias, setDias] = useState(settings.antecedencia_alerta_dias || 7);
+  const [km, setKm] = useState(settings.antecedencia_alerta_km || 1500);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await planCommand(company, 'settings', { dias, km, version: settings.version });
+      onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mp-card pp-settings" style={{ marginTop: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+        <Settings size={18} style={{ color: '#0ea5e9' }} />
+        <h3 style={{ margin: 0 }}>Antecedência Geral dos Alertas na Tela</h3>
+      </div>
+      <p className="mp-muted">
+        O sistema emite alertas na tela quando faltar a quantidade de KM ou dias configurados aqui. O padrão atual é avisar com <strong>1.500 km</strong> de antecedência.
       </p>
-      <span className="mp-muted" style={{ fontSize: '0.82rem' }}>
-        Não é necessário cadastrar planos manualmente veículo por veículo: os alertas são disparados pelo odômetro e você pode abrir a S.D.O preventiva com 1 clique direto no painel de alertas.
-      </span>
+      {error && <p role="alert" className="mp-error">{error}</p>}
+      <div className="mp-grid">
+        <label className="mp-field">
+          Dias de antecedência
+          <input
+            aria-label="Dias"
+            type="number"
+            min="0"
+            max="365"
+            required
+            value={dias}
+            onChange={e => setDias(e.target.value)}
+          />
+        </label>
+        <label className="mp-field">
+          KM de antecedência (Aviso na tela)
+          <input
+            aria-label="KM"
+            type="number"
+            min="0"
+            max="1000000"
+            required
+            value={km}
+            onChange={e => setKm(e.target.value)}
+          />
+        </label>
+      </div>
+      <button disabled={busy} className="mp-button">
+        {busy ? 'Salvando…' : 'Salvar antecedência (1.500 km)'}
+      </button>
+    </form>
+  );
+}
+
+function QuickKmEditor({ plan, companyId, canWrite, onUpdated }) {
+  const [kmValue, setKmValue] = useState(plan.intervalo_km || 10000);
+  const [saving, setSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  // Keep local input in sync if plan changes
+  useEffect(() => {
+    setKmValue(plan.intervalo_km || 10000);
+  }, [plan.intervalo_km]);
+
+  async function handleSaveKm(e) {
+    e.preventDefault();
+    if (!canWrite) return;
+    const num = Number(kmValue);
+    if (!num || num <= 0) {
+      setError('Informe um KM válido maior que zero.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setSavedSuccess(false);
+    try {
+      await planCommand(companyId, 'save', {
+        id: plan.id,
+        nome: plan.nome,
+        categoria_veiculo: plan.categoria_veiculo || 'TODOS',
+        intervalo_km: num,
+        intervalo_dias: plan.intervalo_dias,
+        ativo: plan.ativo,
+        version: plan.version
+      });
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+      onUpdated();
+    } catch (err) {
+      setError(err.message || 'Falha ao salvar KM.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        padding: '12px 14px',
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '8px',
+        marginBottom: '10px'
+      }}
+    >
+      <div style={{ flex: '1 1 240px' }}>
+        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>
+          {plan.nome}
+        </div>
+        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+          {plan.vehicle_id ? 'Veículo específico' : (!plan.categoria_veiculo || plan.categoria_veiculo === 'TODOS' ? 'Toda a Frota (Geral)' : `Categoria: ${plan.categoria_veiculo}`)}
+          {plan.intervalo_dias ? ` · ou a cada ${plan.intervalo_dias} dias` : ''}
+        </div>
+        {error && <span style={{ color: '#ef4444', fontSize: '0.78rem' }}>{error}</span>}
+      </div>
+
+      <form onSubmit={handleSaveKm} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <label style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
+            KM Programado:
+          </label>
+          <input
+            type="number"
+            min="100"
+            max="1000000"
+            step="500"
+            disabled={!canWrite || saving}
+            value={kmValue}
+            onChange={e => setKmValue(e.target.value)}
+            style={{
+              width: '110px',
+              padding: '6px 8px',
+              borderRadius: '6px',
+              border: '1px solid #cbd5e1',
+              fontWeight: 700,
+              textAlign: 'right'
+            }}
+          />
+          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>km</span>
+        </div>
+
+        {canWrite && (
+          <button
+            type="submit"
+            disabled={saving || Number(kmValue) === Number(plan.intervalo_km)}
+            className="mp-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: savedSuccess ? '#10b981' : undefined,
+              color: savedSuccess ? '#ffffff' : undefined
+            }}
+          >
+            {savedSuccess ? <Check size={14} /> : saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+            {savedSuccess ? 'Salvo!' : saving ? 'Salvando…' : 'Atualizar KM'}
+          </button>
+        )}
+      </form>
     </div>
-    {notice&&<p role="status">{notice}</p>}
-    {alerts.loading?<p role="status">Calculando alertas…</p>:alerts.error?<div role="alert">{alerts.error}<button onClick={alerts.reload}>Tentar novamente</button></div>:<PreventiveAlerts rows={alerts.data?.rows||[]} canGenerate={access.orderPermissions.create}/>}
-    <section className="mp-card">
-      <h3>Planos periódicos monitorados</h3>
-      {!context.data?.plans.length?<p>Nenhum plano cadastrado.</p>:<ul className="pp-list">{context.data.plans.map(p=>{
-        const scopeLabel = p.vehicle_id ? context.data.vehicles.find(v=>v.id===p.vehicle_id)?.placa : (!p.categoria_veiculo || p.categoria_veiculo === 'TODOS' ? 'Todos os veículos (Frota Geral)' : p.categoria_veiculo);
-        return <li key={p.id} className="mp-row mp-between"><span><strong>{p.nome}</strong> · {scopeLabel} · {p.intervalo_km?Number(p.intervalo_km).toLocaleString('pt-BR')+' km':''}{p.intervalo_km&&p.intervalo_dias?' ou ':''}{p.intervalo_dias?p.intervalo_dias+' dias':''} · {p.ativo?'Ativo':'Inativo'}</span>{access.canWrite&&<button onClick={()=>edit(p)}>Editar {p.nome}</button>}</li>;
-      })}</ul>}
-    </section>
-    {access.canWrite&&context.data?.settings&&<AlertSettings key={context.data.settings.version} company={access.companyId} settings={context.data.settings} onSaved={()=>{context.reload();alerts.reload();setNotice('Antecedência salva.');}}/>}
-  </div>;
+  );
+}
+
+export default function PlansPage({ access, setLocked }) {
+  const context = useMaintenancePlans(access.companyId, 'context');
+  const alerts = useMaintenancePlans(access.companyId);
+  const [editing, setEditing] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => () => setLocked(false), [setLocked]);
+
+  function edit(plan) {
+    setEditing(plan);
+    setError('');
+    setLocked(!!plan);
+  }
+
+  async function save(form) {
+    setBusy(true);
+    setError('');
+    try {
+      await planCommand(access.companyId, 'save', form);
+      edit(null);
+      setNotice('Plano preventivo salvo e sincronizado com toda a frota!');
+      context.reload();
+      alerts.reload();
+      setTimeout(() => setNotice(''), 4000);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (context.loading && !context.data) {
+    return <p role="status">Carregando planos preventivos…</p>;
+  }
+
+  if (context.error) {
+    return (
+      <div role="alert">
+        {context.error}
+        <button onClick={context.reload}>Tentar novamente</button>
+      </div>
+    );
+  }
+
+  if (editing) {
+    return (
+      <PlanForm
+        key={editing.id || 'new'}
+        initial={editing.id ? editing : undefined}
+        vehicles={context.data?.vehicles || []}
+        onSave={save}
+        onBack={() => edit(null)}
+        busy={busy}
+        error={error}
+      />
+    );
+  }
+
+  const plansList = context.data?.plans || [];
+
+  return (
+    <div>
+      <div className="mp-row mp-between">
+        <div>
+          <h2>Planos Preventivos e Manutenções Periódicas</h2>
+          <p className="mp-muted">
+            Configure os KMs programados para cada manutenção e acompanhe os alertas da frota.
+          </p>
+        </div>
+        {access.canWrite && (
+          <button className="mp-primary" onClick={() => edit({})}>
+            + Novo plano personalizado
+          </button>
+        )}
+      </div>
+
+      {/* Info card destacando os 1.500 km e planos automáticos */}
+      <div
+        className="mp-card"
+        style={{
+          borderLeft: '4px solid #3b82f6',
+          background: 'rgba(59, 130, 246, 0.05)',
+          marginBottom: '16px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <Wrench size={18} style={{ color: '#2563eb' }} />
+          <h3 style={{ margin: 0, fontSize: '1rem', color: '#1e3a8a' }}>
+            Controle de KM Programado & Notificação com 1.500 km de Antecedência
+          </h3>
+        </div>
+        <p style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: '#334155' }}>
+          Você pode alterar o <strong>KM programado</strong> de qualquer manutenção periódica abaixo (ex: Óleo para 10.000 km, Filtros para 10.000 km, Freios para 20.000 km).
+          O sistema recalcula a meta de cada veículo automaticamente e <strong>emite uma notificação em destaque na tela sempre que o odômetro estiver a 1.500 km do vencimento</strong> (ou já vencido).
+        </p>
+      </div>
+
+      {notice && (
+        <div
+          role="status"
+          style={{
+            padding: '10px 14px',
+            background: '#dcfce7',
+            border: '1px solid #86efac',
+            color: '#166534',
+            borderRadius: '6px',
+            marginBottom: '14px',
+            fontWeight: 600
+          }}
+        >
+          ✓ {notice}
+        </div>
+      )}
+
+      {/* Bloco de Edição Rápida de KM Programado */}
+      <section className="mp-card" style={{ marginBottom: '20px' }}>
+        <div className="mp-row mp-between" style={{ marginBottom: '12px' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Editar KM Programado das Manutenções Preventivas</h3>
+            <span className="mp-muted" style={{ fontSize: '0.85rem' }}>
+              Altere a quantidade de quilômetros para troca de óleo, filtros, freios, pneus e revisões.
+            </span>
+          </div>
+          <button
+            type="button"
+            className="mp-button"
+            onClick={() => {
+              context.reload();
+              alerts.reload();
+            }}
+          >
+            <RefreshCw size={14} /> Atualizar Lista
+          </button>
+        </div>
+
+        {!plansList.length ? (
+          <p className="mp-muted">Nenhum plano periódico configurado no momento.</p>
+        ) : (
+          <div>
+            {plansList.map(p => (
+              <QuickKmEditor
+                key={p.id}
+                plan={p}
+                companyId={access.companyId}
+                canWrite={access.canWrite}
+                onUpdated={() => {
+                  context.reload();
+                  alerts.reload();
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Painel de Alertas Preventivos */}
+      {alerts.loading ? (
+        <p role="status">Calculando alertas preventivos da frota…</p>
+      ) : alerts.error ? (
+        <div role="alert">
+          {alerts.error}
+          <button onClick={alerts.reload}>Tentar novamente</button>
+        </div>
+      ) : (
+        <PreventiveAlerts
+          rows={alerts.data?.rows || []}
+          canGenerate={access.orderPermissions.create}
+        />
+      )}
+
+      {/* Configuração Geral de Antecedência (dias e KM) */}
+      {access.canWrite && context.data?.settings && (
+        <AlertSettings
+          key={context.data.settings.version}
+          company={access.companyId}
+          settings={context.data.settings}
+          onSaved={() => {
+            context.reload();
+            alerts.reload();
+            setNotice('Antecedência de alerta atualizada para toda a empresa.');
+            setTimeout(() => setNotice(''), 4000);
+          }}
+        />
+      )}
+    </div>
+  );
 }
