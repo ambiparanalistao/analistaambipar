@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  Search, Calendar, Filter, Truck, Download, Printer, Eye, Edit3, 
+  Search, Calendar, Filter, Truck, Download, Printer, Eye, Edit3, Trash2,
   RotateCcw, DollarSign, CheckCircle2, Clock, AlertTriangle, ArrowUpDown
 } from 'lucide-react';
 import { ORDER_STATUS, ORDER_TYPES, PRIORITIES, isLate } from '../../../utils/orderValidation';
@@ -22,6 +22,7 @@ export default function OrdersVehicleFilterView({
   onSelectOrder,
   onPrintOrder,
   onEditOrder,
+  onDeleteOrder,
   onRefresh
 }) {
   // Estados de Filtros
@@ -644,7 +645,7 @@ export default function OrdersVehicleFilterView({
                       Total (R$) <ArrowUpDown size={12} />
                     </span>
                   </th>
-                  <th style={{ padding: '10px 14px', textAlign: 'center' }}>Ações</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'center', minWidth: '320px', width: '320px', whiteSpace: 'nowrap' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -758,17 +759,32 @@ export default function OrdersVehicleFilterView({
                       </td>
 
                       {/* AÇÕES */}
-                      <td style={{ padding: '10px 14px', verticalAlign: 'middle', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <td style={{ padding: '8px 14px', verticalAlign: 'middle', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
                           {onSelectOrder && (
                             <button
                               type="button"
                               className="mp-button"
                               onClick={() => onSelectOrder(o.id)}
                               title="Ver detalhes da S.D.O"
-                              style={{ padding: '4px 8px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '6px 10px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                minWidth: 'auto',
+                                height: '32px',
+                                borderRadius: '6px',
+                                background: 'var(--mp-panel, #122018)',
+                                border: '1px solid var(--mp-border, #2c4434)',
+                                color: 'var(--mp-text, #e9f4ec)',
+                                cursor: 'pointer'
+                              }}
                             >
-                              <Eye size={13} /> Ver
+                              <Eye size={14} /> <span>Ver</span>
                             </button>
                           )}
 
@@ -777,10 +793,25 @@ export default function OrdersVehicleFilterView({
                               type="button"
                               className="mp-button"
                               onClick={() => onPrintOrder(o)}
-                              title="Imprimir S.D.O em 1 folha A4 Preto e Branco"
-                              style={{ padding: '4px 8px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(5, 150, 105, 0.1)', color: '#047857', borderColor: '#10b981' }}
+                              title="Imprimir S.D.O em folha A4 Preto e Branco"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '6px 10px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                minWidth: 'auto',
+                                height: '32px',
+                                borderRadius: '6px',
+                                background: 'rgba(16, 185, 129, 0.12)',
+                                border: '1px solid #10b981',
+                                color: '#34d399',
+                                cursor: 'pointer'
+                              }}
                             >
-                              <Printer size={13} /> A4
+                              <Printer size={14} /> <span>Imprimir A4</span>
                             </button>
                           )}
 
@@ -789,10 +820,52 @@ export default function OrdersVehicleFilterView({
                               type="button"
                               className="mp-button"
                               onClick={() => onEditOrder(o)}
-                              title="Editar dados da S.D.O"
-                              style={{ padding: '4px 8px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                              title="Editar dados da S.D.O existente (não duplica)"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '6px 10px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                minWidth: 'auto',
+                                height: '32px',
+                                borderRadius: '6px',
+                                background: 'var(--mp-panel, #122018)',
+                                border: '1px solid var(--mp-border, #2c4434)',
+                                color: 'var(--mp-text, #e9f4ec)',
+                                cursor: 'pointer'
+                              }}
                             >
-                              <Edit3 size={13} /> Editar
+                              <Edit3 size={14} /> <span>Editar</span>
+                            </button>
+                          )}
+
+                          {onDeleteOrder && canManage && (
+                            <button
+                              type="button"
+                              className="mp-button"
+                              onClick={() => onDeleteOrder(o)}
+                              title="Excluir esta S.D.O permanentemente"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '6px 10px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                minWidth: 'auto',
+                                height: '32px',
+                                borderRadius: '6px',
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                border: '1px solid rgba(239, 68, 68, 0.4)',
+                                color: '#fca5a5',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Trash2 size={14} /> <span>Excluir</span>
                             </button>
                           )}
                         </div>

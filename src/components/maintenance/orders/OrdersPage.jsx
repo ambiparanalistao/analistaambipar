@@ -7,7 +7,7 @@ import OccurrenceOrderForm from '../occurrences/OccurrenceOrderForm';
 import {vehicleCommand} from '../../../services/vehicleMaintenance';
 import React,{useEffect,useMemo,useState} from 'react';
 import useMaintenanceOrders from '../../../hooks/useMaintenanceOrders';
-import {commandOrder,uploadOrderObject,removeOrderObject,sendOrderDispatch,ensureDefaultUnassignedPartner} from '../../../services/maintenanceOrders';
+import {commandOrder,uploadOrderObject,removeOrderObject,sendOrderDispatch,ensureDefaultUnassignedPartner,updateOrderData,deleteOrder} from '../../../services/maintenanceOrders';
 import {ORDER_STATUS,ORDER_TYPES,PRIORITIES,CLOSED,isLate,nextStatuses,orderPermissions} from '../../../utils/orderValidation';
 import OrderForm from './OrderForm';
 import OrderDetail from './OrderDetail';
@@ -153,16 +153,33 @@ export default function OrdersPage({access,setLocked}){
     setBusy(true);
     setError('');
     try {
-      const updated = await commandOrder(access.companyId, 'update', {
-        ...form,
-        id: editModalOrder.id,
-        version: editModalOrder.version
-      });
+      const updated = await updateOrderData(access.companyId, editModalOrder.id, form, editModalOrder);
       setNotice(`S.D.O ${updated.numero || editModalOrder.numero} atualizada com sucesso.`);
       setEditModalOrder(null);
       data.reload();
     } catch (err) {
       setError(err.message || 'Falha ao salvar edição da S.D.O.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteOrder(order) {
+    if (!order) return;
+    const confirmMsg = `Tem certeza que deseja excluir a S.D.O ${order.numero || ''}? Esta ação removerá a solicitação permanentemente.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setBusy(true);
+    setError('');
+    try {
+      await deleteOrder(access.companyId, order.id);
+      setNotice(`S.D.O ${order.numero || ''} excluída com sucesso.`);
+      if (view.id === order.id) {
+        go('list');
+      }
+      data.reload();
+    } catch (err) {
+      setError(err.message || 'Falha ao excluir a S.D.O.');
     } finally {
       setBusy(false);
     }
@@ -288,6 +305,7 @@ export default function OrdersPage({access,setLocked}){
         onAction={details=>action(data.detail.data.order,details)} 
         onUpload={upload} 
         onDelete={remove} 
+        onDeleteOrder={handleDeleteOrder}
         onBack={()=>go('list')}
       />
     ) : null
@@ -402,6 +420,7 @@ export default function OrdersPage({access,setLocked}){
           onSelectOrder={id => go('detail', id)}
           onPrintOrder={ord => setDocModalOrder(ord)}
           onEditOrder={ord => setEditModalOrder(ord)}
+          onDeleteOrder={handleDeleteOrder}
           onRefresh={data.reload}
         />
       ) : viewMode === 'board' ? (
@@ -566,7 +585,13 @@ export default function OrdersPage({access,setLocked}){
                       <td>{PRIORITIES[o.prioridade]}</td>
                       <td>{date(o.previsao_entrega)}</td>
                       <td>{money(o.valor_total)}</td>
-                      <td><button onClick={()=>go('detail',o.id)}>Ver S.D.O</button></td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                          <button onClick={()=>go('detail',o.id)} style={{ padding: '4px 8px', fontSize: '0.78rem' }}>Ver S.D.O</button>
+                          {permissions.manage && <button onClick={()=>setEditModalOrder(o)} style={{ padding: '4px 8px', fontSize: '0.78rem' }}>Editar</button>}
+                          {permissions.manage && <button className="mp-error" onClick={()=>handleDeleteOrder(o)} style={{ padding: '4px 8px', fontSize: '0.78rem' }}>Excluir</button>}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

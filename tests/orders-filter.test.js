@@ -34,3 +34,27 @@ test('orders filter: can filter orders by vehicle plate, month and date range', 
 test('orders filter: exportOrdersListExcel function is exported and defined', () => {
   assert.equal(typeof exportOrdersListExcel, 'function');
 });
+
+test('orders maintenance: deleteOrder and updateOrderData are exported in maintenanceOrders.js', async () => {
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const servicePath = path.resolve(process.cwd(), 'src/services/maintenanceOrders.js');
+  const content = await fs.readFile(servicePath, 'utf8');
+
+  assert.match(content, /export async function deleteOrder\(/);
+  assert.match(content, /export async function updateOrderData\(/);
+  assert.match(content, /rpc\('maintenance_order_delete'/);
+  assert.match(content, /from\('maintenance_orders'\)[\s\S]*?\.delete\(\)/);
+});
+
+test('orders migration: 20261027160000_order_delete_feature.sql exists and contains maintenance_order_delete RPC', async () => {
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const migrationPath = path.resolve(process.cwd(), 'supabase/migrations/20261027160000_order_delete_feature.sql');
+  const sql = await fs.readFile(migrationPath, 'utf8');
+
+  assert.match(sql, /CREATE OR REPLACE FUNCTION maintenance_private\.order_delete/i);
+  assert.match(sql, /CREATE OR REPLACE FUNCTION public\.maintenance_order_delete/i);
+  assert.match(sql, /DELETE FROM public\.maintenance_orders WHERE id = o\.id/i);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.maintenance_order_delete/i);
+});

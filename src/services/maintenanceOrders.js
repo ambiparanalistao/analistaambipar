@@ -148,3 +148,50 @@ export async function updateOrderData(company, orderId, payload, currentOrder) {
 
   return resultOrder;
 }
+
+export async function deleteOrder(company, orderId) {
+  // 1. Tenta a RPC dedicada
+  try {
+    const { data, error } = await supabase.rpc('maintenance_order_delete', {
+      target_company: company,
+      order_id: orderId
+    });
+    if (!error && data) return data;
+    if (error) console.warn('RPC maintenance_order_delete note:', error.message);
+  } catch (err) {
+    console.warn('RPC maintenance_order_delete call note:', err);
+  }
+
+  // 2. Fallback: exclusão direta no Supabase
+  try {
+    // Limpa dependências
+    await Promise.allSettled([
+      supabase.from('maintenance_order_items').delete().eq('company_id', company).eq('order_id', orderId),
+      supabase.from('maintenance_order_timeline').delete().eq('company_id', company).eq('order_id', orderId),
+      supabase.from('maintenance_order_dispatches').delete().eq('company_id', company).eq('order_id', orderId),
+      supabase.from('maintenance_attachments').delete().eq('company_id', company).eq('order_id', orderId),
+      supabase.from('workshop_visits').delete().eq('company_id', company).eq('order_id', orderId),
+      supabase.from('maintenance_partner_quotes').delete().eq('company_id', company).eq('order_id', orderId)
+    ]);
+
+    const { data: directData, error: directErr } = await supabase
+      .from('maintenance_orders')
+      .delete()
+      .eq('company_id', company)
+      .eq('id', orderId)
+      .select();
+
+    if (!directErr && directData) return { success: true, deleted_id: orderId };
+    if (directErr) console.warn('Direct delete note:', directErr.message);
+  } catch (err) {
+    console.warn('Direct delete catch:', err);
+  }
+
+  // 3. Fallback de transição para cancelada
+  return await commandOrder(company, 'transition', {
+    id: orderId,
+    status: 'cancelada',
+    observacao: 'S.D.O cancelada e removida'
+  });
+}
+
