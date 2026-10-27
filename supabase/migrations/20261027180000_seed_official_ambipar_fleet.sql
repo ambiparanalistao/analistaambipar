@@ -3,9 +3,52 @@ BEGIN;
 -- ==============================================================================
 -- Migration: 20261027180000_seed_official_ambipar_fleet.sql
 -- Objetivo: 
---  1. Exclusão definitiva de veículos testes/fictícios (EWX-0I82) e limpeza em cascata
---  2. Cadastro e sincronização dos 18 Veículos Oficiais da Frota Ambipar 2026
+--  1. Corrige constraint de chave estrangeira em fuel_transactions (ON DELETE SET NULL apenas em vehicle_id)
+--  2. Exclusão definitiva de veículos testes/fictícios (EWX-0I82) e limpeza em cascata
+--  3. Cadastro e sincronização dos 18 Veículos Oficiais da Frota Ambipar 2026
 -- ==============================================================================
+
+-- 0. Correção estrutural das Foreign Keys em fuel_transactions
+--    Evita que o PostgreSQL tente anular company_id (que é NOT NULL) ao excluir um veículo
+DO $$
+DECLARE
+  c_name text;
+BEGIN
+  IF to_regclass('public.fuel_transactions') IS NOT NULL THEN
+    -- Remove constraints antigas que apontam para veiculos
+    FOR c_name IN (
+      SELECT conname 
+      FROM pg_constraint 
+      WHERE conrelid = 'public.fuel_transactions'::regclass 
+        AND confrelid = 'public.veiculos'::regclass
+    ) LOOP
+      EXECUTE format('ALTER TABLE public.fuel_transactions DROP CONSTRAINT %I', c_name);
+    END LOOP;
+
+    -- Recria com especificação explícita da coluna (vehicle_id)
+    ALTER TABLE public.fuel_transactions
+      ADD CONSTRAINT fuel_transactions_vehicle_fk 
+      FOREIGN KEY(vehicle_id, company_id) 
+      REFERENCES public.veiculos(id, company_id) 
+      ON DELETE SET NULL (vehicle_id);
+
+    -- Remove constraints antigas que apontam para motoristas
+    FOR c_name IN (
+      SELECT conname 
+      FROM pg_constraint 
+      WHERE conrelid = 'public.fuel_transactions'::regclass 
+        AND confrelid = 'public.motoristas'::regclass
+    ) LOOP
+      EXECUTE format('ALTER TABLE public.fuel_transactions DROP CONSTRAINT %I', c_name);
+    END LOOP;
+
+    ALTER TABLE public.fuel_transactions
+      ADD CONSTRAINT fuel_transactions_driver_fk 
+      FOREIGN KEY(driver_id, company_id) 
+      REFERENCES public.motoristas(id, company_id) 
+      ON DELETE SET NULL (driver_id);
+  END IF;
+END $$;
 
 -- 1. Exclui com segurança qualquer veículo de teste (ex: EWX-0I82) em todas as empresas
 DO $$
@@ -19,13 +62,22 @@ BEGIN
     WHERE placa ILIKE 'EWX%' OR placa IN ('EWX-0I82','EWX0I82')
   ) LOOP
     c_id := v.company_id;
+
+    -- Limpa registros de combustível do veículo de teste antes da exclusão
+    IF to_regclass('public.fuel_transactions') IS NOT NULL THEN
+      DELETE FROM public.fuel_transactions WHERE vehicle_id = v.id OR placa_snapshot ILIKE 'EWX%';
+    END IF;
+    IF to_regclass('public.fuel_provision_vehicles') IS NOT NULL THEN
+      DELETE FROM public.fuel_provision_vehicles WHERE vehicle_id = v.id OR placa ILIKE 'EWX%';
+    END IF;
+
     IF c_id IS NOT NULL THEN
       BEGIN
         PERFORM maintenance_private.vehicle_delete(c_id, v.id);
         RAISE NOTICE 'Veículo teste % excluído com sucesso via RPC.', v.placa;
       EXCEPTION WHEN OTHERS THEN
         RAISE NOTICE 'Aviso ao excluir via RPC: %, aplicando limpeza direta...', SQLERRM;
-        -- Limpeza direta em caso de exceção de permissão durante migration
+        -- Limpeza direta em caso de exceção durante migration
         IF to_regclass('public.vehicle_preventive_settings') IS NOT NULL THEN
           DELETE FROM public.vehicle_preventive_settings WHERE vehicle_id = v.id;
         END IF;
@@ -37,6 +89,24 @@ BEGIN
         END IF;
         IF to_regclass('public.maintenance_plans') IS NOT NULL THEN
           DELETE FROM public.maintenance_plans WHERE vehicle_id = v.id;
+        END IF;
+        IF to_regclass('public.maintenance_vehicle_preferences') IS NOT NULL THEN
+          DELETE FROM public.maintenance_vehicle_preferences WHERE vehicle_id = v.id;
+        END IF;
+        IF to_regclass('public.maintenance_driver_bindings') IS NOT NULL THEN
+          DELETE FROM public.maintenance_driver_bindings WHERE vehicle_id = v.id;
+        END IF;
+        IF to_regclass('public.maintenance_vehicle_events') IS NOT NULL THEN
+          DELETE FROM public.maintenance_vehicle_events WHERE vehicle_id = v.id;
+        END IF;
+        IF to_regclass('public.maintenance_allocations') IS NOT NULL THEN
+          DELETE FROM public.maintenance_allocations WHERE vehicle_id = v.id;
+        END IF;
+        IF to_regclass('public.vehicle_occurrences') IS NOT NULL THEN
+          DELETE FROM public.vehicle_occurrences WHERE vehicle_id = v.id;
+        END IF;
+        IF to_regclass('public.maintenance_checklists') IS NOT NULL THEN
+          DELETE FROM public.maintenance_checklists WHERE vehicle_id = v.id;
         END IF;
         IF to_regclass('public.maintenance_orders') IS NOT NULL THEN
           UPDATE public.maintenance_orders SET vehicle_id = NULL WHERE vehicle_id = v.id;

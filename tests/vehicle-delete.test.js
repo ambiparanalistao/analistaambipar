@@ -59,4 +59,6 @@ test('official fleet migration: 20261027180000_seed_official_ambipar_fleet.sql r
   assert.match(sql, /RHU-6I87/);
   assert.match(sql, /SJE-4A18/);
   assert.match(sql, /sync_plan_vehicles/i);
+  assert.match(sql, /fuel_transactions_vehicle_fk/i);
+  assert.match(sql, /ON DELETE SET NULL \(vehicle_id\)/i);
 });

@@ -182,4 +182,27 @@ END $$;
 
 GRANT DELETE ON public.veiculos TO authenticated;
 
+-- 4. Corrige a constraint de chave estrangeira em fuel_transactions para anular apenas vehicle_id
+DO $$
+DECLARE
+  c_name text;
+BEGIN
+  IF to_regclass('public.fuel_transactions') IS NOT NULL THEN
+    FOR c_name IN (
+      SELECT conname 
+      FROM pg_constraint 
+      WHERE conrelid = 'public.fuel_transactions'::regclass 
+        AND confrelid = 'public.veiculos'::regclass
+    ) LOOP
+      EXECUTE format('ALTER TABLE public.fuel_transactions DROP CONSTRAINT %I', c_name);
+    END LOOP;
+
+    ALTER TABLE public.fuel_transactions
+      ADD CONSTRAINT fuel_transactions_vehicle_fk 
+      FOREIGN KEY(vehicle_id, company_id) 
+      REFERENCES public.veiculos(id, company_id) 
+      ON DELETE SET NULL (vehicle_id);
+  END IF;
+END $$;
+
 COMMIT;
