@@ -43,3 +43,20 @@ test('vehicle delete UI: optimistic removal immediately filters out vehicle from
   assert.equal(updatedVehicles[0].id, 'v-2');
   assert.equal(updatedVehicles.some(v => v.id === targetId), false);
 });
+
+test('official fleet migration: 20261027180000_seed_official_ambipar_fleet.sql removes EWX and seeds official 18 vehicles', async () => {
+  const migrationPath = path.resolve(process.cwd(), 'supabase/migrations/20261027180000_seed_official_ambipar_fleet.sql');
+  const sql = await fs.readFile(migrationPath, 'utf8');
+
+  assert.match(sql, /EWX-0I82/);
+  assert.match(sql, /DELETE FROM public\.veiculos WHERE/i);
+  assert.match(sql, /DWE-4I52/);
+  assert.match(sql, /RAW-1B54/);
+  assert.match(sql, /GBU-0A23/);
+  assert.match(sql, /TBX-9D85/);
+  assert.match(sql, /FMB-1H09/);
+  assert.match(sql, /FVV-0E16/);
+  assert.match(sql, /RHU-6I87/);
+  assert.match(sql, /SJE-4A18/);
+  assert.match(sql, /sync_plan_vehicles/i);
+});

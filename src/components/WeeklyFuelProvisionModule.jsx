@@ -1363,7 +1363,7 @@ export default function WeeklyFuelProvisionModule({ user, companyId, onNavigateM
                 type="button"
                 className={`btn-preset-auto ${distributionMode === 'historical' ? 'active-preset' : ''}`}
                 onClick={handleApplyHistorical}
-                title="Aplica pesos históricos de consumo da frota ativa: EWX ~36.5%, FVV ~25.3%, FMB ~20.6%, RAW ~8.8%, GBU ~8.8%"
+                title="Aplica pesos históricos de consumo da frota ativa: TBX ~36.5%, FVV ~25.3%, FMB ~20.6%, RAW ~8.8%, GBU ~8.8%"
               >
                 <Sparkles size={15} />
                 <span>⚡ Ajuste Automático por Consumo Histórico (Recomendado Central de Gestão)</span>
