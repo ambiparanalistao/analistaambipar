@@ -477,7 +477,26 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   };
 
   const handleQuickStatusChange=async(id,status)=>{try{const saved=await updateRegistryStatus('veiculos',id,status,companyId);setVehicles(rows=>rows.map(v=>v.id===id?saved:v));}catch(e){setFeedback({type:'error',text:e.message});}};
-  const handleDeleteVehicle=async(id,placa)=>{if(!window.confirm('Confirma a exclusão do veículo '+placa+'?'))return;try{await deleteRegistryRecord('veiculos',id,companyId);setVehicles(rows=>rows.filter(v=>v.id!==id));setFeedback({type:'success',text:'Veículo excluído do banco.'});}catch(e){setFeedback({type:'error',text:e.message});}};
+  const handleDeleteVehicle = async (id, placa) => {
+    if (!window.confirm(`Confirma a exclusão definitiva do veículo ${placa} da frota? Esta ação removerá os planos associados e desvinculará os históricos.`)) return;
+    
+    // Remoção otimista imediata na interface para o veículo sumir sem demora
+    const backupVehicles = [...vehicles];
+    setVehicles(rows => rows.filter(v => v.id !== id));
+    setFeedback({ type: 'info', text: `Excluindo veículo ${placa} do sistema...` });
+
+    try {
+      await deleteRegistryRecord('veiculos', id, companyId);
+      directory.reload();
+      setFeedback({ type: 'success', text: `Veículo placa ${placa} excluído com sucesso da frota!` });
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (e) {
+      console.error('Erro na exclusão do veículo:', e);
+      // Restaura o veículo em caso de falha
+      setVehicles(backupVehicles);
+      setFeedback({ type: 'error', text: `Não foi possível excluir o veículo ${placa}: ${e.message}` });
+    }
+  };
   const getWhatsAppLink = (phoneStr) => {
     if (!phoneStr) return null;
     const cleanNumber = phoneStr.replace(/\D/g, '');
@@ -604,9 +623,40 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
       )}
 
       {feedback && (
-        <div className={`alert alert-${feedback.type} animate-fade-in`} style={{ marginBottom: '1.25rem' }}>
-          <CheckCircle2 size={18} />
-          <span>{feedback.text}</span>
+        <div 
+          className={`alert alert-${feedback.type} animate-fade-in`} 
+          style={{ 
+            marginBottom: '1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            padding: '0.75rem 1rem'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+            {feedback.type === 'error' && <AlertTriangle size={18} style={{ color: '#f87171', flexShrink: 0 }} />}
+            {feedback.type === 'success' && <CheckCircle2 size={18} style={{ color: '#34d399', flexShrink: 0 }} />}
+            {feedback.type === 'info' && <RefreshCw size={18} className="animate-spin" style={{ color: '#38bdf8', flexShrink: 0 }} />}
+            <span style={{ fontSize: '0.88rem' }}>{feedback.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'currentColor',
+              opacity: 0.7,
+              cursor: 'pointer',
+              padding: '2px',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+            title="Fechar"
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
 
