@@ -8,3 +8,75 @@ test('report persists before acknowledgement and uses canonical thank-you text',
 test('failed/ambiguous provider never discards persisted request',async()=>{const f=setup({provider:500});const r=await call(f.handler,{action:'submit',invite,session,requestId:id,vehicleId:id,km:1000,defects:'Falha nos freios',severity:'urgente'});assert.equal(r.code,200);assert.equal(r.data.report.id,id);assert.equal(r.data.confirmation.status,'unknown');});
 test('already accepted acknowledgement is not repeated',async()=>{const f=setup({ack:'accepted'});await call(f.handler,{action:'ack',invite,session,id});assert.equal(f.calls.filter(c=>c.url.includes('/message/')).length,0);});
 test('arbitrary phone/text, invalid session, wrong origin and GET never send',async()=>{const f=setup();assert.equal((await call(f.handler,{action:'request_code',invite,driverId,requestId:id,phone:'5511999999999'})).code,400);assert.equal((await call(f.handler,{action:'home',invite,session:'invalid'})).code,401);assert.equal((await call(f.handler,{action:'info',invite},{headers:{host:'platform.example',origin:'https://evil.example'}})).code,403);assert.equal((await call(f.handler,{}, {method:'GET'})).code,405);assert.equal(f.calls.length,0);});
+
+test('submitting report dispatches automatic notification to Grupo Manutenção Ambipar', async () => {
+  const calls = [];
+  const fetcher = async (url, opts = {}) => {
+    const u = String(url), b = opts.body ? JSON.parse(opts.body) : {};
+    calls.push({ url: u, body: b, method: opts.method || 'GET' });
+    if (u.includes('/rpc/')) {
+      if (b.command === 'submit') {
+        return new Response(JSON.stringify({
+          id,
+          protocol: 'SM-AMBIPAR01',
+          driver_name: 'Carlos Santos',
+          vehicle_plate: 'EUP4I14',
+          km: 106967,
+          defects: 'Freio com ruído anormal',
+          severity: 'urgente',
+          ack_status: 'pending'
+        }), { status: 200 });
+      }
+      if (b.command === 'ack_claim') {
+        return new Response(JSON.stringify({
+          status: 'claimed',
+          phone: '5511987654321',
+          text: 'Obrigado pelo relato registrado.',
+          token: id
+        }), { status: 200 });
+      }
+      if (b.command === 'ack_finish') {
+        return new Response(JSON.stringify({ status: 'accepted' }), { status: 200 });
+      }
+    }
+    if (u.includes('connectionState')) {
+      return new Response(JSON.stringify({ instance: { state: 'open' } }), { status: 200 });
+    }
+    if (u.includes('/group/fetchAllGroups/')) {
+      return new Response(JSON.stringify([
+        { id: '120363999999999999@g.us', subject: 'Grupo Manutenção Ambipar' },
+        { id: '120363888888888888@g.us', subject: 'Outro Grupo' }
+      ]), { status: 200 });
+    }
+    if (u.includes('/message/sendText/')) {
+      return new Response(JSON.stringify({ key: { id: 'evo-group-msg-id' } }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+
+  const handler = createDriverPortalHandler({ env, fetcher });
+  const r = await call(handler, {
+    action: 'submit',
+    invite,
+    session,
+    requestId: id,
+    vehicleId: id,
+    km: 106967,
+    defects: 'Freio com ruído anormal',
+    severity: 'urgente'
+  });
+
+  assert.equal(r.code, 200);
+  assert.equal(r.data.report.protocol, 'SM-AMBIPAR01');
+
+  // Verify that a message was sent to the group JID
+  const groupSendCall = calls.find(c => c.url.includes('/message/sendText/') && c.body?.number?.endsWith('@g.us'));
+  assert.ok(groupSendCall, 'A message should be sent to the WhatsApp group');
+  assert.equal(groupSendCall.body.number, '120363999999999999@g.us');
+  assert.ok(groupSendCall.body.text.includes('SM-AMBIPAR01'), 'Text should contain protocol');
+  assert.ok(groupSendCall.body.text.includes('EUP4I14'), 'Text should contain vehicle plate');
+  assert.ok(groupSendCall.body.text.includes('Carlos Santos'), 'Text should contain driver name');
+  assert.ok(groupSendCall.body.text.includes('Freio com ruído anormal'), 'Text should contain defects');
+  assert.ok(groupSendCall.body.text.includes('análise da equipe em breve'), 'Text should state it will be analyzed shortly');
+});
+

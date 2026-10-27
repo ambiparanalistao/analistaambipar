@@ -118,14 +118,23 @@ export function createHandler({ env = process.env, fetcher = fetch } = {}) {
       });
       if (req.method === 'GET') return json(res, 200, await status());
 
-      if (!['connect', 'reconnect', 'restart', 'logout', 'create', 'sendText', 'send'].includes(action)) throw failure(400, 'Ação inválida.');
+      if (!['connect', 'reconnect', 'restart', 'logout', 'create', 'sendText', 'send', 'listGroups', 'groups'].includes(action)) throw failure(400, 'Ação inválida.');
 
-      // DISPARO OPERACIONAL DE MENSAGENS VIA EVOLUTION API
+      // LISTAGEM DE GRUPOS CONECTADOS NA INSTÂNCIA EVOLUTION API
+      if (action === 'listGroups' || action === 'groups') {
+        let groupsRes = await api('/group/fetchAllGroups/' + name + '?getParticipants=false').catch(() => null);
+        if (!groupsRes) {
+          groupsRes = await api('/group/fetchAllGroups/' + name, 'POST', { getParticipants: false }).catch(() => null);
+        }
+        return json(res, 200, { groups: groupsRes || [] });
+      }
+
+      // DISPARO OPERACIONAL DE MENSAGENS VIA EVOLUTION API (CONTATOS E GRUPOS)
       if (action === 'sendText' || action === 'send') {
-        const number = typeof body?.number === 'string' ? body.number : '';
+        const number = typeof body?.number === 'string' ? body.number.trim() : '';
         const text = typeof body?.text === 'string' ? body.text.trim() : '';
-        if (!/^\d{10,15}$/.test(number) || !text || text.length > 4000) {
-          throw failure(400, 'Informe um número válido e uma mensagem de até 4.000 caracteres.');
+        if (!/^(\d{10,15}|[a-zA-Z0-9._-]+@g\.us)$/.test(number) || !text || text.length > 4000) {
+          throw failure(400, 'Informe um número ou grupo (@g.us) válido e uma mensagem de até 4.000 caracteres.');
         }
         const sendResult = await api('/message/sendText/' + name, 'POST', {
           number,
