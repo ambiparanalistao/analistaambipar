@@ -7,7 +7,7 @@ import OccurrenceOrderForm from '../occurrences/OccurrenceOrderForm';
 import {vehicleCommand} from '../../../services/vehicleMaintenance';
 import React,{useEffect,useMemo,useState} from 'react';
 import useMaintenanceOrders from '../../../hooks/useMaintenanceOrders';
-import {commandOrder,uploadOrderObject,removeOrderObject,sendOrderDispatch} from '../../../services/maintenanceOrders';
+import {commandOrder,uploadOrderObject,removeOrderObject,sendOrderDispatch,ensureDefaultUnassignedPartner} from '../../../services/maintenanceOrders';
 import {ORDER_STATUS,ORDER_TYPES,PRIORITIES,CLOSED,isLate,nextStatuses,orderPermissions} from '../../../utils/orderValidation';
 import OrderForm from './OrderForm';
 import OrderDetail from './OrderDetail';
@@ -28,7 +28,23 @@ export default function OrdersPage({access,setLocked}){
  async function deliver(id,kind){try{const n=await sendOrderDispatch(access.companyId,id,kind);setNotice(n.counts?.total?'Solicitação aceita para envio WhatsApp em '+(n.counts.accepted||0)+' de '+n.counts.total+' oficinas. Pendentes: '+(n.remaining||0)+'. Confira os resultados por oficina.':n.status==='accepted'?'Excel e mensagem aceitos para envio WhatsApp à oficina.':n.error||'Envio: '+n.status+'. Consulte o registro abaixo.');}catch(e){setNotice('S.D.O salva. '+e.message);}}
  async function retryDispatch(kind,uncertain,dispatchId){setBusy(true);setError('');try{const n=await sendOrderDispatch(access.companyId,view.id,kind,uncertain,dispatchId);setNotice(n.status==='accepted'?'Excel e mensagem aceitos para envio WhatsApp.':n.error||'Envio: '+n.status);}catch(e){setError(e.message);}finally{data.reload();setBusy(false);}}
  async function perform(command,body,target=data.detail.data?.order){setBusy(true);setError('');try{const row=await commandOrder(access.companyId,command,{...body,id:target?.id,version:target?.version});setNotice('Operação registrada com sucesso.');setModal(null);if(command==='budget'&&body.decisao==='aprovado')await deliver(row.id,'aprovacao');if(command==='select_quote_types'){if(row.orcamento_status!=='aprovado'&&row.quote_partner_types?.length)await deliver(row.id,'abertura');else if(!row.quote_partner_types?.length)setNotice('Filtros salvos sem disparo. Nenhum tipo selecionado.');}data.reload();return row;}catch(e){setError(e.message);throw e;}finally{setBusy(false);}}
- async function create(form){setBusy(true);setError('');try{const row=view.reportId?await reportOrder(access.companyId,'create',{...form,report_id:view.reportId}):view.planVehicleId?await planCommand(access.companyId,'create_order',{...form,plan_vehicle_id:view.planVehicleId}):view.occurrenceId?await vehicleCommand(access.companyId,'from_occurrence',{id:view.occurrenceId,order:form}):await commandOrder(access.companyId,'create',form);go('detail',row.id);setNotice((view.fleetPreventiveId||view.planVehicleId?'SDO ':'S.D.O ')+row.numero+' aberta.');if(form.quote_partner_types?.length)await deliver(row.id,'abertura');else setNotice((view.fleetPreventiveId||view.planVehicleId?'SDO':'S.D.O')+' salva sem disparo. Selecione os tipos de oficina para enviar.');data.reload();}catch(e){setError(e.message);}finally{setBusy(false);}}
+ async function create(form){
+  setBusy(true);setError('');
+  try{
+   let payload={...form};
+   if(!payload.partner_id){
+    const placeholder=await ensureDefaultUnassignedPartner(access.companyId,options?.partners);
+    if(placeholder?.id){
+     payload.partner_id=placeholder.id;
+    }
+   }
+   const row=view.reportId?await reportOrder(access.companyId,'create',{...payload,report_id:view.reportId}):view.planVehicleId?await planCommand(access.companyId,'create_order',{...payload,plan_vehicle_id:view.planVehicleId}):view.occurrenceId?await vehicleCommand(access.companyId,'from_occurrence',{id:view.occurrenceId,order:payload}):await commandOrder(access.companyId,'create',payload);
+   go('detail',row.id);
+   setNotice((view.fleetPreventiveId||view.planVehicleId?'SDO ':'S.D.O ')+row.numero+' aberta com sucesso.');
+   if(payload.selected_partner_ids?.length&&payload.quote_partner_types?.length)await deliver(row.id,'abertura');
+   else setNotice((view.fleetPreventiveId||view.planVehicleId?'SDO ':'S.D.O ')+row.numero+' salva com sucesso. Documento pronto para download e envio.');
+   data.reload();
+  }catch(e){setError(e.message);}finally{setBusy(false);}}
  async function confirm(form,file){let object;setBusy(true);setError('');try{if(file)object=await uploadOrderObject(access.companyId,modal.order.id,file,true);await perform(modal.command,{...form,foto:object?.url},modal.order);}catch(e){if(object)await removeOrderObject(object.url).catch(()=>{});setError(e.message);}finally{setBusy(false);}}
  async function upload(file,tipo){let object;setBusy(true);setError('');try{if(tipo==='orcamento'&&file.type!=='application/pdf')throw new Error('Orçamento deve ser PDF.');if(['foto_antes','foto_depois'].includes(tipo)&&!file.type.startsWith('image/'))throw new Error('Selecione uma imagem.');object=await uploadOrderObject(access.companyId,view.id,file);await perform('attachment_add',{...object,tipo});}catch(e){if(object)await removeOrderObject(object.url).catch(()=>{});setError(e.message);throw e;}finally{setBusy(false);}}
  async function remove(file){await perform('attachment_delete',{attachment_id:file.id});await removeOrderObject(file.url);}
