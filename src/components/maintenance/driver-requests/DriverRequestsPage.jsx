@@ -110,6 +110,7 @@ function Detail({ data, options, access, onBack, onChanged, onRequestDelete }) {
           <dl className="dr-facts">
             {[
               ['Veículo', r.vehicle_snapshot?.marca_modelo],
+              ['Base Operacional', r.vehicle_snapshot?.base_operacional || 'Base Vale'],
               ['Fabricação / modelo', [r.vehicle_snapshot?.ano_fabricacao, r.vehicle_snapshot?.ano_modelo].filter(Boolean).join(' / ')],
               ['Chassi', r.vehicle_snapshot?.chassi],
               ['Relator', r.driver_name],
@@ -600,7 +601,7 @@ export default function DriverRequestsPage({ access }) {
                   </td>
                   <td>
                     {r.driver_name}
-                    <small>{r.vehicle_plate}</small>
+                    <small>{r.vehicle_plate} · {r.vehicle_snapshot?.base_operacional || 'Base Vale'}</small>
                   </td>
                   <td>{Number(r.km).toLocaleString('pt-BR')}</td>
                   <td>

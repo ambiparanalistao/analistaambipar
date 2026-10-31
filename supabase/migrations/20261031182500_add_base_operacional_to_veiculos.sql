@@ -32,3 +32,4 @@ CREATE INDEX IF NOT EXISTS idx_veiculos_company_base
   ON public.veiculos (company_id, base_operacional);
 
 COMMIT;
+
