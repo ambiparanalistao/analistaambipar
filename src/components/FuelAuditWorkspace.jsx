@@ -149,10 +149,10 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
     const posto = rec.posto_nome || 'Não informado';
 
     const vehicleInfo = plateMap.get(placa);
-    const tankCapacity=Number(vehicleInfo?.capacidadeTanque)||0;const EXPECTED_KM_L_DEFAULT=Number(vehicleInfo?.meta_consumo_kml)||0;const EXPECTED_PRICE_L_DEFAULT=Number(rec.preco_referencia_litro)||0;
+    const tankCapacity = Number(vehicleInfo?.capacidadeTanque) || 0; const EXPECTED_KM_L_DEFAULT = Number(vehicleInfo?.meta_consumo_kml) || 0; const EXPECTED_PRICE_L_DEFAULT = Number(rec.preco_referencia_litro) || 0;
 
     // Regra 1: VOLUME EXCEDENTE AO TANQUE (FRAUDE OU ERRO DE DIGITAÇÃO)
-    if (tankCapacity>0 && litros > tankCapacity * 1.05 && rec.tipo_combustivel !== 'ARLA 32') {
+    if (tankCapacity > 0 && litros > tankCapacity * 1.05 && rec.tipo_combustivel !== 'ARLA 32') {
       const excessVolume = litros - tankCapacity;
       const wastedR$ = excessVolume * (precoLitro || EXPECTED_PRICE_L_DEFAULT);
       anomalies.push({
@@ -177,7 +177,7 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
     }
 
     // Regra 2: CONSUMO EXCESSIVO (KM/L MUITO ABAIXO DA META)
-    if (EXPECTED_KM_L_DEFAULT>0 && kmPorLitro > 0 && kmPorLitro < EXPECTED_KM_L_DEFAULT*.8 && rec.tipo_combustivel !== 'ARLA 32' && distKm > 30) {
+    if (EXPECTED_KM_L_DEFAULT > 0 && kmPorLitro > 0 && kmPorLitro < EXPECTED_KM_L_DEFAULT * .8 && rec.tipo_combustivel !== 'ARLA 32' && distKm > 30) {
       const desvioPct = ((EXPECTED_KM_L_DEFAULT - kmPorLitro) / EXPECTED_KM_L_DEFAULT) * 100;
       const litrosIdeais = distKm / EXPECTED_KM_L_DEFAULT;
       const litrosDesperdicados = Math.max(0, litros - litrosIdeais);
@@ -233,7 +233,7 @@ export function runPredictiveAudit(records = [], availablePlates = []) {
     }
 
     // Regra 4: PREÇO POR LITRO FORA DA CURVA CONVENIADA
-    if (EXPECTED_PRICE_L_DEFAULT>0 && precoLitro > EXPECTED_PRICE_L_DEFAULT * 1.18 && rec.tipo_combustivel?.toLowerCase().includes('diesel')) {
+    if (EXPECTED_PRICE_L_DEFAULT > 0 && precoLitro > EXPECTED_PRICE_L_DEFAULT * 1.18 && rec.tipo_combustivel?.toLowerCase().includes('diesel')) {
       const sobrepreco = (precoLitro - EXPECTED_PRICE_L_DEFAULT) * litros;
       anomalies.push({
         id: `ANOM_PRICE_${rec.id || Math.random()}`,
