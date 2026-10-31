@@ -1,8 +1,9 @@
 import AmbiparConfirmDialog from './common/AmbiparConfirmDialog';
+import VehicleTypesManagerModal from './VehicleTypesManagerModal';
 
 import VehicleMaintenancePanel from './maintenance/vehicles/VehicleMaintenancePanel';
 import {persistFleetVehicle} from '../services/fleetPersistence';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Truck,
   Building2,
@@ -350,7 +351,43 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
     observacoes: ''
   };
 
+  const STORAGE_KEY = companyId ? `ambipar_vehicle_types_${companyId}` : 'ambipar_vehicle_types';
+
+  const loadStoredVehicleTypes = () => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('ambipar_vehicle_types');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (err) {
+      console.error('Erro ao ler categorias de veículo:', err);
+    }
+    return VEHICLE_TYPES;
+  };
+
+  const [vehicleTypes, setVehicleTypes] = useState(loadStoredVehicleTypes);
+  const [showCategoriesModal, setShowCategoriesModal] = useState(false);
+
+  const handleSaveCategories = (updated) => {
+    setVehicleTypes(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      localStorage.setItem('ambipar_vehicle_types', JSON.stringify(updated));
+    } catch (err) {
+      console.error('Erro ao salvar categorias de veículo:', err);
+    }
+  };
+
   const [formData, setFormData] = useState(initialForm);
+
+  const currentVehicleTypeOptions = useMemo(() => {
+    const list = [...vehicleTypes];
+    if (formData.tipo && !list.some(t => t.value === formData.tipo)) {
+      list.unshift({ value: formData.tipo, label: formData.tipo, sublabel: 'Categoria existente' });
+    }
+    return list;
+  }, [vehicleTypes, formData.tipo]);
 
   const fetchSupabaseVehicles=()=>directory.reload();
 
@@ -620,6 +657,16 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                 >
                   <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                   <span>Atualizar Lista</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary btn-icon-text"
+                  onClick={() => setShowCategoriesModal(true)}
+                  title="Gerenciar, adicionar e remover categorias de implemento e carroceria"
+                  id="btn-manage-vehicle-categories"
+                >
+                  <Layers size={16} />
+                  <span>Categorias de Implemento</span>
                 </button>
                 <button
                   type="button"
@@ -914,13 +961,36 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
               </div>
 
               <div className="input-group-custom" style={{ marginBottom: '1.1rem' }}>
-                <label>Tipo de Implemento / Carroceria</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <label style={{ margin: 0 }}>Tipo de Implemento / Carroceria</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowCategoriesModal(true)}
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      border: '1px solid rgba(16, 185, 129, 0.35)',
+                      color: '#34d399',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                    title="Adicionar ou remover categorias de implemento"
+                  >
+                    <Layers size={13} />
+                    <span>Gerenciar Categorias</span>
+                  </button>
+                </div>
                 <select
                   value={formData.tipo}
                   onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
                 >
-                  {VEHICLE_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                  {currentVehicleTypeOptions.map(t => (
+                    <option key={t.value} value={t.value}>{t.label || t.value}</option>
                   ))}
                 </select>
               </div>
@@ -1952,6 +2022,15 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
         </>
       )}
     
+      <VehicleTypesManagerModal
+        isOpen={showCategoriesModal}
+        onClose={() => setShowCategoriesModal(false)}
+        vehicleTypes={vehicleTypes}
+        onSaveCategories={handleSaveCategories}
+        vehicles={vehicles}
+        defaultTypes={VEHICLE_TYPES}
+      />
+
       <AmbiparConfirmDialog
         isOpen={!!deleteConfirmVehicle}
         title="Excluir Veículo da Frota"
