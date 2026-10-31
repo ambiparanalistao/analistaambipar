@@ -1,10 +1,11 @@
 import AmbiparConfirmDialog from './common/AmbiparConfirmDialog';
-import FleetBranchField from './maintenance/analytics/FleetBranchField';
+
 import VehicleMaintenancePanel from './maintenance/vehicles/VehicleMaintenancePanel';
 import {persistFleetVehicle} from '../services/fleetPersistence';
 import React, { useState, useEffect } from 'react';
 import { 
-  Truck, 
+  Truck,
+  Building2,
   Plus, 
   Search, 
   ShieldCheck, 
@@ -289,6 +290,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
   const [displayLayout, setDisplayLayout] = useState('cards'); // 'cards' ou 'table'
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
+  const [baseFilter, setBaseFilter] = useState('Todas');
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [feedback, setFeedback] = useState(null);
@@ -322,7 +324,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
     if(directory.error)setFeedback({type:'error',text:directory.error});
   },[directory.vehicles,directory.drivers,directory.loading,directory.error]);
   const initialForm = {
-    branch_id: '',
+    base_operacional: 'Base Vale',
     placa: '',
     prefixo: 'AMB-',
     tipo: 'Carreta Tanque Químico (Inox 316L)',
@@ -354,7 +356,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
 
   const handleOpenCreateForm = () => {
     setEditingId(null);
-    setFormData(initialForm);
+    setFormData({ ...initialForm, base_operacional: baseFilter === 'Base DCX' ? 'Base DCX' : 'Base Vale' });
     setCrlvSuccess(null);
     setCrlvError(null);
     setCrlvProgress('');
@@ -366,6 +368,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
     setEditingId(vehicle.id);
     setFormData({
       ...vehicle,
+      base_operacional: vehicle.base_operacional || 'Base Vale',
       capacidade_peso_ton: vehicle.capacidade_peso_ton || '',
       capacidade_volume_m3: vehicle.capacidade_volume_m3 || '',
       km_atual: vehicle.km_atual ?? '',
@@ -453,6 +456,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
 
     const payload = {
       ...formData,
+      base_operacional: formData.base_operacional || 'Base Vale',
       placa: formattedPlaca,
       capacidade_peso_ton: formData.capacidade_peso_ton ? parseFloat(formData.capacidade_peso_ton) : null,
       capacidade_volume_m3: formData.capacidade_volume_m3 ? parseFloat(formData.capacidade_volume_m3) : null,
@@ -512,20 +516,29 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
     return `https://wa.me/${fullNumber}`;
   };
 
-  // KPIs da Frota & Telemetria Executiva Central de Gestão
-  const totalVehicles = vehicles.length;
-  const availableCount = vehicles.filter(v => v.status === 'Disponível').length;
-  const tripCount = vehicles.filter(v => v.status === 'Em Viagem').length;
-  const maintenanceCount = vehicles.filter(v => v.status === 'Manutenção').length;
-  const blockedCount = vehicles.filter(v => v.status === 'Bloqueado').length;
+  // Contadores por Base Operacional (Base Vale e Base DCX)
+  const valeCount = vehicles.filter(v => (v.base_operacional || 'Base Vale') === 'Base Vale').length;
+  const dcxCount = vehicles.filter(v => (v.base_operacional || 'Base Vale') === 'Base DCX').length;
+
+  // Escopo de veículos conforme a Base selecionada
+  const baseScopedVehicles = baseFilter === 'Todas' 
+    ? vehicles 
+    : vehicles.filter(v => (v.base_operacional || 'Base Vale') === baseFilter);
+
+  // KPIs da Frota & Telemetria Executiva CCO
+  const totalVehicles = baseScopedVehicles.length;
+  const availableCount = baseScopedVehicles.filter(v => v.status === 'Disponível').length;
+  const tripCount = baseScopedVehicles.filter(v => v.status === 'Em Viagem').length;
+  const maintenanceCount = baseScopedVehicles.filter(v => v.status === 'Manutenção').length;
+  const blockedCount = baseScopedVehicles.filter(v => v.status === 'Bloqueado').length;
 
   const readyVehiclesCount = availableCount + tripCount;
   const readinessRate = totalVehicles > 0 
     ? Math.round((readyVehiclesCount / totalVehicles) * 100) 
     : 0;
-  const totalCapacityTons = vehicles.reduce((sum, v) => sum + (parseFloat(v.capacidade_peso_ton) || 0), 0);
-  const totalVolumeM3 = vehicles.reduce((sum, v) => sum + (parseFloat(v.capacidade_volume_m3) || 0), 0);
-  const totalKmRodados = vehicles.reduce((sum, v) => sum + (parseInt(v.km_atual, 10) || 0), 0);
+  const totalCapacityTons = baseScopedVehicles.reduce((sum, v) => sum + (parseFloat(v.capacidade_peso_ton) || 0), 0);
+  const totalVolumeM3 = baseScopedVehicles.reduce((sum, v) => sum + (parseFloat(v.capacidade_volume_m3) || 0), 0);
+  const totalKmRodados = baseScopedVehicles.reduce((sum, v) => sum + (parseInt(v.km_atual, 10) || 0), 0);
 
   const handleKpiCardClick = (statusTarget) => {
     if (statusFilter === statusTarget) {
@@ -563,7 +576,9 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
       (v.tipo && v.tipo.toLowerCase().includes(s));
 
     const matchesStatus = statusFilter === 'Todos' || v.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const vehicleBase = v.base_operacional || 'Base Vale';
+    const matchesBase = baseFilter === 'Todas' || vehicleBase === baseFilter;
+    return matchesSearch && matchesStatus && matchesBase;
   });
 
   if(maintenanceVehicle)return <VehicleMaintenancePanel access={maintenanceAccess} vehicleId={maintenanceVehicle.id} onBack={()=>setMaintenanceVehicle(null)}/>;
@@ -790,9 +805,76 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                 <div className="header-icon-label">
                   <Truck size={20} className="icon-emerald" />
                   <div>
-                    <h4>1. Identificação Civil & Placa</h4>
-                    <p>Registro oficial e prefixo do ativo</p>
+                    <h4>1. Identificação Civil & Base Operacional</h4>
+                    <p>Alocação de base, registro oficial e prefixo do ativo</p>
                   </div>
+                </div>
+              </div>
+
+              {/* SELEÇÃO DA BASE OPERACIONAL (BASE VALE / BASE DCX) */}
+              <div className="input-group-custom" style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <Building2 size={15} className="icon-emerald" />
+                  <span style={{ fontWeight: 600 }}>Base Operacional do Veículo *</span>
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                  <label 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 16px',
+                      background: (formData.base_operacional || 'Base Vale') === 'Base Vale' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                      border: (formData.base_operacional || 'Base Vale') === 'Base Vale' ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.12)',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="form_base_operacional"
+                      value="Base Vale"
+                      checked={(formData.base_operacional || 'Base Vale') === 'Base Vale'}
+                      onChange={() => setFormData({ ...formData, base_operacional: 'Base Vale' })}
+                      style={{ width: '18px', height: '18px', accentColor: '#10b981', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <strong style={{ display: 'block', fontSize: '0.92rem', color: (formData.base_operacional || 'Base Vale') === 'Base Vale' ? '#10b981' : '#ffffff' }}>
+                        Base Vale
+                      </strong>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>Alocado na Base Vale</span>
+                    </div>
+                  </label>
+
+                  <label 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 16px',
+                      background: formData.base_operacional === 'Base DCX' ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                      border: formData.base_operacional === 'Base DCX' ? '1.5px solid #06b6d4' : '1px solid rgba(255, 255, 255, 0.12)',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="form_base_operacional"
+                      value="Base DCX"
+                      checked={formData.base_operacional === 'Base DCX'}
+                      onChange={() => setFormData({ ...formData, base_operacional: 'Base DCX' })}
+                      style={{ width: '18px', height: '18px', accentColor: '#06b6d4', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <strong style={{ display: 'block', fontSize: '0.92rem', color: formData.base_operacional === 'Base DCX' ? '#06b6d4' : '#ffffff' }}>
+                        Base DCX
+                      </strong>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>Alocado na Base DCX</span>
+                    </div>
+                  </label>
                 </div>
               </div>
 
@@ -902,7 +984,7 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
 
               <div className="grid-2-cols" style={{ marginBottom: '1.1rem' }}>
                 <div className="input-group-custom">
-                  <FleetBranchField key={companyId} company={companyId} canWrite={maintenanceAccess?.canWrite} value={formData.branch_id} onChange={value=>setFormData(f=>({...f,branch_id:value}))}/><label>Odômetro Registrado (Km)</label>
+                  <label>Odômetro Registrado (Km) *</label>
                   <input
                     type="number"
                     placeholder="Ex: 118420"
@@ -1328,6 +1410,29 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
           {/* ========================================================== */}
           {/* BARRA DE COMANDO: BUSCA, FILTROS RÁPIDOS & LAYOUT SWITCHER */}
           {/* ========================================================== */}
+          {/* ========================================================== */}
+          {/* SELETOR EXECUTIVO DE BASE OPERACIONAL (BASE VALE / BASE DCX)*/}
+          {/* ========================================================== */}
+          <div className="fleet-base-selector-bar">
+            {[
+              { id: 'Todas', label: 'Todas as Bases', count: vehicles.length, icon: Layers, cls: 'all' },
+              { id: 'Base Vale', label: 'Veículos Base Vale', count: valeCount, icon: Building2, cls: 'vale' },
+              { id: 'Base DCX', label: 'Veículos Base DCX', count: dcxCount, icon: Building2, cls: 'dcx' }
+            ].map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                className={`fleet-base-tab-btn ${b.cls} ${baseFilter === b.id ? 'active' : ''}`}
+                onClick={() => setBaseFilter(b.id)}
+                id={`tab-base-${b.id.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <b.icon size={16} />
+                <span>{b.label}</span>
+                <span className="base-tab-badge">{b.count}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="filter-panel">
             <div className="search-bar-wrapper">
               <div className="search-bar">
@@ -1461,6 +1566,24 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                       </div>
 
                       <div className="vehicle-tags-cluster">
+                        <span 
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            background: (vehicle.base_operacional || 'Base Vale') === 'Base DCX' ? 'rgba(6, 182, 212, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                            color: (vehicle.base_operacional || 'Base Vale') === 'Base DCX' ? '#38bdf8' : '#34d399',
+                            border: (vehicle.base_operacional || 'Base Vale') === 'Base DCX' ? '1px solid rgba(6, 182, 212, 0.35)' : '1px solid rgba(16, 185, 129, 0.35)'
+                          }}
+                          title={`Veículo alocado na ${vehicle.base_operacional || 'Base Vale'}`}
+                        >
+                          <Building2 size={11} />
+                          {vehicle.base_operacional || 'Base Vale'}
+                        </span>
                         {vehicle.prefixo && (
                           <span className="fleet-prefix-tag">{vehicle.prefixo}</span>
                         )}
@@ -1676,6 +1799,18 @@ export default function VehiclesModule({ user, companyId, maintenanceAccess, onN
                               <span className="flag">🇧🇷</span>
                               <span className="plate-txt">{formatPlateMercosul(vehicle.placa)}</span>
                             </div>
+                            <span style={{ 
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '0.68rem', 
+                              fontWeight: 700, 
+                              color: (vehicle.base_operacional || 'Base Vale') === 'Base DCX' ? '#38bdf8' : '#34d399',
+                              marginTop: '2px'
+                            }}>
+                              <Building2 size={10} />
+                              {vehicle.base_operacional || 'Base Vale'}
+                            </span>
                             {vehicle.prefixo && (
                               <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 700, fontFamily: 'monospace' }}>
                                 {vehicle.prefixo}
