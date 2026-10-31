@@ -1,5 +1,6 @@
 import MaintenanceNotifications from './components/maintenance/communication/MaintenanceNotifications';
 import DriverMaintenancePage from './components/maintenance/driver/DriverMaintenancePage';
+import ExecutiveLoadingScreen from './components/ExecutiveLoadingScreen';
 import React, { useState, useEffect } from 'react';
 import { 
   Shield, 
@@ -128,6 +129,14 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Inicializa o módulo ativo a partir da URL no navegador
   const getInitialModule = () => {
@@ -297,13 +306,8 @@ export default function App() {
 
   return (
     <div className="app-wrapper" id="ambipar-app-root">
-      {loading ? (
-        <div className="loading-state animate-fade-in" id="app-loading-state">
-          <span className="spinner"></span>
-          <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>
-            Conectando aos serviços da Ambipar...
-          </p>
-        </div>
+      {loading || (session && maintenanceAccess.loading) ? (
+        <ExecutiveLoadingScreen message={loading ? 'Conectando aos serviços da Ambipar...' : 'Verificando permissões de analista...'} />
       ) : !session ? (
         <>
           {/* Header simplificado para a tela de login */}
@@ -339,7 +343,19 @@ export default function App() {
             />
           </main>
         </>
-      ) : maintenanceAccess.loading ? <p role="status">Verificando acesso…</p> : maintenanceAccess.error ? <div role="alert">{maintenanceAccess.error}<button onClick={maintenanceAccess.reload}>Tentar novamente</button><button onClick={handleLogout}>Sair</button></div> : (maintenanceAccess.memberships.some(m=>m.roleName==='motorista')&&!maintenanceAccess.canRead)||currentModule==='driver_maintenance' ? <DriverMaintenancePage access={maintenanceAccess} onLogout={handleLogout}/> : (
+      ) : maintenanceAccess.error ? (
+        <div className="executive-access-error-card" role="alert">
+          <Shield size={32} color="#ef4444" />
+          <h2>Não foi possível verificar seu acesso</h2>
+          <p>{maintenanceAccess.error}</p>
+          <div className="access-error-actions">
+            <button className="btn-primary" onClick={maintenanceAccess.reload}>Tentar novamente</button>
+            <button className="btn-secondary" onClick={handleLogout}>Sair</button>
+          </div>
+        </div>
+      ) : (maintenanceAccess.memberships.some(m=>m.roleName==='motorista')&&!maintenanceAccess.canRead)||currentModule==='driver_maintenance' ? (
+        <DriverMaintenancePage access={maintenanceAccess} onLogout={handleLogout}/>
+      ) : (
         /* Layout Principal do Analista de Logística com Sidebar Lateral */
         <div className="dashboard-app-layout" id="authenticated-layout">
           {/* Sidebar Lateral Expansível */}
