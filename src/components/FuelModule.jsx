@@ -2305,7 +2305,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                 <label>Modelo / Configuração do Veículo</label>
                 <input
                   type="text"
-                  placeholder="Ex: Cavalo Mecânico 6x2 / Carreta Tanque 316L"
+                  placeholder="Ex: Caminhão Trator 6x2 / Carreta Tanque 316L"
                   value={formData.modelo_veiculo}
                   onChange={e => setFormData({ ...formData, modelo_veiculo: e.target.value })}
                 />
@@ -3176,7 +3176,7 @@ export default function FuelModule({ user, companyId, initialView = 'dashboard',
                   <strong style={{ color: '#ffffff' }}>Instruções ao Condutor:</strong>
                   <ul style={{ margin: '0.35rem 0 0 1rem', padding: 0 }}>
                     <li>Abastecer obrigatoriamente na Rede de Postos Credenciados (Cartão Abank Frota).</li>
-                    <li>Exigir Cupom Fiscal / NF-e com placa do cavalo e hodômetro impresso.</li>
+                    <li>Exigir Cupom Fiscal / NF-e com placa do veículo e hodômetro impresso.</li>
                     <li>Não deixar o nível do tanque baixar além dos {simulatorData.reservaSegurancaPct}% de reserva técnica.</li>
                   </ul>
                 </div>
